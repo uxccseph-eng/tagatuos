@@ -1,0 +1,16 @@
+.working-date-range{display:flex;align-items:end;gap:8px;flex-wrap:wrap;padding:6px 8px;border-left:1px solid #84958830}
+.working-date-range label{display:grid;gap:3px;font:10px/1.3 'JetBrains Mono',monospace;color:#526575}
+.dark .working-date-range label{color:#9db4c3}
+.working-date-range input{color:#172b36;background:#f0f5f8;border:1px solid #a7bbc544;border-radius:6px;padding:7px 8px;font:12px/1.3 'Manrope',Arial,sans-serif;min-width:130px;color-scheme:light}
+.dark .working-date-range input{color:#deebf2;background:#0e1722;color-scheme:dark}
+.working-date-range button{height:32px!important;width:auto!important;min-width:48px;border:1px solid #84958840;border-radius:6px;padding:0 10px!important;font:600 11px/1.3 'JetBrains Mono',monospace;color:#285464;background:#84958815;white-space:nowrap}
+.working-date-range button[data-period-apply]{color:#06281e;background:#00e4a5;border-color:#00e4a5}
+.working-date-range button[data-period-apply]:hover{background:#00bd8a;color:#06281e}
+.dark .working-date-range button[data-period-month]{color:#b2c7d1}
+.working-date-range :focus-visible{outline:2px solid #00bd8a;outline-offset:2px}
+.sheet-period,.sheet-period-controls,.books-period,.books-tools-left{flex-wrap:wrap}
+.sheet-period-controls{row-gap:4px}
+.sheet-period{height:auto!important;min-height:58px}
+.sheet-period-range{white-space:normal!important}
+@media(max-width:700px){.working-date-range{border-left:0;width:100%;padding:8px 0}.working-date-range label{flex:1}.working-date-range input{width:100%;min-width:110px}.sheet-period-controls{flex:1}.books-period{height:auto!important}}
+@media print{.working-date-range{display:none}}

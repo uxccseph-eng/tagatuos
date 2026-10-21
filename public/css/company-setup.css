@@ -1,0 +1,70 @@
+body {
+      background-color: #030712;
+      color: #F8FAFC;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+    .cosmic-mesh {
+      background-image: 
+        radial-gradient(circle at 15% 10%, rgba(0, 245, 160, 0.08) 0%, transparent 40%),
+        radial-gradient(circle at 85% 25%, rgba(0, 216, 246, 0.06) 0%, transparent 45%),
+        radial-gradient(circle at 50% 80%, rgba(16, 185, 129, 0.05) 0%, transparent 50%),
+        linear-gradient(to bottom, #030712, #070D1E);
+    }
+    .grid-lines {
+      background-size: 40px 40px;
+      background-image: 
+        linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+    }
+    .glass-card {
+      background: rgba(13, 20, 36, 0.72);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(51, 65, 85, 0.55);
+      box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    }
+    .glass-card:hover {
+      border-color: rgba(71, 85, 105, 0.75);
+    }
+    .radio-card-active {
+      border-color: rgba(0, 245, 160, 0.8) !important;
+      background: rgba(0, 245, 160, 0.07) !important;
+      box-shadow: 0 0 20px -5px rgba(0, 245, 160, 0.25), inset 0 0 1px rgba(0, 245, 160, 0.6) !important;
+    }
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #030712;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #1E293B;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #334155;
+    }
+
+:root { color-scheme: dark; }
+[hidden] { display: none !important; }
+:focus-visible { outline: 2px solid #34d399; outline-offset: 4px; }
+.choice-card { border-color: #1e293b; background: rgb(2 6 23 / .4); }
+.choice-card:has(input:checked) { border-color: rgb(0 245 160 / .8) !important; background: rgb(0 245 160 / .07) !important; box-shadow: 0 0 20px -5px rgb(0 245 160 / .25); }
+.choice-card:has(input:focus-visible) { outline: 2px solid #34d399; outline-offset: 4px; }
+.choice-card .radio-indicator { border-color: #475569; background: #0f172a; color: transparent; }
+.choice-card .radio-indicator::after { content: '✓'; font-size: 11px; font-weight: 800; }
+.choice-card:has(input:checked) .radio-indicator { border-color: #34d399; background: #10b981; color: #020617; }
+#preview-info { width: min(28rem, calc(100vw - 2rem)); margin: auto; }
+#preview-info::backdrop { background: rgb(3 7 18 / .85); backdrop-filter: blur(8px); }
+@media (max-width: 639px) {
+    .glass-card > div:first-child > .flex { flex-wrap: wrap; gap: .75rem; }
+    #group-period { height: auto; flex-wrap: wrap; padding-bottom: .5rem; }
+    header > div { gap: .5rem; }
+    header > div:first-child a > span:last-child { font-size: 15px; }
+    header > div:last-child { gap: .5rem; }
+    main > div > div:first-child > div:first-child > div { flex-wrap: wrap; font-size: 10px; }
+}
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+}

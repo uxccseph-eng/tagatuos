@@ -1,0 +1,1378 @@
+[
+  {
+    "code": "WB030",
+    "name": "Tax on Carriers and Keepers of Garages",
+    "rate": 3,
+    "category": "VAT Withholding",
+    "payee": "",
+    "form": "1600"
+  },
+  {
+    "code": "WB040",
+    "name": "Franchise Tax on Gas and Water Utilities",
+    "rate": 2,
+    "category": "VAT Withholding",
+    "payee": "",
+    "form": "1600"
+  },
+  {
+    "code": "WB050",
+    "name": "Franchise Tax on radio/TV broadcasting cos. (annual gross <= P10M, non-VAT)",
+    "rate": 3,
+    "category": "VAT Withholding",
+    "payee": "",
+    "form": "1600"
+  },
+  {
+    "code": "WB070",
+    "name": "Tax on Life Insurance Premiums",
+    "rate": 2,
+    "category": "VAT Withholding",
+    "payee": "",
+    "form": "1600"
+  },
+  {
+    "code": "WB080",
+    "name": "Persons Exempt from VAT under Sec. 109(BB) (creditable) — Government Withholding Agent",
+    "rate": 3,
+    "category": "VAT Withholding",
+    "payee": "",
+    "form": "1600"
+  },
+  {
+    "code": "WB082",
+    "name": "Persons Exempt from VAT under Sec. 109(BB) (creditable) — Private Withholding Agent",
+    "rate": 3,
+    "category": "VAT Withholding",
+    "payee": "",
+    "form": "1600"
+  },
+  {
+    "code": "WB084",
+    "name": "Persons Exempt from VAT under Sec. 109(BB) (final) (Sec. 116 applies)",
+    "rate": 3,
+    "category": "VAT Withholding",
+    "payee": "",
+    "form": "1600"
+  },
+  {
+    "code": "WB090",
+    "name": "Tax on Overseas Dispatch, Message or Conversation from the Philippines",
+    "rate": 10,
+    "category": "VAT Withholding",
+    "payee": "",
+    "form": "1600"
+  },
+  {
+    "code": "WB102",
+    "name": "Banks/NBFI (quasi-banking) — dividends/equity shares/net income of subsidiaries",
+    "rate": 0,
+    "category": "VAT Withholding",
+    "payee": "",
+    "form": "1600"
+  },
+  {
+    "code": "WB103",
+    "name": "Banks/NBFI (quasi-banking) — royalties, rentals, profits from exchange & other gross income",
+    "rate": 7,
+    "category": "VAT Withholding",
+    "payee": "",
+    "form": "1600"
+  },
+  {
+    "code": "WB104",
+    "name": "Banks/NBFI (quasi-banking) — net trading gains on FX/debt securities/derivatives",
+    "rate": 7,
+    "category": "VAT Withholding",
+    "payee": "",
+    "form": "1600"
+  },
+  {
+    "code": "WB108",
+    "name": "Other NBFI (non quasi-banking) — lending & financial leasing, maturity 5 years or less",
+    "rate": 5,
+    "category": "VAT Withholding",
+    "payee": "",
+    "form": "1600"
+  },
+  {
+    "code": "WB109",
+    "name": "Other NBFI (non quasi-banking) — lending & financial leasing, maturity more than 5 years",
+    "rate": 1,
+    "category": "VAT Withholding",
+    "payee": "",
+    "form": "1600"
+  },
+  {
+    "code": "WB110",
+    "name": "Other NBFI (non quasi-banking) — all other items treated as gross income",
+    "rate": 5,
+    "category": "VAT Withholding",
+    "payee": "",
+    "form": "1600"
+  },
+  {
+    "code": "WB120",
+    "name": "Agents of Foreign Insurance Companies — Insurance Agents",
+    "rate": 4,
+    "category": "VAT Withholding",
+    "payee": "",
+    "form": "1600"
+  },
+  {
+    "code": "WB121",
+    "name": "Agents of Foreign Insurance Companies — Owner of the Property",
+    "rate": 5,
+    "category": "VAT Withholding",
+    "payee": "",
+    "form": "1600"
+  },
+  {
+    "code": "WB130",
+    "name": "Tax on International Carriers",
+    "rate": 3,
+    "category": "VAT Withholding",
+    "payee": "",
+    "form": "1600"
+  },
+  {
+    "code": "WB140",
+    "name": "Tax on Cockpits",
+    "rate": 18,
+    "category": "VAT Withholding",
+    "payee": "",
+    "form": "1600"
+  },
+  {
+    "code": "WB150",
+    "name": "Tax on amusement places (cabarets, clubs, videoke/karaoke bars, music lounges, etc.)",
+    "rate": 18,
+    "category": "VAT Withholding",
+    "payee": "",
+    "form": "1600"
+  },
+  {
+    "code": "WB160",
+    "name": "Tax on Boxing exhibitions",
+    "rate": 10,
+    "category": "VAT Withholding",
+    "payee": "",
+    "form": "1600"
+  },
+  {
+    "code": "WB170",
+    "name": "Tax on Professional basketball games",
+    "rate": 15,
+    "category": "VAT Withholding",
+    "payee": "",
+    "form": "1600"
+  },
+  {
+    "code": "WB180",
+    "name": "Tax on jai-alai and race tracks",
+    "rate": 30,
+    "category": "VAT Withholding",
+    "payee": "",
+    "form": "1600"
+  },
+  {
+    "code": "WB200",
+    "name": "Tax on sale/barter/exchange of stocks listed & traded through the Local Stock Exchange",
+    "rate": 0.6,
+    "category": "VAT Withholding",
+    "payee": "",
+    "form": "1600"
+  },
+  {
+    "code": "WB201",
+    "name": "Tax on shares of stock through IPO — proportion of shares not over 25%",
+    "rate": 4,
+    "category": "VAT Withholding",
+    "payee": "",
+    "form": "1600"
+  },
+  {
+    "code": "WB202",
+    "name": "Tax on shares of stock through IPO — over 25% but not over 33 1/3%",
+    "rate": 2,
+    "category": "VAT Withholding",
+    "payee": "",
+    "form": "1600"
+  },
+  {
+    "code": "WB203",
+    "name": "Tax on shares of stock through IPO — over 33 1/3%",
+    "rate": 1,
+    "category": "VAT Withholding",
+    "payee": "",
+    "form": "1600"
+  },
+  {
+    "code": "WB301",
+    "name": "Banks/NBFI (quasi-banking) — lending & financial leasing, maturity 5 years or less",
+    "rate": 5,
+    "category": "VAT Withholding",
+    "payee": "",
+    "form": "1600"
+  },
+  {
+    "code": "WB303",
+    "name": "Banks/NBFI (quasi-banking) — lending & financial leasing, maturity more than 5 years",
+    "rate": 1,
+    "category": "VAT Withholding",
+    "payee": "",
+    "form": "1600"
+  },
+  {
+    "code": "WC010",
+    "name": "Professional Fees (Lawyers, CPAs, Engineers)",
+    "rate": 10,
+    "category": "Income-tax CWT",
+    "payee": "Corporation",
+    "form": "1601-E"
+  },
+  {
+    "code": "WC011",
+    "name": "Professional Fees (Lawyers, CPAs, Engineers)",
+    "rate": 15,
+    "category": "Income-tax CWT",
+    "payee": "Corporation",
+    "form": "1601-E"
+  },
+  {
+    "code": "WC020",
+    "name": "Professional Entertainers",
+    "rate": 10,
+    "category": "Income-tax CWT",
+    "payee": "Corporation",
+    "form": "1601-E"
+  },
+  {
+    "code": "WC021",
+    "name": "Professional Entertainers",
+    "rate": 15,
+    "category": "Income-tax CWT",
+    "payee": "Corporation",
+    "form": "1601-E"
+  },
+  {
+    "code": "WC030",
+    "name": "Professional Athletes",
+    "rate": 10,
+    "category": "Income-tax CWT",
+    "payee": "Corporation",
+    "form": "1601-E"
+  },
+  {
+    "code": "WC031",
+    "name": "Professional Athletes",
+    "rate": 15,
+    "category": "Income-tax CWT",
+    "payee": "Corporation",
+    "form": "1601-E"
+  },
+  {
+    "code": "WC040",
+    "name": "Directors/Producers (Movies, TV, Radio)",
+    "rate": 10,
+    "category": "Income-tax CWT",
+    "payee": "Corporation",
+    "form": "1601-E"
+  },
+  {
+    "code": "WC041",
+    "name": "Directors/Producers (Movies, TV, Radio)",
+    "rate": 15,
+    "category": "Income-tax CWT",
+    "payee": "Corporation",
+    "form": "1601-E"
+  },
+  {
+    "code": "WC050",
+    "name": "Management & Technical Consultants",
+    "rate": 10,
+    "category": "Income-tax CWT",
+    "payee": "Corporation",
+    "form": "1601-E"
+  },
+  {
+    "code": "WC051",
+    "name": "Management & Technical Consultants",
+    "rate": 15,
+    "category": "Income-tax CWT",
+    "payee": "Corporation",
+    "form": "1601-E"
+  },
+  {
+    "code": "WC060",
+    "name": "Business & Bookkeeping Agents",
+    "rate": 10,
+    "category": "Income-tax CWT",
+    "payee": "Corporation",
+    "form": "1601-E"
+  },
+  {
+    "code": "WC061",
+    "name": "Business & Bookkeeping Agents",
+    "rate": 15,
+    "category": "Income-tax CWT",
+    "payee": "Corporation",
+    "form": "1601-E"
+  },
+  {
+    "code": "WC070",
+    "name": "Insurance Agents/Adjusters",
+    "rate": 10,
+    "category": "Income-tax CWT",
+    "payee": "Corporation",
+    "form": "1601-E"
+  },
+  {
+    "code": "WC071",
+    "name": "Insurance Agents/Adjusters",
+    "rate": 15,
+    "category": "Income-tax CWT",
+    "payee": "Corporation",
+    "form": "1601-E"
+  },
+  {
+    "code": "WC080",
+    "name": "Other Talent Fees",
+    "rate": 10,
+    "category": "Income-tax CWT",
+    "payee": "Corporation",
+    "form": "1601-E"
+  },
+  {
+    "code": "WC081",
+    "name": "Other Talent Fees",
+    "rate": 15,
+    "category": "Income-tax CWT",
+    "payee": "Corporation",
+    "form": "1601-E"
+  },
+  {
+    "code": "WC090",
+    "name": "Directors' Fees (non-employee)",
+    "rate": 10,
+    "category": "Income-tax CWT",
+    "payee": "Corporation",
+    "form": "1601-E"
+  },
+  {
+    "code": "WC091",
+    "name": "Directors' Fees (non-employee)",
+    "rate": 15,
+    "category": "Income-tax CWT",
+    "payee": "Corporation",
+    "form": "1601-E"
+  },
+  {
+    "code": "WC100",
+    "name": "Rentals (Personal/Real Property)",
+    "rate": 5,
+    "category": "Income-tax CWT",
+    "payee": "Corporation",
+    "form": "1601-E"
+  },
+  {
+    "code": "WC110",
+    "name": "Cinematographic Film Rentals",
+    "rate": 5,
+    "category": "Income-tax CWT",
+    "payee": "Corporation",
+    "form": "1601-E"
+  },
+  {
+    "code": "WC120",
+    "name": "Payments to Contractors",
+    "rate": 2,
+    "category": "Income-tax CWT",
+    "payee": "Corporation",
+    "form": "1601-E"
+  },
+  {
+    "code": "WC139",
+    "name": "Commissions/Fees (Brokers, RESPs)",
+    "rate": 10,
+    "category": "Income-tax CWT",
+    "payee": "Corporation",
+    "form": "1601-E"
+  },
+  {
+    "code": "WC140",
+    "name": "Commissions/Fees (Brokers, RESPs)",
+    "rate": 15,
+    "category": "Income-tax CWT",
+    "payee": "Corporation",
+    "form": "1601-E"
+  },
+  {
+    "code": "WC150",
+    "name": "Medical Practitioners (Hospitals/HMOs)",
+    "rate": 15,
+    "category": "Income-tax CWT",
+    "payee": "Corporation",
+    "form": "1601-E"
+  },
+  {
+    "code": "WC151",
+    "name": "Medical Practitioners (Hospitals/HMOs)",
+    "rate": 10,
+    "category": "Income-tax CWT",
+    "payee": "Corporation",
+    "form": "1601-E"
+  },
+  {
+    "code": "WC156",
+    "name": "Payments by Credit Card Companies",
+    "rate": 0.5,
+    "category": "Income-tax CWT",
+    "payee": "Corporation",
+    "form": "1601-E"
+  },
+  {
+    "code": "WC157",
+    "name": "GOCC payments to Suppliers (Services)",
+    "rate": 2,
+    "category": "Income-tax CWT",
+    "payee": "Corporation",
+    "form": "1601-E"
+  },
+  {
+    "code": "WC158",
+    "name": "Top Withholding Agents — Goods",
+    "rate": 1,
+    "category": "Income-tax CWT",
+    "payee": "Corporation",
+    "form": "1601-E"
+  },
+  {
+    "code": "WC160",
+    "name": "Top Withholding Agents — Services",
+    "rate": 2,
+    "category": "Income-tax CWT",
+    "payee": "Corporation",
+    "form": "1601-E"
+  },
+  {
+    "code": "WC180",
+    "name": "Interest on foreign loans payable to NRFCs",
+    "rate": 20,
+    "category": "Final Tax",
+    "payee": "Corporation",
+    "form": "1601-F"
+  },
+  {
+    "code": "WC190",
+    "name": "Interest/income on FX transactions — OBUs",
+    "rate": 10,
+    "category": "Final Tax",
+    "payee": "Corporation",
+    "form": "1601-F"
+  },
+  {
+    "code": "WC191",
+    "name": "Interest/income on FX transactions — FCDUs",
+    "rate": 10,
+    "category": "Final Tax",
+    "payee": "Corporation",
+    "form": "1601-F"
+  },
+  {
+    "code": "WC212",
+    "name": "Cash dividend by Domestic Corp to NRFC",
+    "rate": 30,
+    "category": "Final Tax",
+    "payee": "Corporation",
+    "form": "1601-F"
+  },
+  {
+    "code": "WC213",
+    "name": "Property dividend by Domestic Corp to NRFC",
+    "rate": 30,
+    "category": "Final Tax",
+    "payee": "Corporation",
+    "form": "1601-F"
+  },
+  {
+    "code": "WC222",
+    "name": "Cash dividend to NRFC (tax-sparing)",
+    "rate": 15,
+    "category": "Final Tax",
+    "payee": "Corporation",
+    "form": "1601-F"
+  },
+  {
+    "code": "WC223",
+    "name": "Property dividend to NRFC (tax-sparing)",
+    "rate": 15,
+    "category": "Final Tax",
+    "payee": "Corporation",
+    "form": "1601-F"
+  },
+  {
+    "code": "WC230",
+    "name": "Other payments to NRFCs",
+    "rate": 30,
+    "category": "Final Tax",
+    "payee": "Corporation",
+    "form": "1601-F"
+  },
+  {
+    "code": "WC250",
+    "name": "Royalty payments — Corporation",
+    "rate": 20,
+    "category": "Final Tax",
+    "payee": "Corporation",
+    "form": "1601-F"
+  },
+  {
+    "code": "WC280",
+    "name": "Branch Profit Remittances (non-PEZA/SBMA/CDA)",
+    "rate": 15,
+    "category": "Final Tax",
+    "payee": "Corporation",
+    "form": "1601-F"
+  },
+  {
+    "code": "WC290",
+    "name": "Rentals/Charter Fees — Non-resident Lessor of Foreign Vessels",
+    "rate": 4.5,
+    "category": "Final Tax",
+    "payee": "Corporation",
+    "form": "1601-F"
+  },
+  {
+    "code": "WC300",
+    "name": "Rentals/Charter Fees — Non-resident Lessor of Aircraft/Equipment",
+    "rate": 7.5,
+    "category": "Final Tax",
+    "payee": "Corporation",
+    "form": "1601-F"
+  },
+  {
+    "code": "WC310",
+    "name": "Oil Exploration Service Contractors — Corp",
+    "rate": 8,
+    "category": "Final Tax",
+    "payee": "Corporation",
+    "form": "1601-F"
+  },
+  {
+    "code": "WC340",
+    "name": "Cinematographic Film owners/lessors/distributors — Corp",
+    "rate": 25,
+    "category": "Final Tax",
+    "payee": "Corporation",
+    "form": "1601-F"
+  },
+  {
+    "code": "WC410",
+    "name": "Informer's Cash Reward — Juridical",
+    "rate": 10,
+    "category": "Final Tax",
+    "payee": "Corporation",
+    "form": "1601-F"
+  },
+  {
+    "code": "WC515",
+    "name": "Sales/Marketing Commissions",
+    "rate": 10,
+    "category": "Income-tax CWT",
+    "payee": "Corporation",
+    "form": "1601-E"
+  },
+  {
+    "code": "WC516",
+    "name": "Sales/Marketing Commissions",
+    "rate": 15,
+    "category": "Income-tax CWT",
+    "payee": "Corporation",
+    "form": "1601-E"
+  },
+  {
+    "code": "WC535",
+    "name": "Pre-Need Companies (Funeral Parlors)",
+    "rate": 1,
+    "category": "Income-tax CWT",
+    "payee": "Corporation",
+    "form": "1601-E"
+  },
+  {
+    "code": "WC540",
+    "name": "Tolling Fees (Refineries)",
+    "rate": 5,
+    "category": "Income-tax CWT",
+    "payee": "Corporation",
+    "form": "1601-E"
+  },
+  {
+    "code": "WC610",
+    "name": "Suppliers of Agricultural Products",
+    "rate": 1,
+    "category": "Income-tax CWT",
+    "payee": "Corporation",
+    "form": "1601-E"
+  },
+  {
+    "code": "WC630",
+    "name": "Minerals & Quarry Resources",
+    "rate": 5,
+    "category": "Income-tax CWT",
+    "payee": "Corporation",
+    "form": "1601-E"
+  },
+  {
+    "code": "WC632",
+    "name": "Purchases of Gold by BSP",
+    "rate": 1,
+    "category": "Income-tax CWT",
+    "payee": "Corporation",
+    "form": "1601-E"
+  },
+  {
+    "code": "WC640",
+    "name": "GOCC payments to Suppliers (Goods)",
+    "rate": 1,
+    "category": "Income-tax CWT",
+    "payee": "Corporation",
+    "form": "1601-E"
+  },
+  {
+    "code": "WC650",
+    "name": "MERALCO Refunds — Active",
+    "rate": 15,
+    "category": "Income-tax CWT",
+    "payee": "Corporation",
+    "form": "1601-E"
+  },
+  {
+    "code": "WC651",
+    "name": "MERALCO Refunds — Terminated",
+    "rate": 15,
+    "category": "Income-tax CWT",
+    "payee": "Corporation",
+    "form": "1601-E"
+  },
+  {
+    "code": "WC660",
+    "name": "Interest on Meter Deposit Refunds (>200 kWh)",
+    "rate": 10,
+    "category": "Income-tax CWT",
+    "payee": "Corporation",
+    "form": "1601-E"
+  },
+  {
+    "code": "WC663",
+    "name": "Interest on Meter Deposit Refunds (>200 kWh)",
+    "rate": 15,
+    "category": "Income-tax CWT",
+    "payee": "Corporation",
+    "form": "1601-E"
+  },
+  {
+    "code": "WC680",
+    "name": "Political Campaign Expenses",
+    "rate": 5,
+    "category": "Income-tax CWT",
+    "payee": "Corporation",
+    "form": "1601-E"
+  },
+  {
+    "code": "WC690",
+    "name": "Real Estate Investment Trust (REIT)",
+    "rate": 1,
+    "category": "Income-tax CWT",
+    "payee": "Corporation",
+    "form": "1601-E"
+  },
+  {
+    "code": "WC700",
+    "name": "Cash/Property Dividend paid by REIT — Corp",
+    "rate": 10,
+    "category": "Final Tax",
+    "payee": "Corporation",
+    "form": "1601-F"
+  },
+  {
+    "code": "WC710",
+    "name": "Interest on Other Debt Instruments",
+    "rate": 15,
+    "category": "Income-tax CWT",
+    "payee": "Corporation",
+    "form": "1601-E"
+  },
+  {
+    "code": "WC720",
+    "name": "Payments on Raw Sugar",
+    "rate": 1,
+    "category": "Income-tax CWT",
+    "payee": "Corporation",
+    "form": "1601-E"
+  },
+  {
+    "code": "WC840",
+    "name": "TWA — Motor Vehicles (CBU/SKD), Parts",
+    "rate": 0.5,
+    "category": "Income-tax CWT",
+    "payee": "Corporation",
+    "form": "1601-E"
+  },
+  {
+    "code": "WC850",
+    "name": "TWA — Medicine / Pharmaceuticals",
+    "rate": 0.5,
+    "category": "Income-tax CWT",
+    "payee": "Corporation",
+    "form": "1601-E"
+  },
+  {
+    "code": "WC860",
+    "name": "TWA — Solid/Liquid Fuels",
+    "rate": 0.5,
+    "category": "Income-tax CWT",
+    "payee": "Corporation",
+    "form": "1601-E"
+  },
+  {
+    "code": "WI010",
+    "name": "Professional Fees (Lawyers, CPAs, Engineers)",
+    "rate": 5,
+    "category": "Income-tax CWT",
+    "payee": "Individual",
+    "form": "1601-E"
+  },
+  {
+    "code": "WI011",
+    "name": "Professional Fees (Lawyers, CPAs, Engineers)",
+    "rate": 10,
+    "category": "Income-tax CWT",
+    "payee": "Individual",
+    "form": "1601-E"
+  },
+  {
+    "code": "WI020",
+    "name": "Professional Entertainers",
+    "rate": 5,
+    "category": "Income-tax CWT",
+    "payee": "Individual",
+    "form": "1601-E"
+  },
+  {
+    "code": "WI021",
+    "name": "Professional Entertainers",
+    "rate": 10,
+    "category": "Income-tax CWT",
+    "payee": "Individual",
+    "form": "1601-E"
+  },
+  {
+    "code": "WI030",
+    "name": "Professional Athletes",
+    "rate": 5,
+    "category": "Income-tax CWT",
+    "payee": "Individual",
+    "form": "1601-E"
+  },
+  {
+    "code": "WI031",
+    "name": "Professional Athletes",
+    "rate": 10,
+    "category": "Income-tax CWT",
+    "payee": "Individual",
+    "form": "1601-E"
+  },
+  {
+    "code": "WI040",
+    "name": "Directors/Producers (Movies, TV, Radio)",
+    "rate": 5,
+    "category": "Income-tax CWT",
+    "payee": "Individual",
+    "form": "1601-E"
+  },
+  {
+    "code": "WI041",
+    "name": "Directors/Producers (Movies, TV, Radio)",
+    "rate": 10,
+    "category": "Income-tax CWT",
+    "payee": "Individual",
+    "form": "1601-E"
+  },
+  {
+    "code": "WI050",
+    "name": "Management & Technical Consultants",
+    "rate": 5,
+    "category": "Income-tax CWT",
+    "payee": "Individual",
+    "form": "1601-E"
+  },
+  {
+    "code": "WI051",
+    "name": "Management & Technical Consultants",
+    "rate": 10,
+    "category": "Income-tax CWT",
+    "payee": "Individual",
+    "form": "1601-E"
+  },
+  {
+    "code": "WI060",
+    "name": "Business & Bookkeeping Agents",
+    "rate": 5,
+    "category": "Income-tax CWT",
+    "payee": "Individual",
+    "form": "1601-E"
+  },
+  {
+    "code": "WI061",
+    "name": "Business & Bookkeeping Agents",
+    "rate": 10,
+    "category": "Income-tax CWT",
+    "payee": "Individual",
+    "form": "1601-E"
+  },
+  {
+    "code": "WI070",
+    "name": "Insurance Agents/Adjusters",
+    "rate": 5,
+    "category": "Income-tax CWT",
+    "payee": "Individual",
+    "form": "1601-E"
+  },
+  {
+    "code": "WI071",
+    "name": "Insurance Agents/Adjusters",
+    "rate": 10,
+    "category": "Income-tax CWT",
+    "payee": "Individual",
+    "form": "1601-E"
+  },
+  {
+    "code": "WI080",
+    "name": "Other Talent Fees",
+    "rate": 5,
+    "category": "Income-tax CWT",
+    "payee": "Individual",
+    "form": "1601-E"
+  },
+  {
+    "code": "WI081",
+    "name": "Other Talent Fees",
+    "rate": 10,
+    "category": "Income-tax CWT",
+    "payee": "Individual",
+    "form": "1601-E"
+  },
+  {
+    "code": "WI090",
+    "name": "Directors' Fees (non-employee)",
+    "rate": 5,
+    "category": "Income-tax CWT",
+    "payee": "Individual",
+    "form": "1601-E"
+  },
+  {
+    "code": "WI091",
+    "name": "Directors' Fees (non-employee)",
+    "rate": 10,
+    "category": "Income-tax CWT",
+    "payee": "Individual",
+    "form": "1601-E"
+  },
+  {
+    "code": "WI100",
+    "name": "Rentals (Personal/Real Property)",
+    "rate": 5,
+    "category": "Income-tax CWT",
+    "payee": "Individual",
+    "form": "1601-E"
+  },
+  {
+    "code": "WI110",
+    "name": "Cinematographic Film Rentals",
+    "rate": 5,
+    "category": "Income-tax CWT",
+    "payee": "Individual",
+    "form": "1601-E"
+  },
+  {
+    "code": "WI120",
+    "name": "Payments to Contractors",
+    "rate": 2,
+    "category": "Income-tax CWT",
+    "payee": "Individual",
+    "form": "1601-E"
+  },
+  {
+    "code": "WI130",
+    "name": "Beneficiaries of Estates & Trusts",
+    "rate": 15,
+    "category": "Income-tax CWT",
+    "payee": "Individual",
+    "form": "1601-E"
+  },
+  {
+    "code": "WI139",
+    "name": "Brokers' Commissions",
+    "rate": 5,
+    "category": "Income-tax CWT",
+    "payee": "Individual",
+    "form": "1601-E"
+  },
+  {
+    "code": "WI140",
+    "name": "Brokers' Commissions",
+    "rate": 10,
+    "category": "Income-tax CWT",
+    "payee": "Individual",
+    "form": "1601-E"
+  },
+  {
+    "code": "WI150",
+    "name": "Medical Practitioners (Hospitals/HMOs)",
+    "rate": 10,
+    "category": "Income-tax CWT",
+    "payee": "Individual",
+    "form": "1601-E"
+  },
+  {
+    "code": "WI151",
+    "name": "Medical Practitioners (Hospitals/HMOs)",
+    "rate": 5,
+    "category": "Income-tax CWT",
+    "payee": "Individual",
+    "form": "1601-E"
+  },
+  {
+    "code": "WI152",
+    "name": "GPP Payments to Partners",
+    "rate": 10,
+    "category": "Income-tax CWT",
+    "payee": "Individual",
+    "form": "1601-E"
+  },
+  {
+    "code": "WI153",
+    "name": "GPP Payments to Partners",
+    "rate": 15,
+    "category": "Income-tax CWT",
+    "payee": "Individual",
+    "form": "1601-E"
+  },
+  {
+    "code": "WI156",
+    "name": "Payments by Credit Card Companies",
+    "rate": 0.5,
+    "category": "Income-tax CWT",
+    "payee": "Individual",
+    "form": "1601-E"
+  },
+  {
+    "code": "WI157",
+    "name": "GOCC payments to Suppliers (Services)",
+    "rate": 2,
+    "category": "Income-tax CWT",
+    "payee": "Individual",
+    "form": "1601-E"
+  },
+  {
+    "code": "WI158",
+    "name": "Top Withholding Agents — Goods",
+    "rate": 1,
+    "category": "Income-tax CWT",
+    "payee": "Individual",
+    "form": "1601-E"
+  },
+  {
+    "code": "WI159",
+    "name": "Govt Personnel Shipping/Airlines",
+    "rate": 15,
+    "category": "Income-tax CWT",
+    "payee": "Individual",
+    "form": "1601-E"
+  },
+  {
+    "code": "WI160",
+    "name": "Top Withholding Agents — Services",
+    "rate": 2,
+    "category": "Income-tax CWT",
+    "payee": "Individual",
+    "form": "1601-E"
+  },
+  {
+    "code": "WI202",
+    "name": "Cash dividend — Citizens & Resident Aliens",
+    "rate": 10,
+    "category": "Final Tax",
+    "payee": "Individual",
+    "form": "1601-F"
+  },
+  {
+    "code": "WI203",
+    "name": "Property dividend — Citizens & Resident Aliens",
+    "rate": 10,
+    "category": "Final Tax",
+    "payee": "Individual",
+    "form": "1601-F"
+  },
+  {
+    "code": "WI224",
+    "name": "Cash dividend — NRAETB",
+    "rate": 20,
+    "category": "Final Tax",
+    "payee": "Individual",
+    "form": "1601-F"
+  },
+  {
+    "code": "WI225",
+    "name": "Property dividend — NRAETB",
+    "rate": 20,
+    "category": "Final Tax",
+    "payee": "Individual",
+    "form": "1601-F"
+  },
+  {
+    "code": "WI226",
+    "name": "Share of NRAETB in net income of partnership/JV",
+    "rate": 20,
+    "category": "Final Tax",
+    "payee": "Individual",
+    "form": "1601-F"
+  },
+  {
+    "code": "WI240",
+    "name": "Distributive Share of Individual Partner (taxable partnership)",
+    "rate": 10,
+    "category": "Final Tax",
+    "payee": "Individual",
+    "form": "1601-F"
+  },
+  {
+    "code": "WI250",
+    "name": "Royalty payments — Individual",
+    "rate": 20,
+    "category": "Final Tax",
+    "payee": "Individual",
+    "form": "1601-F"
+  },
+  {
+    "code": "WI260",
+    "name": "Prizes >10,000 and other winnings — Individual",
+    "rate": 20,
+    "category": "Final Tax",
+    "payee": "Individual",
+    "form": "1601-F"
+  },
+  {
+    "code": "WI310",
+    "name": "Oil Exploration Service Contractors — Individual",
+    "rate": 8,
+    "category": "Final Tax",
+    "payee": "Individual",
+    "form": "1601-F"
+  },
+  {
+    "code": "WI330",
+    "name": "Payments to NRANETB",
+    "rate": 25,
+    "category": "Final Tax",
+    "payee": "Individual",
+    "form": "1601-F"
+  },
+  {
+    "code": "WI340",
+    "name": "Film owners/distributors — NRAETB",
+    "rate": 25,
+    "category": "Final Tax",
+    "payee": "Individual",
+    "form": "1601-F"
+  },
+  {
+    "code": "WI341",
+    "name": "Royalties to NRAETB on films",
+    "rate": 25,
+    "category": "Final Tax",
+    "payee": "Individual",
+    "form": "1601-F"
+  },
+  {
+    "code": "WI350",
+    "name": "Final tax on Tax-Free Covenant Bonds (Sec. 57C)",
+    "rate": 30,
+    "category": "Final Tax",
+    "payee": "Individual",
+    "form": "1601-F"
+  },
+  {
+    "code": "WI380",
+    "name": "Royalties on books, literary works, musical compositions",
+    "rate": 10,
+    "category": "Final Tax",
+    "payee": "Individual",
+    "form": "1601-F"
+  },
+  {
+    "code": "WI410",
+    "name": "Informer's Cash Reward — Individual",
+    "rate": 10,
+    "category": "Final Tax",
+    "payee": "Individual",
+    "form": "1601-F"
+  },
+  {
+    "code": "WI515",
+    "name": "Sales/Marketing Commissions",
+    "rate": 5,
+    "category": "Income-tax CWT",
+    "payee": "Individual",
+    "form": "1601-E"
+  },
+  {
+    "code": "WI516",
+    "name": "Sales/Marketing Commissions",
+    "rate": 10,
+    "category": "Income-tax CWT",
+    "payee": "Individual",
+    "form": "1601-E"
+  },
+  {
+    "code": "WI530",
+    "name": "Embalmers",
+    "rate": 1,
+    "category": "Income-tax CWT",
+    "payee": "Individual",
+    "form": "1601-E"
+  },
+  {
+    "code": "WI535",
+    "name": "Pre-Need Companies (Funeral Parlors)",
+    "rate": 1,
+    "category": "Income-tax CWT",
+    "payee": "Individual",
+    "form": "1601-E"
+  },
+  {
+    "code": "WI540",
+    "name": "Tolling Fees (Refineries)",
+    "rate": 5,
+    "category": "Income-tax CWT",
+    "payee": "Individual",
+    "form": "1601-E"
+  },
+  {
+    "code": "WI610",
+    "name": "Suppliers of Agricultural Products",
+    "rate": 1,
+    "category": "Income-tax CWT",
+    "payee": "Individual",
+    "form": "1601-E"
+  },
+  {
+    "code": "WI630",
+    "name": "Minerals & Quarry Resources",
+    "rate": 5,
+    "category": "Income-tax CWT",
+    "payee": "Individual",
+    "form": "1601-E"
+  },
+  {
+    "code": "WI632",
+    "name": "Purchases of Gold by BSP",
+    "rate": 1,
+    "category": "Income-tax CWT",
+    "payee": "Individual",
+    "form": "1601-E"
+  },
+  {
+    "code": "WI640",
+    "name": "GOCC payments to Suppliers (Goods)",
+    "rate": 1,
+    "category": "Income-tax CWT",
+    "payee": "Individual",
+    "form": "1601-E"
+  },
+  {
+    "code": "WI650",
+    "name": "MERALCO Refunds — Active",
+    "rate": 15,
+    "category": "Income-tax CWT",
+    "payee": "Individual",
+    "form": "1601-E"
+  },
+  {
+    "code": "WI651",
+    "name": "MERALCO Refunds — Terminated",
+    "rate": 15,
+    "category": "Income-tax CWT",
+    "payee": "Individual",
+    "form": "1601-E"
+  },
+  {
+    "code": "WI660",
+    "name": "Interest on Meter Deposit Refunds (>200 kWh)",
+    "rate": 10,
+    "category": "Income-tax CWT",
+    "payee": "Individual",
+    "form": "1601-E"
+  },
+  {
+    "code": "WI663",
+    "name": "Interest on Meter Deposit Refunds (>200 kWh)",
+    "rate": 15,
+    "category": "Income-tax CWT",
+    "payee": "Individual",
+    "form": "1601-E"
+  },
+  {
+    "code": "WI680",
+    "name": "Political Campaign Expenses",
+    "rate": 5,
+    "category": "Income-tax CWT",
+    "payee": "Individual",
+    "form": "1601-E"
+  },
+  {
+    "code": "WI690",
+    "name": "Real Estate Investment Trust (REIT)",
+    "rate": 1,
+    "category": "Income-tax CWT",
+    "payee": "Individual",
+    "form": "1601-E"
+  },
+  {
+    "code": "WI700",
+    "name": "Cash/Property Dividend paid by REIT — Individual",
+    "rate": 10,
+    "category": "Final Tax",
+    "payee": "Individual",
+    "form": "1601-F"
+  },
+  {
+    "code": "WI710",
+    "name": "Interest on Other Debt Instruments",
+    "rate": 15,
+    "category": "Income-tax CWT",
+    "payee": "Individual",
+    "form": "1601-E"
+  },
+  {
+    "code": "WI720",
+    "name": "Payments on Raw Sugar",
+    "rate": 1,
+    "category": "Income-tax CWT",
+    "payee": "Individual",
+    "form": "1601-E"
+  },
+  {
+    "code": "WI840",
+    "name": "TWA — Motor Vehicles (CBU/SKD), Parts",
+    "rate": 0.5,
+    "category": "Income-tax CWT",
+    "payee": "Individual",
+    "form": "1601-E"
+  },
+  {
+    "code": "WI850",
+    "name": "TWA — Medicine / Pharmaceuticals",
+    "rate": 0.5,
+    "category": "Income-tax CWT",
+    "payee": "Individual",
+    "form": "1601-E"
+  },
+  {
+    "code": "WI860",
+    "name": "TWA — Solid/Liquid Fuels",
+    "rate": 0.5,
+    "category": "Income-tax CWT",
+    "payee": "Individual",
+    "form": "1601-E"
+  },
+  {
+    "code": "WV010",
+    "name": "VAT WH on Purchase of Goods — Government",
+    "rate": 5,
+    "category": "VAT Withholding",
+    "payee": "",
+    "form": "1600"
+  },
+  {
+    "code": "WV012",
+    "name": "VAT WH on Purchases of Goods (with waiver) — creditable",
+    "rate": 12,
+    "category": "VAT Withholding",
+    "payee": "",
+    "form": "1600"
+  },
+  {
+    "code": "WV014",
+    "name": "VAT WH on Purchases of Goods (with waiver) — final",
+    "rate": 12,
+    "category": "VAT Withholding",
+    "payee": "",
+    "form": "1600"
+  },
+  {
+    "code": "WV020",
+    "name": "VAT WH on Purchase of Services — Government",
+    "rate": 5,
+    "category": "VAT Withholding",
+    "payee": "",
+    "form": "1600"
+  },
+  {
+    "code": "WV022",
+    "name": "VAT WH on Purchases of Services (with waiver) — creditable",
+    "rate": 12,
+    "category": "VAT Withholding",
+    "payee": "",
+    "form": "1600"
+  },
+  {
+    "code": "WV024",
+    "name": "VAT WH on Purchases of Services (with waiver) — final",
+    "rate": 12,
+    "category": "VAT Withholding",
+    "payee": "",
+    "form": "1600"
+  },
+  {
+    "code": "WV030",
+    "name": "VAT WH on Government Public Work Contracts",
+    "rate": 8.5,
+    "category": "VAT Withholding",
+    "payee": "",
+    "form": "1600"
+  },
+  {
+    "code": "WV040",
+    "name": "Final VAT — Lease/Use of Property by Non-residents (Govt WA)",
+    "rate": 12,
+    "category": "VAT Withholding",
+    "payee": "",
+    "form": "1600"
+  },
+  {
+    "code": "WV050",
+    "name": "Final VAT — Lease/Use of Property by Non-residents (Private WA)",
+    "rate": 12,
+    "category": "VAT Withholding",
+    "payee": "",
+    "form": "1600"
+  },
+  {
+    "code": "WV060",
+    "name": "Final VAT — Other Services by Non-residents in PH (Govt WA)",
+    "rate": 12,
+    "category": "VAT Withholding",
+    "payee": "",
+    "form": "1600"
+  },
+  {
+    "code": "WV070",
+    "name": "Final VAT — Other Services by Non-residents in PH (Private WA)",
+    "rate": 12,
+    "category": "VAT Withholding",
+    "payee": "",
+    "form": "1600"
+  }
+]
