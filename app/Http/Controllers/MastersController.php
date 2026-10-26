@@ -69,7 +69,7 @@ class MastersController extends Controller
             }
         }
         if (Schema::hasTable('bank_accounts')) {
-            $masters['banks'] = BankAccount::query()->with('chartAccount')->where('workspace_key', ChartAccount::workspaceKey($request->session()->get('company_setup')))->orderBy('name')->get()->toArray();
+            $masters['banks'] = BankAccount::query()->where('workspace_key', ChartAccount::workspaceKey($request->session()->get('company_setup')))->orderBy('name')->get(['id', 'name', 'chart_account_id', 'currency', 'archived'])->toArray();
         }
 
         if (Schema::hasTable('tax_codes')) {
@@ -88,7 +88,8 @@ class MastersController extends Controller
         $masters['preferences'] = ['defaultBank' => $defaultBank ? $defaultBank['code'].' · '.$defaultBank['name'] : null];
         $masters['endpoints'] = ['accounts' => route('masters.accounts.store'), 'parties' => route('masters.registry.store', ['registry' => 'parties']), 'tax' => route('masters.registry.store', ['registry' => 'tax-codes']), 'banks' => route('masters.registry.store', ['registry' => 'bank-accounts'])];
 
-        $depreciation = Schema::hasTable('depreciation_runs') ? DepreciationRun::query()->where('workspace_key', ChartAccount::workspaceKey($request->session()->get('company_setup')))->orderBy('period')->pluck('journal')->all() : [];
+        $canReadJournals = ! $request->user() || array_intersect($request->attributes->get('company_allowed_tabs', []), ['books', 'reports', 'lapsing']) !== [];
+        $depreciation = $canReadJournals && Schema::hasTable('depreciation_runs') ? DepreciationRun::query()->where('workspace_key', ChartAccount::workspaceKey($request->session()->get('company_setup')))->orderBy('period')->pluck('journal')->all() : [];
 
         return response('window.WorkspaceAccounts = '.Js::encode($accounts).';window.WorkspaceMasters = '.Js::encode($masters).';window.WorkspaceDepreciationJournals = '.Js::encode($depreciation).';', 200, ['Content-Type' => 'application/javascript', 'Cache-Control' => 'no-store, private']);
     }

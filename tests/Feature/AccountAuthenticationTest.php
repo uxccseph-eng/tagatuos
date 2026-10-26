@@ -26,7 +26,7 @@ class AccountAuthenticationTest extends TestCase
     {
         $this->withSession(['preview_access' => true, 'company_setup' => ['company_name' => 'Old Demo'], 'active_company_id' => 55])
             ->post(route('register.store'), $this->registrationData())
-            ->assertRedirect(route('account.dashboard'))
+            ->assertRedirect(route('account.registration-status'))
             ->assertSessionMissing('company_setup')->assertSessionMissing('preview_access')->assertSessionMissing('active_company_id');
 
         $user = User::query()->sole();
@@ -35,13 +35,17 @@ class AccountAuthenticationTest extends TestCase
         $this->assertFalse($user->must_change_password);
         $this->assertTrue(Hash::check('StrongPassword123!', $user->password));
         $this->assertNotSame('StrongPassword123!', $user->password);
-        $this->get(route('account.dashboard'))->assertOk()->assertSee('Create a company book')->assertSee('Your first book starts here');
+        $this->assertSame('pending', $user->registration_status);
+        $this->assertFalse($user->is_system_owner);
+        $this->assertNull($user->username);
+        $this->get(route('account.dashboard'))->assertRedirect(route('account.registration-status'));
+        $this->get(route('account.registration-status'))->assertOk()->assertSee('Awaiting owner approval');
     }
 
     public function test_firm_registration_and_normalized_email_are_supported(): void
     {
         $this->post(route('register.store'), [...$this->registrationData(), 'email' => '  FIRM@EXAMPLE.TEST ', 'type' => 'firm'])
-            ->assertRedirect(route('account.dashboard'));
+            ->assertRedirect(route('account.registration-status'));
         $this->assertDatabaseHas('users', ['email' => 'firm@example.test', 'type' => 'firm']);
     }
 

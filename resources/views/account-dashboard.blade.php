@@ -1,12 +1,14 @@
 <x-account-layout title="Company books">
     <section class="page-heading"><div><span class="eyebrow">{{ ucfirst(auth()->user()->type) }} ACCOUNT</span><h1>Company books</h1><p class="muted">Welcome, {{ auth()->user()->name }}. Choose a book to continue.</p></div><div class="count-badge"><strong>{{ $companies->total() }}</strong><span>{{ $companies->total() === 1 ? 'assigned book' : 'assigned books' }}</span></div></section>
-    <div class="account-tabs"><span aria-current="page">My company books</span></div>
+    @if(auth()->user()->username)<p class="muted">Your assigned username: <strong>{{ auth()->user()->username }}</strong></p>@endif
+    <div class="account-tabs"><span aria-current="page">My company books</span>@if(in_array(auth()->user()->type, ['individual', 'firm'], true))<a href="{{ route('team.entry') }}">Accountants &amp; access</a>@endif</div>
     <div class="books-grid">
         <section aria-label="Assigned company books">
             @forelse($companies as $companyBook)
                 <article class="account-card book-card">
                     <div class="book-avatar" aria-hidden="true">▤</div>
                     <div class="book-copy"><h2>{{ $companyBook->name }}</h2><p><span class="role-badge">{{ ucfirst($companyBook->pivot->role) }}</span><span class="muted">{{ in_array($companyBook->workspaceKey(), $configuredWorkspaces, true) ? 'Setup complete' : 'Setup needed' }}</span></p></div>
+                    @if($companyBook->pivot->role === 'owner')<a class="team-book-link" href="{{ route('team.index', ['companyId' => $companyBook->id]) }}">Manage team</a>@endif
                     <form method="POST" action="{{ route('account.companies.open', $companyBook->id) }}">@csrf<button class="button secondary" type="submit">Open book <span aria-hidden="true">→</span></button></form>
                 </article>
             @empty

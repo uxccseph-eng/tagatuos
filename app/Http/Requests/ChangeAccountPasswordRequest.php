@@ -25,8 +25,14 @@ class ChangeAccountPasswordRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'current_password' => ['bail', 'required', 'string', 'max:128', new AccountPassword, 'current_password:web'],
+            'current_password' => $this->hasOnboardingProof() ? ['nullable', 'string', 'max:128'] : ['bail', 'required', 'string', 'max:128', new AccountPassword, 'current_password:web'],
             'password' => ['required', 'string', 'max:128', 'confirmed', 'different:current_password', new AccountPassword, Password::min(12)->mixedCase()->numbers()],
         ];
+    }
+
+    public function hasOnboardingProof(): bool
+    {
+        return $this->user()?->must_change_password
+            && $this->session()->get('onboarding_user_id') === $this->user()->getKey();
     }
 }

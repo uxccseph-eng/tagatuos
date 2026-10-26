@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\EnsureActiveCompany;
+use App\Http\Middleware\EnsureApprovedAccount;
 use App\Http\Middleware\ForcePasswordChange;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -17,6 +18,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->web(append: [
             AuthenticateSession::class,
+            EnsureApprovedAccount::class,
             ForcePasswordChange::class,
             EnsureActiveCompany::class,
         ]);

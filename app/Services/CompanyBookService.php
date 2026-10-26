@@ -17,7 +17,7 @@ class CompanyBookService
     {
         $this->ensureAccountIsReady($user);
 
-        return $user->companies()->orderBy('companies.name')->orderBy('companies.id');
+        return $user->companies()->wherePivot('is_suspended', false)->orderBy('companies.name')->orderBy('companies.id');
     }
 
     public function findAccessibleBook(User $user, int $companyId): Company
@@ -58,6 +58,9 @@ class CompanyBookService
 
     private function ensureAccountIsReady(User $user): void
     {
+        if (! $user->hasApprovedAccess()) {
+            throw new AuthorizationException('Your registration must be approved before accessing company books.');
+        }
         if ($user->must_change_password) {
             throw new AuthorizationException('Change your temporary password before accessing company books.');
         }

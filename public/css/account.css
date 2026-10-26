@@ -80,6 +80,8 @@ small { font-size: 11px; color: var(--muted); line-height: 1.6; }
 .password-card { max-width: 510px; margin: 25px auto; }
 .password-card h1 { font-size: 27px; margin-top: 16px; }
 .pagination { display: flex; align-items: center; justify-content: center; gap: 20px; color: var(--muted); margin-top: 25px; font-size: 12px; }
+.registration-details { display: grid; grid-template-columns: 90px minmax(0, 1fr); gap: 12px; font-size: 12px; margin: 24px 0; padding: 20px 0; border-block: 1px solid var(--border); }
+.registration-details dt { color: var(--muted); }.registration-details dd { margin: 0; overflow-wrap: anywhere; }.small-status-copy { font-size: 11px; margin: 20px 0 0; }
 @media (max-width: 900px) {
     .auth-grid { gap: 35px; }
     .auth-intro h1 { font-size: 49px; }

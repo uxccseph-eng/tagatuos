@@ -20,7 +20,7 @@ class AccountAuthController extends Controller
     public function show(Request $request): View|RedirectResponse
     {
         if ($request->user()) {
-            return to_route('account.dashboard');
+            return to_route($request->user()->accountHomeRoute());
         }
 
         return view('account-auth', ['registering' => $request->routeIs('register')]);
@@ -32,6 +32,8 @@ class AccountAuthController extends Controller
             $user = new User($request->safe()->only(['name', 'email', 'password']));
             $user->type = $request->validated('type');
             $user->must_change_password = false;
+            $user->registration_status = 'pending';
+            $user->is_system_owner = false;
             $user->save();
 
             return $user;
@@ -42,16 +44,17 @@ class AccountAuthController extends Controller
         Auth::login($user);
         $request->session()->regenerate();
 
-        return to_route('account.dashboard')->with('status', 'Your account is ready. Create your first company book below.');
+        return to_route('account.registration-status')->with('status', 'Registration submitted. The system owner will review your application and assign your username.');
     }
 
     public function login(LoginAccountRequest $request): RedirectResponse
     {
         $request->authenticate();
-        $request->session()->forget(['preview_access', 'company_setup', 'active_company_id', 'url.intended']);
+        DB::transaction(fn (): bool => $request->user()->forceFill(['last_login_at' => now()])->save());
+        $request->session()->forget(['preview_access', 'company_setup', 'active_company_id', 'url.intended', 'onboarding_user_id']);
         $request->session()->regenerate();
 
-        return to_route($request->user()->must_change_password ? 'account.password.edit' : 'account.dashboard');
+        return to_route($request->user()->accountHomeRoute());
     }
 
     public function logout(Request $request): RedirectResponse
@@ -72,7 +75,7 @@ class AccountAuthController extends Controller
     {
         $user = DB::transaction(function () use ($request): User {
             $user = User::query()->lockForUpdate()->findOrFail($request->user()->getKey());
-            if (! Hash::check($request->validated('current_password'), $user->password)) {
+            if (! ($request->hasOnboardingProof() && $user->must_change_password) && ! Hash::check($request->validated('current_password') ?? '', $user->password)) {
                 throw ValidationException::withMessages(['current_password' => 'Your current password has changed. Sign in again.']);
             }
             $user->password = $request->validated('password');
@@ -84,9 +87,19 @@ class AccountAuthController extends Controller
         });
 
         Auth::setUser($user);
+        $request->session()->forget('onboarding_user_id');
         $request->session()->regenerate();
         $request->session()->put('password_hash_web', $user->password);
 
-        return to_route('account.dashboard')->with('status', 'Password updated. You can now access your assigned company books.');
+        return to_route($user->accountHomeRoute())->with('status', 'Password updated.');
+    }
+
+    public function registrationStatus(Request $request): View|RedirectResponse
+    {
+        if ($request->user()->hasApprovedAccess()) {
+            return to_route($request->user()->accountHomeRoute());
+        }
+
+        return view('registration-status');
     }
 }

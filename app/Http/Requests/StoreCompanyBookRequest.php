@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Models\Company;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -30,7 +31,7 @@ class StoreCompanyBookRequest extends FormRequest
             'slug' => [
                 'nullable', 'string', 'max:63', 'regex:/^[a-z0-9]+(?:-[a-z0-9]+)*$/D',
                 Rule::unique('companies', 'slug'),
-                Rule::notIn(['account', 'api', 'books', 'company', 'dashboard', 'generate', 'lapsing', 'login', 'logout', 'masters', 'password', 'preview', 'register', 'reports', 'settings', 'sheets', 'signin', 'signup', 'tax-reports', 'up']),
+                Rule::notIn(Company::RESERVED_SLUGS),
             ],
             'company_id' => ['prohibited'],
             'user_id' => ['prohibited'],

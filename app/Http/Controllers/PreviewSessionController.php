@@ -10,6 +10,8 @@ class PreviewSessionController extends Controller
 {
     public function store(Request $request): RedirectResponse
     {
+        abort_unless(app()->environment(['local', 'testing']), 404);
+
         if ($request->user()) {
             return to_route('account.dashboard');
         }

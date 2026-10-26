@@ -20,12 +20,16 @@ use App\Http\Controllers\MastersImportController;
 use App\Http\Controllers\MastersRegistryController;
 use App\Http\Controllers\PaymentsController;
 use App\Http\Controllers\PayrollController;
+use App\Http\Controllers\PortalController;
 use App\Http\Controllers\PreviewSessionController;
 use App\Http\Controllers\PurchasesController;
 use App\Http\Controllers\SalesController;
 use App\Http\Controllers\SettingsController;
+use App\Http\Controllers\SystemDashboardController;
 use App\Http\Controllers\TaxReportsController;
+use App\Http\Controllers\TeamController;
 use App\Http\Controllers\WtpController;
+use App\Http\Middleware\EnsureSystemOwner;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -38,14 +42,36 @@ Route::post('/signin', [AccountAuthController::class, 'login'])->middleware('thr
 Route::get('/signup', [AccountAuthController::class, 'show'])->name('register');
 Route::post('/signup', [AccountAuthController::class, 'register'])->middleware('throttle:10,1')->name('register.store');
 Route::view('/preview', 'auth')->name('preview.login');
+Route::get('/preview/team', [TeamController::class, 'preview'])->name('team.preview');
 Route::post('/logout', [AccountAuthController::class, 'logout'])->middleware('auth')->name('logout');
 Route::middleware('auth')->group(function (): void {
     Route::get('/account', [AccountDashboardController::class, 'index'])->name('account.dashboard');
+    Route::get('/account/registration-status', [AccountAuthController::class, 'registrationStatus'])->name('account.registration-status');
     Route::get('/account/password', [AccountAuthController::class, 'editPassword'])->name('account.password.edit');
     Route::put('/account/password', [AccountAuthController::class, 'updatePassword'])->middleware('throttle:10,1')->name('account.password.update');
 });
+Route::middleware(['auth', EnsureSystemOwner::class])->prefix('system')->name('system.')->group(function (): void {
+    Route::get('/', [SystemDashboardController::class, 'index'])->name('dashboard');
+    Route::post('/registrations/{applicantId}/approve', [SystemDashboardController::class, 'approve'])->whereNumber('applicantId')->middleware('throttle:30,1')->name('registrations.approve');
+    Route::post('/registrations/{applicantId}/reject', [SystemDashboardController::class, 'reject'])->whereNumber('applicantId')->middleware('throttle:30,1')->name('registrations.reject');
+    Route::put('/registrations/{applicantId}/username', [SystemDashboardController::class, 'username'])->whereNumber('applicantId')->name('registrations.username');
+});
 Route::redirect('/login', '/signin');
 Route::redirect('/register', '/signup');
+
+Route::get('/team', [TeamController::class, 'entry'])->middleware('auth')->name('team.entry');
+Route::middleware('auth')->prefix('account/companies/{companyId}/team')->where(['companyId' => '[0-9]+'])->name('team.')->group(function (): void {
+    Route::post('/members', [TeamController::class, 'store'])->middleware('throttle:20,1')->name('store');
+    Route::put('/members/{memberId}', [TeamController::class, 'update'])->whereNumber('memberId')->name('update');
+    Route::delete('/members/{memberId}', [TeamController::class, 'remove'])->whereNumber('memberId')->name('remove');
+    Route::post('/members/{memberId}/setup-link', [TeamController::class, 'issueLink'])->whereNumber('memberId')->middleware('throttle:10,1')->name('setup-link');
+    Route::put('/portal', [TeamController::class, 'portal'])->name('portal');
+    Route::get('/{section?}', [TeamController::class, 'index'])->where('section', 'members|access|templates|history')->name('index');
+});
+
+Route::post('/portal/{firmSlug}/signin', [PortalController::class, 'login'])->middleware('throttle:20,1')->name('portal.login');
+Route::get('/portal/{firmSlug}/access/{tokenId}', [PortalController::class, 'access'])->middleware(['signed', 'throttle:30,1'])->name('portal.access');
+Route::post('/portal/{firmSlug}/access/{tokenId}', [PortalController::class, 'consume'])->middleware(['signed', 'throttle:10,1'])->name('portal.consume');
 
 Route::middleware('auth')->prefix('account/companies')->name('account.companies.')->group(function (): void {
     Route::get('/', [CompanyBookController::class, 'index'])->name('index');
@@ -124,3 +150,5 @@ Route::get('/reports/{report}', [FinancialReportsController::class, 'index'])->n
 
 Route::post('/reports/form-2316/{employeeId}', [Form2316Controller::class, 'print2316'])->whereNumber('employeeId')->name('reports.form2316');
 Route::post('/reports/form-2307/{supplierId}', [Form2307Controller::class, 'print2307'])->whereNumber('supplierId')->name('reports.form2307');
+
+Route::get('/{firmSlug}', [PortalController::class, 'show'])->where('firmSlug', '[a-z0-9]+(?:-[a-z0-9]+)*')->name('portal.show');

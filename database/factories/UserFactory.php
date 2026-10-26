@@ -32,6 +32,8 @@ class UserFactory extends Factory
             'remember_token' => Str::random(10),
             'type' => 'individual',
             'must_change_password' => false,
+            'registration_status' => 'approved',
+            'is_system_owner' => false,
         ];
     }
 
@@ -56,5 +58,15 @@ class UserFactory extends Factory
             'type' => 'accountant',
             'must_change_password' => true,
         ]);
+    }
+
+    public function pending(): static
+    {
+        return $this->state(fn (array $attributes): array => ['registration_status' => 'pending', 'username' => null]);
+    }
+
+    public function systemOwner(): static
+    {
+        return $this->state(fn (array $attributes): array => ['registration_status' => 'approved', 'is_system_owner' => true]);
     }
 }

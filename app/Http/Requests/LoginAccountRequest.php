@@ -27,7 +27,7 @@ class LoginAccountRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'email' => ['required', 'string', 'email', 'max:254'],
+            'email' => ['required', 'string', 'max:254'],
             'password' => ['required', 'string', 'max:128', new AccountPassword],
             'remember' => ['sometimes', 'boolean'],
         ];
@@ -40,9 +40,11 @@ class LoginAccountRequest extends FormRequest
             throw ValidationException::withMessages(['email' => 'Too many sign-in attempts. Try again in '.RateLimiter::availableIn($key).' seconds.']);
         }
 
-        if (! Auth::attempt($this->only('email', 'password'), $this->boolean('remember'))) {
+        $identifier = $this->validated('email');
+        $field = str_contains($identifier, '@') ? 'email' : 'username';
+        if (! Auth::attempt([$field => $identifier, 'password' => $this->validated('password')], $this->boolean('remember'))) {
             RateLimiter::hit($key, 60);
-            throw ValidationException::withMessages(['email' => 'The email or password is incorrect.']);
+            throw ValidationException::withMessages(['email' => 'The username, email or password is incorrect.']);
         }
 
         RateLimiter::clear($key);

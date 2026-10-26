@@ -15,7 +15,7 @@ class ForcePasswordChange
      */
     public function handle(Request $request, Closure $next): Response
     {
-        if ($request->user()?->must_change_password && ! $request->routeIs('account.password.*', 'logout')) {
+        if ($request->user()?->hasApprovedAccess() && $request->user()->must_change_password && ! $request->routeIs('account.password.*', 'logout')) {
             if ($request->expectsJson()) {
                 return response()->json([
                     'message' => 'Change your temporary password before continuing.',

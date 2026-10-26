@@ -33,6 +33,10 @@ class RegisterAccountRequest extends FormRequest
             'must_change_password' => ['prohibited'],
             'role' => ['prohibited'],
             'company_id' => ['prohibited'],
+            'username' => ['prohibited'],
+            'registration_status' => ['prohibited'],
+            'is_system_owner' => ['prohibited'],
+            'reviewed_by' => ['prohibited'],
         ];
     }
 

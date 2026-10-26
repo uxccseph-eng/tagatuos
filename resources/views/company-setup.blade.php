@@ -22,6 +22,7 @@
 
   <link rel="stylesheet" href="{{ asset('css/company-setup.css') }}?v={{ filemtime(public_path('css/company-setup.css')) }}"><script src="{{ asset('js/company-setup.js') }}?v={{ filemtime(public_path('js/company-setup.js')) }}" defer></script>
 
+@include('working-period-assets')
 <script src="{{ asset('js/draft-leave-guard.js') }}?v={{ filemtime(public_path('js/draft-leave-guard.js')) }}" defer></script></head>
 
 <body class="min-h-screen cosmic-mesh grid-lines relative selection:bg-emerald-500/30 selection:text-emerald-200">
