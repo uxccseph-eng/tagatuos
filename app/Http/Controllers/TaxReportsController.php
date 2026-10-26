@@ -2,10 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ChartAccount;
+use App\Models\Employee;
 use App\ReliefPurchasesWorkbook;
 use App\ReliefSalesWorkbook;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
@@ -34,7 +37,12 @@ class TaxReportsController extends Controller
         }
         abort_unless(isset(self::SCHEDULES[$schedule]), 404);
 
-        return view('tax-reports', ['company' => $request->session()->get('company_setup'), 'schedule' => $schedule, 'schedules' => self::SCHEDULES, 'scheduleTitle' => self::SCHEDULES[$schedule][0]]);
+        $company = $request->session()->get('company_setup');
+        $employees = $schedule === 'alphalist-non-mwe' && Schema::hasTable('employees')
+            ? Employee::query()->where('workspace_key', ChartAccount::workspaceKey($company))->orderBy('name')->get(['id', 'code', 'name', 'tin'])
+            : [];
+
+        return view('tax-reports', ['employees' => $employees, 'company' => $request->session()->get('company_setup'), 'schedule' => $schedule, 'schedules' => self::SCHEDULES, 'scheduleTitle' => self::SCHEDULES[$schedule][0]]);
     }
 
     public function exportSales(Request $request, ReliefSalesWorkbook $workbook): BinaryFileResponse

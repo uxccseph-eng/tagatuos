@@ -68,3 +68,7 @@ body {
 @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { animation: none !important; transition: none !important; }
 }
+
+/* Search is contained inside the RDO selector. */
+.rdo-trigger{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;padding:10px 16px;border:1px solid #334155cc;border-radius:12px;background:#020617cc;color:#fff;text-align:left;font-size:14px}.rdo-trigger:focus-visible{outline:2px solid #34d399}.rdo-trigger[hidden],.rdo-picker[hidden],#rdo-select[hidden]{display:none}.rdo-picker{position:absolute;left:0;right:0;top:calc(100% + 6px);z-index:40;padding:8px;background:#0f172a;border:1px solid #334155;border-radius:12px;box-shadow:0 16px 35px #0007}.rdo-picker input{width:100%;padding:10px 12px;background:#020617;color:#fff;border:1px solid #334155;border-radius:8px;font-size:13px;outline:none}.rdo-picker input:focus{border-color:#34d399}#rdo-options{max-height:240px;overflow-y:auto;margin-top:6px}#rdo-options [role=option]{padding:9px 12px;border-radius:6px;color:#cbd5e1;font-size:13px;cursor:pointer}#rdo-options [role=option]:hover,#rdo-options .rdo-active{background:#1e293b;color:#fff}#rdo-options [aria-selected=true]{color:#34d399}#rdo-result-count{padding:8px 12px 2px;font-size:11px;color:#94a3b8}
+.glass-card:has(.rdo-picker:not([hidden])){position:relative;z-index:45}

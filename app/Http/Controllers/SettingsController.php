@@ -59,11 +59,15 @@ class SettingsController extends Controller
         }
         unset($company['workspace_key'], $company['browser_key']);
         $lookup = ChartAccount::workspaceKey($company);
+        if ($request->user()) {
+            $lookup = $workspace;
+        }
         $company['workspace_key'] = $workspace;
         $profile = $company;
         unset($profile['sheet_settings']);
 
-        DB::transaction(function () use ($workspace, $lookup, $profile, $company): void {
+        $activeCompany = $request->attributes->get('active_company');
+        DB::transaction(function () use ($workspace, $lookup, $profile, $company, $activeCompany): void {
             $conflict = CompanySetting::query()->where('workspace_key', '!=', $workspace)->where(fn ($query) => $query->where('lookup_key', $lookup)->orWhere('workspace_key', $lookup))->exists();
             if ($lookup !== $workspace) {
                 foreach (['chart_accounts', 'parties', 'tax_codes', 'bank_accounts', 'employees', 'ppe_assets', 'depreciation_runs'] as $table) {
@@ -78,6 +82,9 @@ class SettingsController extends Controller
             CompanySetting::query()->updateOrCreate(['workspace_key' => $workspace], [
                 'lookup_key' => $lookup, 'profile' => $profile, 'preferences' => $company['sheet_settings'] ?? [],
             ]);
+            if ($activeCompany) {
+                $activeCompany->update(['name' => $company['company_name']]);
+            }
         });
         ChartAccount::syncSalesRelief($company);
         $company['browser_key'] = $browserKey;

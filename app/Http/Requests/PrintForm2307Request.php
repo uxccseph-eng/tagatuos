@@ -22,7 +22,7 @@ class PrintForm2307Request extends FormRequest
             'use_default_signatory' => ['required', 'boolean'],
             'signatory_name' => ['nullable', 'required_if:use_default_signatory,false', 'string', 'max:150'],
             'signatory_title' => ['nullable', 'required_if:use_default_signatory,false', 'string', 'max:100'],
-            'signatory_tin' => ['nullable', 'string', 'regex:/^(?:[0-9]{9}|[0-9]{3}-[0-9]{3}-[0-9]{3})$/D'],
+            'signatory_tin' => ['nullable', 'string', 'regex:/^(?:[0-9]{9}|[0-9]{14}|[0-9]{3}-[0-9]{3}-[0-9]{3}(?:-[0-9]{5})?)$/D'],
             'records' => ['required', 'array', 'list', 'min:1', 'max:50000'],
             'records.*' => ['required', 'array'],
             'records.*.source_id' => ['required', 'string', 'max:100', 'distinct:strict'],

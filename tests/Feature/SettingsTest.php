@@ -64,6 +64,7 @@ class SettingsTest extends TestCase
         $this->put('/settings/bir', ['accounting_period' => 'fiscal', 'agent_category' => 'private', 'taxpayer_size' => 'small', 'top_withholding_agent' => '0'])->assertSessionHasErrors('fiscal_end_month');
         $this->put('/settings/bir', ['accounting_period' => 'fiscal', 'fiscal_end_month' => 6, 'rdo' => '53B', 'agent_category' => 'private', 'taxpayer_size' => 'small', 'top_withholding_agent' => '0', 'signatory_name' => '<script>alert(1)</script>'])->assertSessionHasNoErrors();
         $this->get('/settings/bir')->assertOk()->assertSee('&lt;script&gt;alert(1)&lt;/script&gt;', false)->assertDontSee('<script>alert(1)</script>', false);
+        $this->put('/settings/bir', ['signatory_tin' => '123-456-789-00000', 'accounting_period' => 'calendar', 'rdo' => '113A', 'agent_category' => 'private', 'taxpayer_size' => 'small', 'top_withholding_agent' => '0'])->assertSessionHasNoErrors()->assertSessionHas('company_setup.rdo', '113A')->assertSessionHas('company_setup.signatory_tin', '123-456-789-00000');
     }
 
     public function test_optional_sheet_preferences_and_cash_account_are_workspace_scoped(): void

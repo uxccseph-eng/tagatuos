@@ -28,6 +28,19 @@ function openLedger(storage=new Map(),key='company-a',catalog=null,masters=null,
     return context.window.KontaduryaLedger;
 }
 
+test('authenticated company books start empty without creating demo transactions',()=>{
+    const ledger=openLedger(new Map(),'company-'+'a'.repeat(64));
+    for(const method of ['sales','collections','purchases','payments','cwtCertificates','wtpCertificates','journalEntries']){
+        assert.equal(ledger[method]().length,0,method+' must start empty');
+    }
+});
+
+test('invalid authenticated book storage is preserved instead of being replaced with sample data',()=>{
+    const key='company-'+'b'.repeat(64),storage=new Map([['kontadurya.ledger.v1.'+key,'broken-json']]);
+    assert.throws(()=>openLedger(storage,key),/Existing data has not been replaced/);
+    assert.equal(storage.get('kontadurya.ledger.v1.'+key),'broken-json');
+});
+
 function issuedCertificate(ledger,overrides={}) {
     const source=ledger.wtpSource(2);
     return {...ledger.nextWtpCertificate(),date:'2026-10-16',supplier:source.supplier,tin:'123-456-789-000',billId:source.id,bill:source.number,taxBase:source.taxBase,ewt:source.ewt,wvat:source.wvat,offset:'2010 · Accounts Payable - Trade',certificate:'ISSUED-QA-001',status:'posted',...overrides};
@@ -656,4 +669,21 @@ test('a legacy withholding rate does not display the first same-rate ATC as if i
  const first=new Option('WC100 · 5%','5');first.dataset.masterCode='WC100';const select={options:[first],querySelectorAll:()=>[],add(option){this.options.push(option);}};
  context.window.SheetMasters.selectValue(select,5);assert.equal(select.options.at(-1).textContent,'5% · ATC not recorded');assert.equal(first.selected,false);
  context.window.SheetMasters.selectValue(select,5,'WC100');assert.equal(first.selected,true);
+});
+
+test('linked WTP drafts automatically follow purchase ATCs while posted certificates keep their snapshots',()=>{
+ const ledger=openLedger(),bills=ledger.purchases();
+ bills[1].ewtCode='WC100';bills[1].wvat=5;bills[1].wvatCode='WV010';ledger.savePurchases(bills);
+ const draft={billId:2,status:'draft',ewt:5,wvat:5,ewtCode:'WI100',wvatCode:'WV020'};
+ assert.equal(ledger.wtpAtc(draft),'WC100');assert.equal(ledger.wtpVatAtc(draft),'WV010');
+ assert.equal(draft.ewtCode,'WI100');assert.equal(draft.wvatCode,'WV020');
+ assert.equal(ledger.wtpAtc({...draft,status:'posted'}),'WI100');
+ assert.equal(ledger.wtpVatAtc({...draft,status:'posted'}),'WV020');
+ const current=ledger.purchases();current[1].ewtCode='WI100';ledger.savePurchases(current);
+ assert.equal(ledger.wtpAtc(draft),'WI100');
+});
+test('linked WTP drafts also follow the source purchase account ATC from Masters automatically',()=>{
+ const masters={atcCodes:[{code:'WC100',category:'Income-tax CWT',rate:5}],taxCodes:[],parties:[]},catalog=[{code:'7110',name:'Rent',type:'Expense',ewt_atc_code:'WC100',archived:false}],ledger=openLedger(new Map(),'wtp-draft-master',catalog,masters);
+ assert.equal(ledger.wtpAtc({billId:2,status:'draft',ewt:5,ewtCode:'WI100'}),'WC100');
+ assert.equal(ledger.wtpAtc({billId:2,status:'posted',ewt:5,ewtCode:'WI100'}),'WI100');
 });

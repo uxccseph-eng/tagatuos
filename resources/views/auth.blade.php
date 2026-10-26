@@ -111,6 +111,7 @@
 </div>
 <span class="font-bold text-base tracking-tight text-white">kontadurya.io</span>
 </div>
+<a href="{{ route('login') }}" class="text-sm font-semibold text-[#00F5A0]">Sign in to a real account →</a>
 <h2 id="auth-heading" class="text-[28px] font-bold text-[#FFFFFF] tracking-tight leading-snug">
           Continue to kontadurya.io
         </h2>

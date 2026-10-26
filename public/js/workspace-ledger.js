@@ -4,15 +4,22 @@
     const config = JSON.parse(workspace.textContent);
     const storageKey = `kontadurya.ledger.v1.${workspace.dataset.key}`;
     const clone = value => JSON.parse(JSON.stringify(value));
-    let state;
-    try { state = JSON.parse(sessionStorage.getItem(storageKey)); } catch { state = null; }
+    const isCompanyBook = /^company-[a-f0-9]{64}$/.test(workspace.dataset.key);
+    let state, storedState;
+    try { storedState = sessionStorage.getItem(storageKey); state = JSON.parse(storedState); }
+    catch (error) { if (isCompanyBook) throw new Error('Company book storage could not be read. Existing data has not been replaced.'); state = null; }
     if (!state || !Array.isArray(state.sales) || !Array.isArray(state.collections)) {
+        if (isCompanyBook && storedState !== null) throw new Error('Company book storage is invalid. Existing data has not been replaced.');
+        if (isCompanyBook) {
+            state = {sales:[],collections:[],purchases:[],payments:[],cwtCertificates:[],wtpCertificates:[],journalEntries:[],nextCollectionId:1};
+        } else {
         const common={tax:'12% VAT',vatCwt:'None',classification:'Regular',status:'posted',notes:''};
         state = {sales:[
             {...common,id:1,number:'SI-000001',date:`${config.period}-16`,customer:'VARIOUS CUSTOMERS',gross:50000,account:'4020 · Sales - Services',cwt:'WC160 · 2%',terms:'Cash',reference:'OR-99120',bank:'1010 · Cash on Hand',memo:'Walk-in retail diagnostic consultations'},
             {...common,id:2,number:'SI-000002',date:`${config.period}-18`,customer:'Cruz Dental Clinic Corp.',gross:1000000,account:'4020 · Sales - Services',cwt:'WC160 · 2%',terms:'On Account',reference:'INV-2026-089',bank:'1030 · BDO Checking',memo:'Monthly Brand Advisory Retainer & SEO Management'},
             {...common,id:3,number:'SI-000003',date:`${config.period}-21`,customer:'Santos Trading Enterprises',gross:2500000,account:'4000 · Merchandise Sales',cwt:'WC100 · 1%',terms:'Cash',reference:'OR-99121',bank:'1010 · Cash on Hand',memo:'Batch fulfillment of seasonal promotional collateral'}
         ],collections:[],nextCollectionId:1};
+        }
     }
     function compactAfterRemoval(key,previous) {
         if(!previous[key].some(record=>!state[key].some(item=>item.id===record.id)))return;
@@ -138,6 +145,7 @@
         const hasId=record.billId!==undefined&&record.billId!==null&&record.billId!=='';
         const namedBills=!hasId&&record.bill?state.purchases.filter(item=>item.number===record.bill):[];
         const bill=hasId?state.purchases.find(item=>String(item.id)===String(record.billId)):namedBills.length===1?namedBills[0]:null;
+        if(record.status==='draft'&&bill&&bill!==record){const sourceCode=wtpAtc(bill);if(sourceCode)return sourceCode;}
         const savedCode=item=>[item?.ewtCode,item?.ewt_atc_code,item?.atc_code,item?.atc].find(value=>typeof value==='string'&&value.trim());
         const explicit=String(savedCode(record) || savedCode(bill) || '').trim();
         if(explicit)return explicit.match(/^W[IC][0-9]{3}(?=$|[ ·-])/i)?.[0]?.toUpperCase() || '';
@@ -147,6 +155,7 @@
     }
     function wtpVatAtc(record) {
         const bill=record.billId?state.purchases.find(item=>String(item.id)===String(record.billId)):null;
+        if(record.status==='draft'&&bill&&bill!==record){const sourceCode=wtpVatAtc(bill);if(sourceCode)return sourceCode;}
         const code=String(record.wvatCode || record.wvat_atc_code || bill?.wvatCode || bill?.wvat_atc_code || '').trim();
         return code.match(/^W[VB][0-9]{3}(?=$|[ ·-])/i)?.[0]?.toUpperCase() || '';
     }

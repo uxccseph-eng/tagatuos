@@ -70,13 +70,15 @@ class VatSalesAndRegistrationTest extends TestCase
         $this->assertEqualsCanonicalizing(['tin', 'address'], array_column($preview->json('errors'), 'field'));
     }
 
-    public function test_company_registration_requires_a_full_tin_and_derives_the_branch(): void
+    public function test_company_registration_requires_separate_tin_and_branch_and_supports_legacy_full_tins(): void
     {
         $this->withSession(['preview_access' => true]);
         $payload = ['full_name' => 'Test Owner', 'preview_ack' => '1', 'vat_type' => 'vat', 'entity_type' => 'corporation', 'company_name' => 'New Test Company', 'contact_number' => '09170000000', 'accounting_period' => 'calendar', 'payroll' => 'no', 'supplier_tax' => 'none', 'customer_tax' => 'no', 'ppe' => 'no'];
-        foreach (['', '123456789', '123-456-789-000'] as $tin) {
-            $this->post('/company/setup', [...$payload, 'tin' => $tin])->assertSessionHasErrors('tin')->assertSessionMissing('company_setup');
+        foreach (['', '123-456-789-000'] as $tin) {
+            $this->post('/company/setup', [...$payload, 'tin' => $tin, 'branch_code' => '00000'])->assertSessionHasErrors('tin')->assertSessionMissing('company_setup');
         }
+        $this->post('/company/setup', [...$payload, 'tin' => '123456789'])->assertSessionHasErrors('branch_code')->assertSessionMissing('company_setup');
+        $this->post('/company/setup', [...$payload, 'tin' => '123456789', 'branch_code' => '00003'])->assertSessionHasNoErrors()->assertSessionHas('company_setup.tin', '123456789')->assertSessionHas('company_setup.branch_code', '00003');
         $this->post('/company/setup', [...$payload, 'tin' => '123-456-789-00007', 'branch_code' => '999'])->assertSessionHasNoErrors()->assertRedirect('/dashboard')->assertSessionHas('company_setup.tin', '123456789')->assertSessionHas('company_setup.branch_code', '00007');
     }
 }

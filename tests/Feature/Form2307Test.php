@@ -124,6 +124,27 @@ class Form2307Test extends TestCase
         $this->assertSame('Updated Officer', CompanySetting::query()->first()->profile['signatory_name']);
     }
 
+    public function test_signatory_tin_accepts_the_full_branch_format_and_legacy_nine_digit_tin(): void
+    {
+        $supplier = $this->supplier();
+        foreach (['123-456-789-00000', '12345678900000', '123-456-789', '123456789'] as $tin) {
+            Pdf::shouldReceive('loadView')->once()->with('form2307', Mockery::on(fn (array $view): bool => $view['signatory']['tin'] === $tin))->andReturnSelf();
+            Pdf::shouldReceive('setPaper')->once()->andReturnSelf();
+            Pdf::shouldReceive('setOptions')->once()->andReturnSelf();
+            Pdf::shouldReceive('download')->once()->andReturn(response('PDF'));
+            $this->postJson('/reports/form-2307/'.$supplier->id.'?quarter=4&year=2026', [
+                ...$this->payload($supplier), 'use_default_signatory' => false,
+                'signatory_name' => 'Test Signatory', 'signatory_title' => 'Accountant', 'signatory_tin' => $tin,
+            ])->assertOk();
+        }
+        foreach (['123-456-789-0000', '123456789000000', 'invalid'] as $tin) {
+            $this->postJson('/reports/form-2307/'.$supplier->id.'?quarter=4&year=2026', [
+                ...$this->payload($supplier), 'signatory_tin' => $tin,
+            ])->assertUnprocessable()->assertJsonValidationErrors('signatory_tin');
+        }
+        $this->get('/sheets/wtp')->assertOk()->assertSee('name="signatory_tin" maxlength="17"', false);
+    }
+
     public function test_missing_default_signatory_has_a_useful_validation_message(): void
     {
         $supplier = $this->supplier();

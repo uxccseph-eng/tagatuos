@@ -1,13 +1,17 @@
 <?php
 
+use App\Http\Controllers\AccountAuthController;
+use App\Http\Controllers\AccountDashboardController;
 use App\Http\Controllers\BirReportController;
 use App\Http\Controllers\BooksController;
 use App\Http\Controllers\CollectionsController;
+use App\Http\Controllers\CompanyBookController;
 use App\Http\Controllers\CompanySetupController;
 use App\Http\Controllers\CwtController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\FinancialReportsController;
 use App\Http\Controllers\Form2307Controller;
+use App\Http\Controllers\Form2316Controller;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\JournalController;
 use App\Http\Controllers\LapsingController;
@@ -29,10 +33,26 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', [HomeController::class, 'index'])->name('home');
 Route::post('/generate', [HomeController::class, 'generate'])->name('generate');
 
-Route::view('/signin', 'auth')->name('login');
-Route::view('/signup', 'auth')->name('register');
+Route::get('/signin', [AccountAuthController::class, 'show'])->name('login');
+Route::post('/signin', [AccountAuthController::class, 'login'])->middleware('throttle:20,1')->name('login.store');
+Route::get('/signup', [AccountAuthController::class, 'show'])->name('register');
+Route::post('/signup', [AccountAuthController::class, 'register'])->middleware('throttle:10,1')->name('register.store');
+Route::view('/preview', 'auth')->name('preview.login');
+Route::post('/logout', [AccountAuthController::class, 'logout'])->middleware('auth')->name('logout');
+Route::middleware('auth')->group(function (): void {
+    Route::get('/account', [AccountDashboardController::class, 'index'])->name('account.dashboard');
+    Route::get('/account/password', [AccountAuthController::class, 'editPassword'])->name('account.password.edit');
+    Route::put('/account/password', [AccountAuthController::class, 'updatePassword'])->middleware('throttle:10,1')->name('account.password.update');
+});
 Route::redirect('/login', '/signin');
 Route::redirect('/register', '/signup');
+
+Route::middleware('auth')->prefix('account/companies')->name('account.companies.')->group(function (): void {
+    Route::get('/', [CompanyBookController::class, 'index'])->name('index');
+    Route::post('/', [CompanyBookController::class, 'store'])->middleware('throttle:20,1')->name('store');
+    Route::get('/{companyId}', [CompanyBookController::class, 'show'])->whereNumber('companyId')->name('show');
+    Route::post('/{companyId}/open', [CompanyBookController::class, 'open'])->whereNumber('companyId')->name('open');
+});
 
 Route::post('/preview/session', [PreviewSessionController::class, 'store'])->middleware('throttle:20,1')->name('preview.start');
 Route::post('/preview/exit', [PreviewSessionController::class, 'destroy'])->name('preview.exit');
@@ -102,4 +122,5 @@ Route::get('/tax-reports/{schedule}', [TaxReportsController::class, 'index'])->n
 Route::get('/reports/{report}/transactions', [FinancialReportsController::class, 'transactions'])->name('reports.transactions');
 Route::get('/reports/{report}', [FinancialReportsController::class, 'index'])->name('reports.show');
 
+Route::post('/reports/form-2316/{employeeId}', [Form2316Controller::class, 'print2316'])->whereNumber('employeeId')->name('reports.form2316');
 Route::post('/reports/form-2307/{supplierId}', [Form2307Controller::class, 'print2307'])->whereNumber('supplierId')->name('reports.form2307');

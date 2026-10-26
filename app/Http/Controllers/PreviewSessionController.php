@@ -10,6 +10,10 @@ class PreviewSessionController extends Controller
 {
     public function store(Request $request): RedirectResponse
     {
+        if ($request->user()) {
+            return to_route('account.dashboard');
+        }
+
         $request->validate([
             'method' => ['required', Rule::in(['google', 'email', 'workspace'])],
             'workspace' => ['required_if:method,workspace', 'nullable', 'string', 'max:63', 'regex:/^[a-z0-9]+(?:-[a-z0-9]+)*$/'],
@@ -24,6 +28,10 @@ class PreviewSessionController extends Controller
 
     public function destroy(Request $request): RedirectResponse
     {
+        if ($request->user()) {
+            return to_route('account.dashboard');
+        }
+
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 

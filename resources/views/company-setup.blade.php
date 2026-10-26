@@ -20,7 +20,7 @@
 
   <script src="{{ asset('js/company-setup-config.js') }}"></script>
 
-  <link rel="stylesheet" href="{{ asset('css/company-setup.css') }}"><script src="{{ asset('js/company-setup.js') }}" defer></script>
+  <link rel="stylesheet" href="{{ asset('css/company-setup.css') }}?v={{ filemtime(public_path('css/company-setup.css')) }}"><script src="{{ asset('js/company-setup.js') }}?v={{ filemtime(public_path('js/company-setup.js')) }}" defer></script>
 
 <script src="{{ asset('js/draft-leave-guard.js') }}?v={{ filemtime(public_path('js/draft-leave-guard.js')) }}" defer></script></head>
 
@@ -80,7 +80,12 @@
 
 
 
-      <form action="{{ route('preview.exit') }}" method="POST">@csrf<button type="submit" class="rounded-lg border border-slate-700 px-3 py-2 text-xs text-slate-300">Exit demo</button></form><!-- User Profile Badge -->
+      @auth
+      <a href="{{ route('account.dashboard') }}" class="rounded-lg border border-slate-700 px-3 py-2 text-xs text-slate-300">Company books</a>
+      <form action="{{ route('logout') }}" method="POST">@csrf<button type="submit" class="rounded-lg border border-slate-700 px-3 py-2 text-xs text-slate-300">Sign out</button></form>
+      @else
+      <form action="{{ route('preview.exit') }}" method="POST">@csrf<button type="submit" class="rounded-lg border border-slate-700 px-3 py-2 text-xs text-slate-300">Exit demo</button></form>
+      @endauth
 
       <div class="flex items-center gap-2 pl-1">
 
@@ -144,7 +149,7 @@
 
           <span class="flex h-2 w-2 rounded-full bg-emerald-400 animate-ping"></span>
 
-          <span class="text-xs font-mono text-slate-300">Company setup preview</span>
+          <span class="text-xs font-mono text-slate-300">{{ auth()->check() ? 'Company registration' : 'Company setup preview' }}</span>
 
         </div>
 
@@ -224,7 +229,7 @@
 
             <input id="setup-terms" type="checkbox" name="preview_ack" value="1" required @checked(old('preview_ack', $company['preview_ack'] ?? false)) class="mt-1 h-4 w-4 rounded border-slate-700 bg-slate-900 text-emerald-500 focus:ring-emerald-400">
 
-            <label for="setup-terms" class="text-xs sm:text-sm text-slate-400 leading-relaxed">I understand this is a local demo. My sample settings are saved only in this session; no account, tax filing, or accounting books are created.</label>
+            <label for="setup-terms" class="text-xs sm:text-sm text-slate-400 leading-relaxed">{{ auth()->check() ? 'I confirm these registration details belong to the selected company book. Saving does not submit a tax filing.' : 'I understand this is a local demo. My sample settings are saved only in this session; no account, tax filing, or accounting books are created.' }}</label>
 
           </div>
 
@@ -256,7 +261,7 @@
 
           <p class="mt-1 text-xs sm:text-sm text-slate-400">
 
-            Choose a sample tax profile. No tax calculation engine or filing service is connected in this preview.
+            {{ auth()->check() ? 'Select the company’s registered tax profile.' : 'Choose a sample tax profile. No tax calculation engine or filing service is connected in this preview.' }}
 
           </p>
 
@@ -482,11 +487,11 @@
 
                 </label>
 
-                <span class="text-[11px] font-mono text-slate-400">14 digits</span>
+                <span class="text-[11px] font-mono text-slate-400">9 digits</span>
 
               </div>
 
-              <input id="tin-field" name="tin" maxlength="17" required inputmode="numeric" pattern="[0-9]{3}-[0-9]{3}-[0-9]{3}-[0-9]{5}" value="{{ old('tin', \App\Tin::format($company['tin'] ?? '', $company['branch_code'] ?? null)) }}" type="text" placeholder="000-000-000-00000" class="w-full rounded-xl border border-slate-700/80 bg-slate-950/80 px-4 py-2.5 font-mono text-sm text-white placeholder-slate-500 transition-colors focus:border-emerald-400 focus:outline-none focus:ring-1 focus:ring-emerald-400">
+              <input id="tin-field" name="tin" maxlength="11" required inputmode="numeric" pattern="[0-9]{3}-[0-9]{3}-[0-9]{3}" value="{{ substr(\App\Tin::format(old('tin', $company['tin'] ?? '')), 0, 11) }}" type="text" placeholder="000-000-000" class="w-full rounded-xl border border-slate-700/80 bg-slate-950/80 px-4 py-2.5 font-mono text-sm text-white placeholder-slate-500 transition-colors focus:border-emerald-400 focus:outline-none focus:ring-1 focus:ring-emerald-400">
 
             </div>
 
@@ -500,11 +505,11 @@
 
                 </label>
 
-                <span class="text-[11px] font-mono text-slate-400">From TIN · Head Office: 00000</span>
+                <span class="text-[11px] font-mono text-slate-400">5 digits · Head Office: 00000</span>
 
               </div>
 
-              <input id="branch-code" name="branch_code" readonly value="{{ substr(preg_replace('/\D/', '', old('tin', \App\Tin::format($company['tin'] ?? '', $company['branch_code'] ?? null))), 9) }}" type="text" placeholder="00000" class="w-full rounded-xl border border-slate-700/80 bg-slate-950/80 px-4 py-2.5 font-mono text-sm text-white placeholder-slate-500 transition-colors focus:border-emerald-400 focus:outline-none focus:ring-1 focus:ring-emerald-400">
+              <input id="branch-code" name="branch_code" required inputmode="numeric" maxlength="5" pattern="[0-9]{5}" value="{{ old('branch_code', $company['branch_code'] ?? '00000') }}" type="text" placeholder="00000" class="w-full rounded-xl border border-slate-700/80 bg-slate-950/80 px-4 py-2.5 font-mono text-sm text-white placeholder-slate-500 transition-colors focus:border-emerald-400 focus:outline-none focus:ring-1 focus:ring-emerald-400">
 
             </div>
 
@@ -572,7 +577,7 @@
 
           <div class="space-y-1.5">
 
-            <label class="block text-xs font-medium uppercase tracking-wider text-slate-300" for="rdo-select">
+            <label class="block text-xs font-medium uppercase tracking-wider text-slate-300" for="rdo-select" id="rdo-field-label">
 
               Revenue District Office (RDO Code)
 
@@ -580,13 +585,21 @@
 
             <div class="relative">
 
-              <input id="rdo-select" name="rdo" inputmode="numeric" maxlength="3" pattern="[0-9]{3}" placeholder="Enter RDO code" value="{{ old('rdo', $company['rdo'] ?? '') }}" class="w-full rounded-xl border border-slate-700/80 bg-slate-950/80 px-4 py-2.5 text-sm text-white">
-
-              <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-400">
-
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
-
+              <button type="button" id="rdo-trigger" class="rdo-trigger" aria-haspopup="dialog" aria-expanded="false" aria-controls="rdo-picker" aria-labelledby="rdo-field-label rdo-selection" hidden><span id="rdo-selection">Select your Revenue District Office</span><span aria-hidden="true">⌄</span></button>
+              <div id="rdo-picker" class="rdo-picker" role="dialog" aria-label="Choose Revenue District Office" hidden>
+                <input id="rdo-search" type="search" role="combobox" aria-label="Search Revenue District Offices" aria-autocomplete="list" aria-expanded="false" aria-controls="rdo-options" placeholder="Search code or location…" autocomplete="off">
+                <div id="rdo-options" role="listbox" aria-label="Revenue District Offices"></div>
+                <p id="rdo-result-count" role="status">{{ count(\App\RevenueDistrictOffices::all()) }} Revenue District Offices</p>
               </div>
+              <select id="rdo-select" name="rdo" class="w-full rounded-xl border border-slate-700/80 bg-slate-950/80 px-4 py-2.5 text-sm text-white">
+                <option value="">Select your Revenue District Office</option>
+                @foreach(\App\RevenueDistrictOffices::all() as $code => $office)
+                  <option value="{{ $code }}" @selected(str_pad(strtoupper((string) old('rdo', $company['rdo'] ?? '')), 3, '0', STR_PAD_LEFT) === (string) $code)>{{ $code }} · {{ $office }}</option>
+                @endforeach
+              </select>
+
+
+
 
             </div>
 

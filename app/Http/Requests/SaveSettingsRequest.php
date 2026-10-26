@@ -17,11 +17,11 @@ class SaveSettingsRequest extends FormRequest
     public function rules(): array
     {
         $text = ['nullable', 'string', 'max:255'];
-        $tin = ['nullable', 'string', 'regex:/^\d{3}-?\d{3}-?\d{3}$/'];
+        $tin = ['nullable', 'string', 'regex:/^(?:[0-9]{9}|[0-9]{14}|[0-9]{3}-[0-9]{3}-[0-9]{3}(?:-[0-9]{5})?)$/D'];
 
         return match ($this->route('section')) {
             'company' => [
-                'company_name' => ['required', 'string', 'max:255'],
+                'company_name' => ['required', 'string', $this->user() ? 'max:200' : 'max:255'],
                 'registered_name' => ['required', 'string', 'max:255'],
                 'trade_name' => $text,
                 'tin' => ['required', 'string', 'regex:/^(?:[0-9]{14}|[0-9]{3}-[0-9]{3}-[0-9]{3}-[0-9]{5})$/D'],
@@ -34,7 +34,7 @@ class SaveSettingsRequest extends FormRequest
                 'zip_code' => ['nullable', 'regex:/^\d{4}$/'],
             ],
             'bir' => [
-                'rdo' => ['nullable', 'regex:/^(\d{3}|\d{2}[A-Za-z])$/'],
+                'rdo' => ['nullable', 'regex:/^(\d{3}|\d{2,3}[A-Za-z])$/'],
                 'accounting_period' => ['required', Rule::in(['calendar', 'fiscal'])],
                 'fiscal_end_month' => ['nullable', 'required_if:accounting_period,fiscal', 'integer', 'between:1,12'],
                 'contact_number' => ['nullable', 'string', 'max:30', 'regex:/^\+?[0-9 ()-]{7,30}$/'],

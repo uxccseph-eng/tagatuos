@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\RevenueDistrictOffices;
 use Tests\TestCase;
 
 class CompanySetupTest extends TestCase
@@ -143,6 +144,49 @@ class CompanySetupTest extends TestCase
         $this->get('/dashboard')->assertRedirect('/signin');
     }
 
+    public function test_setup_saves_separate_nine_digit_tin_and_five_digit_branch(): void
+    {
+        $this->withSession(['preview_access' => true])
+            ->post('/company/setup', [...$this->companyData(), 'branch_code' => '01234'])
+            ->assertRedirect('/dashboard')->assertSessionHasNoErrors()
+            ->assertSessionHas('company_setup.tin', '123456789')
+            ->assertSessionHas('company_setup.branch_code', '01234');
+        $this->get('/company/setup')->assertOk()->assertSee('9 digits')
+            ->assertSee('value="123-456-789"', false)->assertSee('value="01234"', false)
+            ->assertDontSee('From TIN');
+        $this->post('/company/setup', [...$this->companyData(), 'branch_code' => '1234'])
+            ->assertSessionHasErrors('branch_code');
+    }
+
+    public function test_rdo_selector_includes_all_districts_and_current_names(): void
+    {
+        $offices = RevenueDistrictOffices::all();
+        $this->assertCount(124, $offices);
+        $this->assertSame('South Tarlac', $offices['17A']);
+        $this->assertSame('North Tarlac', $offices['17B']);
+        $this->assertSame('South Cotabato', $offices[111]);
+        $this->assertSame('West Davao City', $offices['113A']);
+        $this->withSession(['preview_access' => true])->get('/company/setup')
+            ->assertOk()->assertSee('Search Revenue District Offices')->assertSee('124 Revenue District Offices')
+            ->assertSee('value="53B"', false)->assertSee('Muntinlupa City')
+            ->assertSee('value="113B"', false);
+    }
+
+    public function test_setup_accepts_official_numeric_and_lettered_rdos_but_rejects_unknown_codes(): void
+    {
+        $this->withSession(['preview_access' => true]);
+        foreach (['001', '53B', '113A', '113B'] as $code) {
+            $this->post('/company/setup', [...$this->companyData(), 'rdo' => $code])
+                ->assertRedirect('/dashboard')->assertSessionHasNoErrors()
+                ->assertSessionHas('company_setup.rdo', $code);
+        }
+        $this->post('/company/setup', [...$this->companyData(), 'rdo' => '54b'])
+            ->assertSessionHasNoErrors()->assertSessionHas('company_setup.rdo', '54B');
+        $this->get('/company/setup')->assertSee('value="54B" selected', false);
+        $this->post('/company/setup', [...$this->companyData(), 'rdo' => '999'])
+            ->assertSessionHasErrors('rdo')->assertSessionHas('company_setup.rdo', '54B');
+    }
+
     /** @return array<string, string> */
     private function companyData(): array
     {
@@ -152,8 +196,8 @@ class CompanySetupTest extends TestCase
             'vat_type' => 'non_vat',
             'entity_type' => 'individual',
             'company_name' => 'Sample Studio',
-            'tin' => '123-456-789-00000',
-            'branch_code' => '000',
+            'tin' => '123-456-789',
+            'branch_code' => '00000',
             'contact_number' => '0917 123 4567',
             'accounting_period' => 'calendar',
             'payroll' => 'no',

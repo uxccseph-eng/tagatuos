@@ -72,6 +72,9 @@
       <span id="themeToggleIcon" class="material-symbols-outlined text-[18px]">light_mode</span>
     </button>
 
+    @auth
+    <a href="{{ route('account.dashboard') }}" class="text-xs font-semibold text-emerald-500">Company books</a>
+    @endauth
     <!-- Notifications Button -->
     <button data-workspace-topic="Notifications" aria-label="Notifications" class="relative w-8 h-8 rounded-lg bg-slate-100 dark:bg-[#1d2433] border border-slate-200 dark:border-[#2b3548] flex items-center justify-center text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors">
       <span class="material-symbols-outlined text-[17px]">notifications</span>
