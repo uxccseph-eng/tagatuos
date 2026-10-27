@@ -22,7 +22,7 @@
             @else
                 <section class="account-card"><span class="eyebrow">YOUR ACCESS</span><h2>{{ auth()->user()->type === 'individual' ? 'Your company workspace' : 'Assigned by your owner' }}</h2><p class="muted">{{ auth()->user()->type === 'individual' ? 'Open your book to continue setup or return to your accounting workspace.' : 'Only books assigned to your account appear here.' }}</p></section>
             @endif
-            <p class="storage-note">Company settings and Masters are saved on the server. Sheet transactions still use this browser’s storage during the database transition.</p>
+            <p class="storage-note">Company settings, Masters and Sheet transactions are saved in your company database. Each save checks for changes made by other accountants.</p>
         </aside>
     </div>
 </x-account-layout>

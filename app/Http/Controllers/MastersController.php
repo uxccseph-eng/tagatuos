@@ -9,6 +9,7 @@ use App\Models\ChartAccount;
 use App\Models\DepreciationRun;
 use App\Models\Party;
 use App\Models\TaxCode;
+use App\Services\CompanyLedgerService;
 use App\Tin;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
@@ -91,7 +92,12 @@ class MastersController extends Controller
         $canReadJournals = ! $request->user() || array_intersect($request->attributes->get('company_allowed_tabs', []), ['books', 'reports', 'lapsing']) !== [];
         $depreciation = $canReadJournals && Schema::hasTable('depreciation_runs') ? DepreciationRun::query()->where('workspace_key', ChartAccount::workspaceKey($request->session()->get('company_setup')))->orderBy('period')->pluck('journal')->all() : [];
 
-        return response('window.WorkspaceAccounts = '.Js::encode($accounts).';window.WorkspaceMasters = '.Js::encode($masters).';window.WorkspaceDepreciationJournals = '.Js::encode($depreciation).';', 200, ['Content-Type' => 'application/javascript', 'Cache-Control' => 'no-store, private']);
+        $company = $request->attributes->get('active_company');
+        $database = $company && array_intersect($request->attributes->get('company_allowed_tabs', []), ['sheets', 'books', 'reports', 'tax-reports', 'lapsing']) !== []
+            ? [...app(CompanyLedgerService::class)->snapshotFor($company, $request->attributes->get('company_allowed_tabs', [])), 'url' => route('sheets.database.save'), 'csrf' => csrf_token(), 'canWrite' => in_array('sheets', $request->attributes->get('company_allowed_tabs', []), true)]
+            : null;
+
+        return response('window.CompanyLedgerDatabase = '.Js::encode($database).';window.WorkspaceAccounts = '.Js::encode($accounts).';window.WorkspaceMasters = '.Js::encode($masters).';window.WorkspaceDepreciationJournals = '.Js::encode($depreciation).';', 200, ['Content-Type' => 'application/javascript', 'Cache-Control' => 'no-store, private']);
     }
 
     public function store(SaveChartAccountRequest $request): JsonResponse

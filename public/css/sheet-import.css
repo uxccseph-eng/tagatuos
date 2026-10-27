@@ -32,3 +32,29 @@
 .sheet-import-dialog footer>div{display:flex;gap:10px}
 .sheet-import-dialog [data-import-post]{background:var(--import-accent);color:var(--import-bg);border-color:transparent}
 @media(max-width:600px){.sheet-import-dialog header,.sheet-import-dialog footer,.sheet-import-body{padding:14px}.sheet-import-controls{align-items:stretch}.sheet-import-controls label{flex-basis:100%}}
+.guided-import{width:min(1450px,96vw)}
+.guided-import .sheet-import-body{max-height:72vh;overflow:auto}
+.guided-import label{display:flex;flex-direction:column;gap:6px;font-size:12px}
+.guided-import input,.guided-import select{background:var(--import-bg);color:var(--import-text);border:1px solid var(--import-line);border-radius:5px;padding:8px;font:inherit;min-width:0}
+.guided-import input[type=number]{width:75px}
+.guided-import .guided-mapping{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin:16px 0}
+.guided-import .guided-bulk{display:flex;gap:12px;align-items:end;flex-wrap:wrap;border:1px solid var(--import-line);padding:12px;border-radius:8px}
+.guided-import .guided-check{flex-direction:row;align-items:center}
+.guided-import .sheet-import-table-wrap{max-height:390px;margin-bottom:16px}
+.guided-import td{vertical-align:top;white-space:normal;min-width:185px;max-width:260px}
+.guided-import td:nth-child(1){min-width:95px}
+.guided-import td:nth-child(2){min-width:240px}
+.guided-import td input:not([type=checkbox]){width:100%;min-width:150px;box-sizing:border-box}
+.guided-import td p{margin:5px 0;font-size:11px}
+.guided-import td button{font-size:11px;margin-top:6px;padding:5px}
+.guided-import .guided-skipped{opacity:.5}
+.guided-import [hidden]{display:none!important}
+.guided-import{max-height:94vh;overflow:hidden}
+.guided-import[open]{display:flex;flex-direction:column}
+.guided-import header,.guided-import footer{flex-shrink:0}
+.guided-import .sheet-import-body{flex:1;min-height:0;max-height:none;overflow:auto}
+.guided-import td:first-child label{flex-direction:row;align-items:center;gap:6px;margin:5px 0}
+.guided-import input[type=checkbox]{width:auto;flex-shrink:0}
+.guided-paste{border:1px solid var(--import-line);border-radius:8px;padding:14px;margin:14px 0;background:var(--import-soft)}
+.guided-import .guided-paste textarea{display:block;width:100%;box-sizing:border-box;resize:vertical;min-height:100px;max-height:260px;background:var(--import-bg);color:var(--import-text);border:1px solid var(--import-line);border-radius:6px;padding:10px;font:12px/1.6 Consolas,monospace;margin:8px 0}
+.guided-paste p{font-size:12px;color:var(--import-muted);margin-bottom:0}

@@ -50,7 +50,8 @@
         if (existing) return existing;
         return {id: root.crypto.randomUUID(), number: '', status: 'draft', draftTouched: false, date: dates.date, periodStart: dates.from, periodEnd: dates.to, name: '', employees: []};
     }
-    function renumber(records) {
+    function renumber(records, preserve = false) {
+        if (preserve) { let next = records.reduce((highest,record)=>Math.max(highest,Number(String(record.number || "").match(/^PYRJ-(\d+)$/)?.[1] || 0)),0); return records.map(record=>({...record,number:record.number || `PYRJ-${String(++next).padStart(6,"0")}`})); }
         return records.map((record, index) => ({...record, number: `PYRJ-${String(index + 1).padStart(6, '0')}`}));
     }
     function reopenForEditing(records, id) {

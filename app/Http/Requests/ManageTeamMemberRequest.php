@@ -29,7 +29,7 @@ class ManageTeamMemberRequest extends FormRequest
             return ['confirmation' => ['accepted']];
         }
         $rules = [
-            'role' => ['required', Rule::in(['accountant', 'staff'])],
+            'role' => ['required', Rule::in(TeamPermissions::MEMBER_ROLES)],
             'tabs' => ['required', 'array', 'list', 'min:1', 'max:8'],
             'tabs.*' => ['required', 'string', 'distinct', Rule::in(array_keys(TeamPermissions::TABS))],
             'is_suspended' => ['sometimes', 'boolean'],

@@ -9,6 +9,9 @@
     function openMember(mode, member = null, template = 'accountant') {
         form.reset();
         const editing = mode === 'edit';
+        const organization = editing ? !!member.organization : form.dataset.organization === 'true';
+        const scope = organization ? 'all client books in this organization' : 'this company book';
+        document.getElementById('member-access-scope').textContent = 'Access changes, suspension and removal affect ' + scope + '. User accounts and financial records are preserved.';
         form.action = editing ? form.dataset.updateUrl.replace('/0', '/' + member.id) : form.dataset.createUrl;
         field('_method').value = editing ? 'PUT' : 'POST';
         field('mode').value = editing ? 'new' : mode;
@@ -20,7 +23,7 @@
         form.querySelector('[data-suspended-field]').hidden = !editing;
         field('is_suspended').disabled = !editing;
         document.getElementById('member-dialog-title').textContent = editing ? 'Edit access — ' + member.name : mode === 'existing' ? 'Add existing member' : 'Create company login';
-        document.getElementById('member-dialog-description').textContent = editing ? 'Choose this member’s role and module access for this book.' : mode === 'existing' ? 'Use the email of an existing accountant who has finished password setup. No email is sent.' : 'A secure 10-character temporary password and a one-time setup QR will be generated.';
+        document.getElementById('member-dialog-description').textContent = editing ? 'Choose this member’s role and module access for ' + scope + '.' : mode === 'existing' ? 'Use the email of an existing accountant who has finished password setup. No email is sent.' : 'A secure 10-character temporary password and a one-time setup QR will be generated.';
         if (editing) { field('role').value = member.role; field('is_suspended').checked = member.suspended; setTabs(member.tabs); document.getElementById('member-template').value = ''; }
         else { applyTemplate(template); }
         dialog.showModal();
@@ -33,7 +36,8 @@
         const member = members.find(member => String(member.id) === button.dataset.removeMember);
         const remove = document.getElementById('remove-member-form'); remove.reset();
         remove.action = remove.dataset.removeUrl.replace('/0', '/' + member.id);
-        document.getElementById('remove-member-description').textContent = member.name + ' will lose access to this book. Their account and financial records will be preserved.';
+        document.getElementById('remove-member-description').textContent = member.name + ' will lose access to ' + (member.organization ? 'all client books in this organization' : 'this company book') + '. Their account and financial records will be preserved.';
+        document.getElementById('remove-scope-confirmation').textContent = member.organization ? 'I confirm removal from all client books in this organization.' : 'I confirm removal from this company book.';
         document.getElementById('remove-member-dialog').showModal();
     }));
     document.querySelectorAll('[data-dialog-open]').forEach(button => button.addEventListener('click', () => document.getElementById(button.dataset.dialogOpen).showModal()));

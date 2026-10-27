@@ -8,6 +8,7 @@ use App\Models\TaxCode;
 use App\Services\BirReliefService;
 use App\Services\QapDatService;
 use App\Services\SawtDatService;
+use App\Services\TaxPreflightService;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -33,6 +34,8 @@ class BirReportController extends Controller
         $data = $this->validatedQapPayload($request);
         $company = $request->session()->get('company_setup');
         $prepared = $qap->prepare($company, $data);
+        $start = CarbonImmutable::create((int) $data['year'], ((int) $data['quarter'] - 1) * 3 + 1, 1);
+        app(TaxPreflightService::class)->recordExport($request, ['schedule' => 'qap-ewt', 'from' => $start->toDateString(), 'to' => $start->addMonths(2)->endOfMonth()->toDateString()], $prepared['filename'], $qap->archiveLines($prepared));
 
         return response()->streamDownload(function () use ($qap, $prepared): void {
             $output = fopen('php://output', 'wb');
@@ -47,6 +50,7 @@ class BirReportController extends Controller
     {
         $data = $this->validatedQapPayload($request, true);
         $prepared = $qap->prepareAnnual($request->session()->get('company_setup'), $data);
+        app(TaxPreflightService::class)->recordExport($request, ['schedule' => 'qap-ewt', 'form' => '1604E', 'from' => $data['year'].'-01-01', 'to' => $data['year'].'-12-31'], $prepared['filename'], $qap->lines($prepared));
 
         return response()->streamDownload(function () use ($qap, $prepared): void {
             $output = fopen('php://output', 'wb');
@@ -125,6 +129,7 @@ class BirReportController extends Controller
             }
         }
         $prepared = $sawt->prepare($data);
+        app(TaxPreflightService::class)->recordExport($request, ['schedule' => 'sawt', 'from' => $data['from'], 'to' => $data['to'], 'form' => $data['form_type'], 'tax_kind' => $data['tax_kind']], $prepared['filename'], $sawt->lines($prepared));
 
         return response()->streamDownload(function () use ($sawt, $prepared): void {
             foreach ($sawt->lines($prepared) as $line) {
@@ -192,6 +197,9 @@ class BirReportController extends Controller
         }
         unset($record);
         $files = $relief->files($data, $kind);
+        foreach ($files as $filename => $content) {
+            app(TaxPreflightService::class)->recordExport($request, ['schedule' => $purchases ? 'relief-purchases' : 'relief-sales', 'from' => $data['from'], 'to' => $data['to']], $filename, [$content]);
+        }
         $headers = ['Cache-Control' => 'private, no-store', 'X-Content-Type-Options' => 'nosniff', 'X-Accel-Buffering' => 'no'];
         if (count($files) === 1) {
             return response()->streamDownload(function () use ($files): void {

@@ -10,16 +10,26 @@
     };
     const methods={sales:'sales',purchases:'purchases',collections:'collections',payments:'payments',cwt:'cwtCertificates',wtp:'wtpCertificates',journal:'journalEntries'};
     const key=value=>String(value || '').trim().toLowerCase().replace(/[^a-z0-9]/g,'');
-    function parseCsv(text){
+    function parseDelimited(text,preserveEmpty=false,delimiter=','){
         text=String(text).replace(/^\uFEFF/,'');const rows=[];let row=[],cell='',quoted=false,closed=false;
         for(let i=0;i<text.length;i++){
             const char=text[i];
             if(quoted){if(char==='"'){if(text[i+1]==='"'){cell+='"';i++;}else{quoted=false;closed=true;}}else cell+=char;continue;}
             if(char==='"'){if(cell||closed)throw Error('Unexpected quote in CSV. Use the downloaded template and save as CSV UTF-8.');quoted=true;}
-            else if(char===','||char==='\n'||char==='\r'){row.push(cell);cell='';closed=false;if(char!==','){if(char==='\r'&&text[i+1]==='\n')i++;if(row.some(value=>value.trim()))rows.push(row);row=[];}}
+            else if(char===delimiter||char==='\n'||char==='\r'){row.push(cell);cell='';closed=false;if(char!==delimiter){if(char==='\r'&&text[i+1]==='\n')i++;if(preserveEmpty||row.some(value=>value.trim()))rows.push(row);row=[];}}
             else {if(closed&&!/\s/.test(char))throw Error('Unexpected text after a quoted CSV field.');if(!closed)cell+=char;}
         }
         if(quoted)throw Error('The CSV contains an unclosed quoted field.');row.push(cell);if(row.some(value=>value.trim()))rows.push(row);return rows;
+    }
+    function parseCsv(text,preserveEmpty=false){return parseDelimited(text,preserveEmpty);}
+    function parseClipboard(text){
+        text=String(text);if(text.length>5*1024*1024)throw Error('Paste up to 5 MB of spreadsheet cells.');
+        if(text.includes('\0'))throw Error('Paste plain spreadsheet cells without binary content.');
+        let rows;try{rows=parseDelimited(text,true,'\t');}catch(error){throw Error(error.message.replaceAll('CSV','pasted cells').replace('Use the downloaded template and save as pasted cells UTF-8.','Copy the cells again from Excel or Google Sheets.'));}
+        if(!rows.some(row=>row.some(cell=>cell.trim())))throw Error('Paste cells copied from Excel or Google Sheets.');
+        if(rows.length>521||rows.some(row=>row.length>100))throw Error('Paste up to 500 entries, 100 columns and a header area of at most 20 rows.');
+        if(rows.some(row=>row.some(cell=>cell.length>4000)))throw Error('Each pasted cell must contain at most 4,000 characters.');
+        return rows;
     }
     function template(sheet){if(!columns[sheet])throw Error('Unknown sheet.');return '\uFEFF'+columns[sheet].map(value=>'"'+value+'"').join(',')+'\r\n';}
     function amount(value,label='Amount',zero=false){const text=String(value || '').replace(/[₱,\s]/g,'');if(!text&&zero)return 0;if(!/^\d{1,9}(\.\d{1,2})?$/.test(text))throw Error(label+' must be a number with no more than two decimal places.');const [whole,fraction='']=text.split('.');const cents=Number(whole)*100+Number(fraction.padEnd(2,'0'));if(!zero&&cents<=0)throw Error(label+' must be greater than zero.');return cents;}
@@ -36,8 +46,15 @@
         const choice=(value,values,fallback)=>{const selected=values.find(item=>key(item)===key(value || fallback));if(!selected)throw Error('Choose '+values.join(', ')+'.');return selected;};
         const record={date:date(get('Date')),notes:get('Notes'),_row:raw._row};
         if(sheet==='sales'||sheet==='purchases'){
-            const sales=sheet==='sales',person=party(get(sales?'Customer':'Supplier'),sales?'Customer':'Supplier'),it=atc(get('Income Withholding ATC')),vt=atc(get('VAT Withholding ATC'),true);
-            Object.assign(record,{[sales?'customer':'supplier']:person.name,tin:masters.formatTin(get('Supplier TIN') || person.tin || ''),partyId:person.id,gross:amount(get('Gross Amount'),'Gross amount'),tax:tax(get('Tax Type'),sales),account:account(get(sales?'Revenue Account':'Account'),sales?['Income']:['Asset','Expense']),terms:choice(get('Terms'),['Cash','On Account'],'Cash'),reference:get('Invoice Reference'),classification:choice(get('Classification'),['Regular','Top Withholding Agent','Government','ZeroRated','PEZA'],'Regular'),bank:bank(get(sales?'Deposit Account':'Bank'))});
+            const sales=sheet==='sales',person=party(get(sales?'Customer':'Supplier'),sales?'Customer':'Supplier');
+            const draft={status:'draft',[sales?'customer':'supplier']:person.name,account:get(sales?'Revenue Account':'Account'),tax:get('Tax Type'),...(sales?{cwt:get('Income Withholding ATC'),vatCwt:get('VAT Withholding ATC')}:{ewt:'',wvat:'',ewtCode:get('Income Withholding ATC'),wvatCode:get('VAT Withholding ATC')})};
+            const suggestion=masters.partyDefaults?.(draft,sales) || {values:{},sourceNumber:''},defaults=suggestion.values;
+            const suggestedAtc=vat=>sales?String(defaults[vat?'vatCwt':'cwt'] || '').match(/^W[ICVB][0-9]{3}/)?.[0] || '':defaults[vat?'wvatCode':'ewtCode'] || '';
+            const it=atc(get('Income Withholding ATC') || suggestedAtc(false)),vt=atc(get('VAT Withholding ATC') || suggestedAtc(true),true);
+            const taxValue=get('Tax Type') || defaults.tax;
+            if(context.guided&&!taxValue)throw Error('Choose a Tax Type from Masters, or apply one to the selected rows.');
+            if(suggestion.sourceNumber)record._suggestion={source:suggestion.sourceNumber,fields:Object.keys(defaults)};
+            Object.assign(record,{[sales?'customer':'supplier']:person.name,tin:masters.formatTin(get('Supplier TIN') || person.tin || ''),partyId:person.id,gross:amount(get('Gross Amount'),'Gross amount'),tax:tax(taxValue,sales),account:account(get(sales?'Revenue Account':'Account') || defaults.account,sales?['Income']:['Asset','Expense']),terms:choice(get('Terms'),['Cash','On Account'],'Cash'),reference:get('Invoice Reference'),classification:choice(get('Classification'),['Regular','Top Withholding Agent','Government','ZeroRated','PEZA'],'Regular'),bank:bank(get(sales?'Deposit Account':'Bank'))});
             if(sales)Object.assign(record,{cwt:it.label,vatCwt:vt.label,memo:get('Description'),notes:get('Particulars')});else Object.assign(record,{ewt:it.rate,wvat:vt.rate,ewtCode:it.code,wvatCode:vt.code,description:get('Description')});
         }else if(sheet==='collections'){
             const invoice=get('Source Invoice')?find(ledger.invoices(),get('Source Invoice'),'Source invoice'):null;
@@ -67,5 +84,37 @@
         if(!errors.length){const validation=context.ledger.previewImport(sheet,records);errors.push(...validation.errors);}
         return {records,errors,rowCount:rows.length};
     }
-    const api={columns,methods,parseCsv,template,amount,date,fingerprint,preview};if(typeof module!=='undefined'&&module.exports)module.exports=api;if(root)root.SheetImport=api;
+    function guessMapping(sheet,headers){
+        const synonyms={Date:['transactiondate','invoicedate','postingdate'],Customer:['customername','client','clientname'],Supplier:['suppliername','vendor','vendorname'], 'Gross Amount':['amount','total','totalamount','gross','invoiceamount'], 'Tax Type':['taxcode','vatcode','vat'], 'Revenue Account':['account','accountcode','glaccount'],Account:['accountcode','glaccount','expenseaccount'], 'Invoice Reference':['invoicenumber','invoiceno','invoice','siorno','orno','referenceno','reference'], 'Income Withholding ATC':['atc','atccode','ewtatc','cwtatc'], 'VAT Withholding ATC':['vatatc'],Description:['details','particulars','memo']};
+        const used=new Set(),mapping={};
+        for(const field of columns[sheet]){const names=[key(field),...(synonyms[field] || [])],matches=headers.flatMap((header,index)=>names.includes(key(header))&&!used.has(index)?[index]:[]);mapping[field]=matches.length===1?matches[0]:null;if(matches.length===1)used.add(matches[0]);}
+        return mapping;
+    }
+    function mapRows(sheet,matrix,mapping,headerRow=1){
+        if(!['sales','purchases'].includes(sheet))throw Error('Guided mapping supports Sales and Purchases.');
+        if(!Number.isInteger(headerRow)||headerRow<1||headerRow>20||!Array.isArray(matrix)||matrix.length<=headerRow)throw Error('Choose a header row between 1 and 20 with data below it.');
+        const indices=Object.values(mapping).filter(value=>value!==null&&value!=='');
+        if(indices.some(index=>!Number.isInteger(index)||index<0||index>=100)||new Set(indices).size!==indices.length)throw Error('Map each source column to one field only.');
+        if(Object.keys(mapping).some(field=>!columns[sheet].includes(field)))throw Error('Unsupported import field.');
+        const rows=matrix.slice(headerRow).map((cells,index)=>({_row:index+headerRow+1,values:Object.fromEntries(columns[sheet].map(field=>[field,mapping[field]===null||mapping[field]===undefined||mapping[field]===''?'':String(cells[mapping[field]] ?? '').trim()])),skip:false,duplicateReviewed:false})).filter(row=>Object.values(row.values).some(value=>value!==''));
+        if(!rows.length||rows.length>500)throw Error('Import between 1 and 500 nonempty data rows.');
+        return rows;
+    }
+    function previewMapped(sheet,rows,context){
+        if(!['sales','purchases'].includes(sheet)||!Array.isArray(rows)||rows.length>500)throw Error('Choose up to 500 Sales or Purchases rows.');
+        const records=[],errors=[],warnings=[],existing=context.ledger[methods[sheet]]().filter(record=>['posted','draft'].includes(record.status)),seen=new Set(existing.map(record=>fingerprint(sheet,record))),comparisons=[...existing];
+        for(const row of rows.filter(row=>!row.skip)){
+            try{
+                const raw={...Object.fromEntries(columns[sheet].map(field=>[key(field),String(row.values[field] ?? '').trim()])),_row:row._row};
+                const record=build(sheet,raw,{...context,guided:true}),signature=fingerprint(sheet,record);
+                if(seen.has(signature))errors.push({row:row._row,message:'Duplicate entry: already in this file or the current sheet. Skip this row.'});
+                else if(comparisons.some(other=>other.date===record.date&&(other.customer || other.supplier)?.trim().toLowerCase()===(record.customer || record.supplier)?.trim().toLowerCase()&&other.gross===record.gross&&(!String(other.reference || '').trim()||!String(record.reference || '').trim())))warnings.push({row:row._row,message:'Possible duplicate: same party, date and amount with a missing reference. Review and acknowledge this row or skip it.'});
+                seen.add(signature);comparisons.push(record);records.push(record);
+            }catch(problem){errors.push({row:row._row,message:problem.message});}
+        }
+        if(!records.length&&!errors.length)errors.push({row:0,message:'No rows are included. Unskip at least one row.'});
+        if(!errors.length&&records.length)errors.push(...context.ledger.previewImport(sheet,records).errors);
+        return {records,errors,warnings,rowCount:rows.length,included:rows.filter(row=>!row.skip).length,totalGross:records.reduce((sum,record)=>sum+record.gross,0)};
+    }
+    const api={columns,methods,parseCsv,parseClipboard,template,amount,date,fingerprint,preview,guessMapping,mapRows,previewMapped};if(typeof module!=='undefined'&&module.exports)module.exports=api;if(root)root.SheetImport=api;
 })(typeof window==='undefined'?null:window);

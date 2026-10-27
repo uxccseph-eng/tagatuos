@@ -23,7 +23,7 @@ function amountToCents(text) {
 }
 function amounts(entry) {
     const net = window.KontaduryaLedger.taxAmounts(entry.gross,entry.tax).net;
-    const rate = Number(entry.cwt.match(/(\d+(?:\.\d+)?)%/)?.[1] || 0);
+    const rate = Number(String(entry.cwt || '').match(/(\d+(?:\.\d+)?)%/)?.[1] || 0);
     return {net, vat:entry.gross-net, cwt:Math.round(net * rate / 100)};
 }
 const rowTemplate = tbody.querySelector('tr').cloneNode(true);
@@ -85,7 +85,7 @@ function renderEntry(entry, existingRow) {
             const field=editorFields[index].cloneNode(true);field.removeAttribute('id');field.removeAttribute('list');field.removeAttribute('aria-controls');field.disabled=false;field.readOnly=false;field.value=key==='gross'?(entry.gross?(entry.gross/100).toFixed(2):''):entry[key] || '';
             field.setAttribute('aria-label',entry.number+' '+fieldNames[index]);
             if(field.tagName==='SELECT')window.SheetMasters.selectValue(field,entry[key]);
-            const save=()=>{entry[key]=key==='gross'?amountToCents(field.value) || 0:field.value;entry.draftTouched=true;entry.draftSaved=false;updateSheet();};
+            const save=event=>{entry[key]=key==='gross'?amountToCents(field.value) || 0:field.value;if(key==='customer'&&event.type==='change'){const suggestion=window.SheetMasters.partyDefaults(entry,true);Object.assign(entry,suggestion.values);for(const [suggestedKey,value] of Object.entries(suggestion.values)){const target=row.querySelector('[aria-label="'+entry.number+' '+fieldNames[keys.indexOf(suggestedKey)]+'"]');if(target){window.SheetMasters.selectValue(target,value);target.dispatchEvent(new Event('masters:sync'));}}if(suggestion.sourceNumber)announce('Suggested account and tax settings from '+suggestion.sourceNumber+'. Review before posting.');}entry.draftTouched=true;entry.draftSaved=false;updateSheet();};
             field.addEventListener('input',save);field.addEventListener('change',save);cells[index===0?2:index+3].replaceChildren(field);
         });
     }
@@ -162,7 +162,7 @@ function openDraft(copy=null,confirmed=false) {
     const pending=window.DraftLeaveGuard.continueDraft(entries.values(),entry=>{window.WorkingPeriod.revealDate(entry.date);workingPeriod=window.WorkingPeriod.current().from.slice(0,7);statusFilter.value='all';filterInput.value='';globalSearch.value='';updatePeriod();entry.row.scrollIntoView({block:'nearest'});entry.row.querySelector('[aria-label="'+entry.number+' Customer"]')?.focus();announce('Continue '+entry.number+'. Only one draft is allowed on this page.');});if(pending)return pending;
     if(!draft.hidden){editorFields[1].focus();announce('Continue the current draft. Only one draft is allowed on this page.');return;}
     const date = copy?.date || window.WorkingPeriod.entryDate();
-    const values = [date,copy?.customer || '',copy ? (copy.gross/100).toFixed(2) : '',copy?.tax || '12% VAT',copy?.account || '4020 · Sales - Services',copy?.cwt || 'None',copy?.vatCwt || 'None',copy?.terms || 'Cash',copy?.reference || '',copy?.classification || 'Regular',copy?.bank || '1010 · Cash on Hand',copy?.memo || ''];
+    const values = [date,copy?.customer || '',copy ? (copy.gross/100).toFixed(2) : '',copy?.tax || '',copy?.account || '',copy?.cwt || '',copy?.vatCwt || '',copy?.terms || 'Cash',copy?.reference || '',copy?.classification || 'Regular',copy?.bank || '1010 · Cash on Hand',copy?.memo || ''];
     editorFields.forEach((field,index)=>{if(field.tagName==='SELECT')window.SheetMasters.selectValue(field,values[index]);else field.value=values[index];field.setCustomValidity('');});
     inlineBaseline=JSON.stringify(editorFields.map(field=>field.value));
     inlineDraftStarted=true;
@@ -194,7 +194,7 @@ function saveDraft() {
 }
 editorFields.forEach((field,index)=>{
     field.addEventListener('input',()=>{field.setCustomValidity('');autoSaveSalesForm(false);});
-    field.addEventListener('change',()=>autoSaveSalesForm(false));
+    field.addEventListener('change',()=>{if(index===1)suggestSalesFields(false);autoSaveSalesForm(false);});
     field.addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();if(index<editorFields.length-1)editorFields[index+1].focus();else saveDraft();}});
 });
 draft.addEventListener('click',event=>{
@@ -368,7 +368,7 @@ function openEntryDrawer(entry=null,asNew=false,enableEdit=false) {
     statusBadge.textContent=badgeStatus==='draft'?'Drafting':badgeStatus==='posted'?'Posted':'Voided';
     document.getElementById('drawer-subtitle').textContent = editingEntry ? `${editingEntry.status === 'void' ? 'Voided' : editingEntry.status === 'posted' ? 'Posted (demo)' : 'Draft'} · ${locked ? 'View entry' : 'Editing entry'} · Tab only` : 'Single-line demo entry · Saved only in this tab';
     const defaultDate = window.WorkingPeriod.matches(editorFields[0].value) ? editorFields[0].value : window.WorkingPeriod.entryDate();
-    const values = {'Date':entry?.date || defaultDate,'Customer':entry?.customer || '', 'Gross amount':entry ? (entry.gross/100).toFixed(2) : '', 'Tax type':entry?.tax || '12% VAT','Revenue account':entry?.account || '4020 · Sales - Services','Income withholding':entry?.cwt || 'None (0%)','VAT withholding':entry?.vatCwt || 'None','Terms':entry?.terms || 'Cash','Classification':entry?.classification || 'Regular','Invoice reference':entry?.reference || '', 'Deposit account':entry?.bank || '1010 · Cash on Hand','Description':entry?.memo || '', 'Particulars':entry?.notes || ''};
+    const values = {'Date':entry?.date || defaultDate,'Customer':entry?.customer || '', 'Gross amount':entry ? (entry.gross/100).toFixed(2) : '', 'Tax type':entry?.tax ?? '','Revenue account':entry?.account ?? '','Income withholding':entry?.cwt ?? '','VAT withholding':entry?.vatCwt ?? '','Terms':entry?.terms || 'Cash','Classification':entry?.classification || 'Regular','Invoice reference':entry?.reference || '', 'Deposit account':entry?.bank || '1010 · Cash on Hand','Description':entry?.memo || '', 'Particulars':entry?.notes || ''};
     Object.entries(values).forEach(([name,value]) => {
         setEntryValue(name,value);
         const field = entryFields[name];
@@ -379,6 +379,7 @@ function openEntryDrawer(entry=null,asNew=false,enableEdit=false) {
     entryFields['Settlement amount'].readOnly = locked;
     if(!entry)setEntryValue('Revenue account','');
     document.getElementById('entry-validation').textContent = '';
+    document.getElementById('entry-suggestion-status')?.replaceChildren();
     document.getElementById('entry-new-customer').hidden = locked;
     document.getElementById('entry-match-gross').hidden = locked;
     document.getElementById('save-draft-btn').hidden = locked;
@@ -434,9 +435,17 @@ function saveEntryDrawer(posted=false) {
     entryDrawer.close();
     announce(`${entry.number} ${posted?'marked Posted (demo)':editingEntry?'updated':'saved as draft'} in this tab. No real ledger entry was created.`);
 }
+function suggestSalesFields(popup){
+    if(popup && (!entryIsEditable || editingEntry && editingEntry.status!=='draft'))return;
+    const mapping={customer:'Customer',account:'Revenue account',tax:'Tax type',cwt:'Income withholding',vatCwt:'VAT withholding'};
+    const record={status:'draft',...Object.fromEntries(Object.entries(mapping).map(([key,name])=>[key,popup?entryFields[name].value:editorFields[fieldNames.indexOf(name)].value]))};
+    const suggestion=window.SheetMasters.partyDefaults(record,true);
+    for(const [key,value] of Object.entries(suggestion.values)){const target=popup?entryFields[mapping[key]]:editorFields[fieldNames.indexOf(mapping[key])];if(popup)setEntryValue(mapping[key],value);else window.SheetMasters.selectValue(target,value);target.dispatchEvent(new Event('masters:sync'));}
+    if(suggestion.sourceNumber){const message='Suggested account and tax settings from '+suggestion.sourceNumber+'. Review before posting.';announce(message);if(popup){let notice=document.getElementById('entry-suggestion-status');if(!notice){notice=document.createElement('p');notice.id='entry-suggestion-status';notice.className='text-body-sm text-secondary';notice.setAttribute('role','status');document.getElementById('entry-validation').before(notice);}notice.textContent=message;}}
+}
 Object.values(entryFields).forEach(field => {
     field.addEventListener('input',()=>{field.setCustomValidity('');updateEntryPreview();autoSaveSalesForm(true);});
-    field.addEventListener('change',()=>{updateEntryPreview();autoSaveSalesForm(true);});
+    field.addEventListener('change',()=>{if(field===entryFields.Customer)suggestSalesFields(true);updateEntryPreview();autoSaveSalesForm(true);});
 });
 document.getElementById('new-entry-form').addEventListener('submit',event=>{event.preventDefault();saveEntryDrawer(false);});
 document.getElementById('entry-match-gross').addEventListener('click',()=>{

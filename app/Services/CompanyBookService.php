@@ -43,7 +43,9 @@ class CompanyBookService
                 }
 
                 $company = Company::query()->create(['name' => $name, 'slug' => $slug]);
+                $company->forceFill(['organization_owner_id' => $owner->id])->save();
                 $company->users()->attach($owner->getKey(), ['role' => 'owner']);
+                app(OrganizationTeamService::class)->inherit($company, $owner);
 
                 return $this->findAccessibleBook($owner, $company->getKey());
             }, attempts: 3);

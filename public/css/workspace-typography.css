@@ -1,0 +1,41 @@
+:root {
+    --workspace-ui-font: "Segoe UI", Arial, sans-serif;
+    --workspace-title-size: 28px;
+    --workspace-title-leading: 36px;
+}
+body { font-family: var(--workspace-ui-font); font-size: 14px; line-height: 1.5; }
+:is(.sheet-heading-title, .books-title-row, .masters-title, .settings-page, .page-heading, .dash-title-line) h1,
+#workspaceMain h1 {
+    font-family: var(--workspace-ui-font) !important;
+    font-size: var(--workspace-title-size) !important;
+    line-height: var(--workspace-title-leading) !important;
+    font-weight: 650 !important;
+    letter-spacing: -.025em !important;
+}
+:is(#sales-sidebar, #sidebarNav) nav a,
+:is(#sales-sidebar, #sidebarNav) nav a > span:not(.material-symbols-outlined) {
+    font-family: var(--workspace-ui-font) !important;
+    font-size: 13px !important;
+    line-height: 20px !important;
+}
+:is(.sheet-tabs, .books-tabs-wrap, .masters-tabs, .account-tabs) a,
+.account-tabs > span {
+    font-family: var(--workspace-ui-font) !important;
+    font-size: 12px !important;
+    line-height: 18px !important;
+    font-weight: 600 !important;
+}
+:is(#sales-header, body > header.fixed, .account-nav) :is(button, a, input) {
+    font-family: var(--workspace-ui-font);
+    font-size: 12px;
+    line-height: 18px;
+}
+.sheet-company-line, .books-title-row > div > p, .page-heading > div > p {
+    font-family: var(--workspace-ui-font);
+    font-size: 12px;
+    line-height: 18px;
+}
+.sheet-tabs .sheet-tab-count { display: none !important; }
+@media (max-width: 650px) {
+    :root { --workspace-title-size: 24px; --workspace-title-leading: 32px; }
+}

@@ -24,7 +24,7 @@ class PayrollController extends Controller
         }
 
         $employees = Schema::hasTable('employees')
-            ? Employee::query()->where('workspace_key', ChartAccount::workspaceKey($company))->where('archived', false)->orderBy('name')->get(['id', 'code', 'name'])
+            ? Employee::query()->where('workspace_key', ChartAccount::workspaceKey($company))->where('archived', false)->orderBy('name')->get(['id', 'code', 'name', 'classification'])
             : [];
 
         return view('payroll', ['company' => $company, 'employees' => $employees]);

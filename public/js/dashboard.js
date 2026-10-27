@@ -48,7 +48,7 @@ themeButton.addEventListener('click', () => {
 const workspaceDialog = document.getElementById('workspace-dialog');
 const searchDialog = document.getElementById('workspace-search');
 function openWorkspaceTopic(topic) {
-    const page={Sales:'sales',Sheets:'sales',Collections:'collections',Purchases:'purchases',Payments:'payments',Journal:'journal',CWT:'cwt',WTP:'wtp',Books:'books',Masters:'masters','Financial Reports':'reports',Reports:'reports'}[topic];
+    const page={Documents:'documents',Scans:'documents','My work':'work',Sales:'sales',Sheets:'sales',Collections:'collections',Purchases:'purchases',Payments:'payments',Journal:'journal',CWT:'cwt',WTP:'wtp',Books:'books',Masters:'masters','Financial Reports':'reports',Reports:'reports'}[topic];
     if (page) {
         window.location.assign(dashboardRoutes[page]);
         return;
@@ -82,7 +82,7 @@ function renderSearchResults() {
     results.replaceChildren();
     const matches = searchablePages.filter((label) => label.toLowerCase().includes(searchInput.value.trim().toLowerCase()));
     matches.forEach((label) => {
-        const pageKey={Sales:'sales',Sheets:'sales',Collections:'collections',Purchases:'purchases',Payments:'payments',Journal:'journal',Books:'books',Masters:'masters','Financial Reports':'reports',Reports:'reports'}[label];
+        const pageKey={'My work':'work',Sales:'sales',Sheets:'sales',Collections:'collections',Purchases:'purchases',Payments:'payments',Journal:'journal',Books:'books',Masters:'masters','Financial Reports':'reports',Reports:'reports'}[label];
         const isPage = Boolean(pageKey)||['Home','Settings'].includes(label);
         const item = document.createElement(isPage ? 'a' : 'button');
         item.className = 'block w-full rounded-lg px-4 py-3 text-left text-sm hover:bg-slate-100 dark:hover:bg-slate-800';

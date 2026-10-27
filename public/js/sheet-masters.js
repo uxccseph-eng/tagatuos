@@ -33,13 +33,50 @@
         if(atc&&(!record.ewtCode||previousAccount!==undefined&&previousAccount!==record.account)){record.ewtCode=atc.code;record.ewt=Number(atc.rate);}
         return record;
     }
+    function partyDefaults(record,sales=false){
+        const result={values:{},sourceNumber:''};
+        if(!catalog || record.status && record.status!=='draft')return result;
+        const name=String(record[sales?'customer':'supplier'] || '').trim().toLowerCase();
+        const matches=parties(sales?'Customer':'Supplier').filter(item=>item.name.trim().toLowerCase()===name);
+        if(matches.length!==1)return result;
+        const selected=matches[0],digits=value=>String(value || '').replace(/\D/g,'');
+        const rows=window.CompanyLedgerDatabase?(window.CompanyLedgerDatabase.state?.[sales?'sales':'purchases'] || []):(sales?window.KontaduryaLedger?.sales():window.KontaduryaLedger?.purchases()) || [];
+        const candidates=rows.map((row,index)=>({row,index,time:Date.parse(row.postedAt || '') || Date.parse(row.date || '') || 0})).filter(({row})=>{
+            if(row.status!=='posted' || record.id!==undefined && String(row.id)===String(record.id))return false;
+            if(row.partyId!==undefined && row.partyId!==null && row.partyId!=='')return String(row.partyId)===String(selected.id);
+            if(String(row[sales?'customer':'supplier'] || '').trim().toLowerCase()!==name)return false;
+            const tin=row[sales?'customerTin':'supplierTin'] || row.tin;
+            return !tin || Boolean(selected.tin) && digits(tin)===digits(selected.tin);
+        }).sort((a,b)=>b.time-a.time || b.index-a.index);
+        const previous=candidates[0]?.row;
+        if(!previous)return result;
+        const empty=value=>value===undefined || value===null || String(value).trim()==='';
+        if(empty(record.account)){
+            const code=String(previous.account || '').split(' · ')[0].trim();
+            const account=active(window.WorkspaceAccounts).find(item=>String(item.code)===code && (sales?item.type==='Income':['Asset','Expense'].includes(item.type)));
+            if(account)result.values.account=account.code+' · '+account.name;
+        }
+        if(empty(record.tax) && !empty(previous.tax) && (String(previous.tax).startsWith('TAX|') || Object.values(aliases).flat().includes(previous.tax))){
+            const code=taxInfo(previous.tax).code;
+            const tax=taxChoices(sales).find(item=>item.code===code);
+            if(tax)result.values.tax=tax.value;
+        }
+        for(const vat of [false,true]){
+            const field=sales?(vat?'vatCwt':'cwt'):(vat?'wvat':'ewt'),codeField=field+'Code';
+            if(!empty(record[field]) || !sales && !empty(record[codeField]))continue;
+            const atc=atcChoice(sales?previous[field]:previous[codeField],vat);
+            if(atc){result.values[field]=sales?atc.code+' · '+Number(atc.rate)+'%':Number(atc.rate);if(!sales)result.values[codeField]=atc.code;}
+        }
+        if(Object.keys(result.values).length)result.sourceNumber=String(previous.number || 'last posted entry');
+        return result;
+    }
     function bankChoices(){const accounts=active(window.WorkspaceAccounts).filter(account=>account.is_cash_bank);return accounts.map(account=>{const banks=active(catalog?.banks).filter(bank=>bank.chart_account_id===account.id);return {value:account.code+' · '+account.name,label:account.code+' · '+account.name+(banks.length?' — '+banks.map(bank=>bank.name+' ('+bank.currency+')').join(', '):'')};});}
     function selectValue(select,value,code){select.querySelectorAll('[data-master-saved]').forEach(option=>option.remove());if(!code&&Number(value)>0&&Array.from(select.options).some(option=>option.dataset.masterCode)){const missing=new Option(Number(value)+'% · ATC not recorded',String(value));missing.dataset.masterSaved='true';select.add(missing);missing.selected=true;return;}let option=Array.from(select.options).find(item=>item.value===String(value)&&(!code||item.dataset.masterCode===code));if(!option&&code){option=new Option(code+' · '+value+'% (saved)',String(value));option.dataset.masterCode=code;option.dataset.masterSaved='true';select.add(option);}if(!option&&value!==undefined&&value!==null&&String(value)!==''){option=new Option(taxLabel(String(value))+' (saved)',String(value));option.dataset.masterSaved='true';select.add(option);}if(option){option.selected=true;}else{select.value=String(value ?? '');}}
     const taxLabel=value=>String(value || '').startsWith('TAX|')?taxInfo(value).code+' · '+taxInfo(value).rate+'% '+taxInfo(value).kind:value;
-    window.SheetMasters={formatTin,taxLabel,taxInfo,taxAmounts,taxChoices,parties,party,searchParties,partySnapshot,atcCodes,rate,allowedRate,atcChoice,withholdingError,applyAccountWithholding,bankChoices,selectValue,hasCatalog:Boolean(catalog)};
+    window.SheetMasters={formatTin,taxLabel,taxInfo,taxAmounts,taxChoices,parties,party,searchParties,partySnapshot,atcCodes,rate,allowedRate,atcChoice,withholdingError,applyAccountWithholding,partyDefaults,bankChoices,selectValue,hasCatalog:Boolean(catalog)};
     if(!catalog)return;
     const seen=new WeakSet();
-    function options(select,choices){const previous=select.value,previousCode=select.selectedOptions[0]?.dataset.masterCode,placeholder=Array.from(select.options).find(option=>option.value==='');select.replaceChildren();if(placeholder)select.add(placeholder);for(const item of choices){const option=new Option(item.label,item.value);if(item.code)option.dataset.masterCode=item.code;select.add(option);}selectValue(select,previous,previousCode);}
+    function options(select,choices){const previous=select.value,previousCode=select.selectedOptions[0]?.dataset.masterCode,placeholder=Array.from(select.options).find(option=>option.value==='') || (['tax','ewt','wvat'].includes(select.dataset.masterKind)?new Option('Choose from Masters…',''):null);select.replaceChildren();if(placeholder)select.add(placeholder);for(const item of choices){const option=new Option(item.label,item.value);if(item.code)option.dataset.masterCode=item.code;select.add(option);}selectValue(select,previous,previousCode);}
     function configure(field){if(seen.has(field)||field.dataset.mastersIgnore==='true')return;seen.add(field);const tag=field.tagName,label=field.getAttribute('aria-label') || '',purchase=field.dataset.purchaseField,wtp=field.dataset.wtpField;
         if(tag==='INPUT'&&/tin/i.test([label,field.name,...Object.values(field.dataset)].join(' '))){field.placeholder='000-000-000-00000';field.maxLength=17;field.addEventListener('input',()=>{if(field.readOnly||field.disabled)return;const digits=field.value.replace(/\D/g,'');field.value=[digits.slice(0,3),digits.slice(3,6),digits.slice(6,9),digits.slice(9)].filter(Boolean).join('-');});field.addEventListener('blur',()=>{if(field.readOnly||field.disabled||(field.required&&field.value.replace(/\D/g,'').length<14))return;const formatted=formatTin(field.value);if(formatted!==field.value){field.value=formatted;field.dispatchEvent(new Event('input',{bubbles:true}));field.dispatchEvent(new Event('change',{bubbles:true}));}});}
         if(tag==='DATALIST'){const id=field.id;let kind=/supplier|payee/.test(id)?'Supplier':/customer/.test(id)?'Customer':null;if(kind||/journal.*part/.test(id)){field.replaceChildren(...parties(kind).map(item=>new Option(item.name,item.name)));}return;}

@@ -26,7 +26,7 @@ class BooksController extends Controller
 
         $bookRoutes = [];
         $bookRoutes['lapsing'] = route('lapsing');
-        foreach (['sales', 'collections', 'cwt', 'purchases', 'payments', 'wtp', 'journal'] as $sheet) {
+        foreach (['sales', 'collections', 'cwt', 'purchases', 'payments', 'wtp', 'journal', 'payroll'] as $sheet) {
             $bookRoutes[$sheet] = route('sheets.'.$sheet);
         }
 

@@ -13,9 +13,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 #[Hidden(['workspace_key'])]
 class Company extends Model
 {
-    public const ROLES = ['owner', 'accountant', 'staff'];
+    public const ROLES = ['owner', 'manager', 'accountant', 'staff'];
 
-    public const RESERVED_SLUGS = ['account', 'api', 'books', 'company', 'dashboard', 'generate', 'lapsing', 'login', 'logout', 'masters', 'password', 'portal', 'preview', 'register', 'reports', 'settings', 'sheets', 'signin', 'signup', 'system', 'tax-reports', 'team', 'up'];
+    public const RESERVED_SLUGS = ['account', 'api', 'books', 'company', 'dashboard', 'documents', 'generate', 'lapsing', 'login', 'logout', 'masters', 'my-work', 'password', 'portal', 'preview', 'register', 'reports', 'settings', 'sheets', 'signin', 'signup', 'system', 'tax-reports', 'team', 'up'];
 
     /** @use HasFactory<CompanyFactory> */
     use HasFactory;

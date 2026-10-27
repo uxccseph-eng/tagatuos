@@ -22,8 +22,9 @@
         </div>
     </div>
     <div class="sheet-utility-actions">
+        @if(auth()->check() && isset($company['company_id']))<a class="sheet-document-inbox" href="{{ route('documents.index', ['companyId' => $company['company_id']]) }}"><span class="material-symbols-outlined" aria-hidden="true">folder_open</span><span>Documents</span></a>@endif
         @foreach(['ocr' => ['auto_awesome', 'Scan OCR'], 'import' => ['upload_file', 'Import'], 'shortcuts' => ['keyboard', 'Shortcuts (?)']] as $action => [$icon, $label])
-            @continue($sheet === 'payroll' && $action === 'ocr')
+            @continue($action === 'ocr')
             <button type="button" @if($action === 'import') data-sheet-import @endif @if($sheet === 'sales') data-sales-action="{{ $action }}" @elseif($sheet === 'collections') data-collection-action="{{ $action }}" @else data-{{ $sheet }}-info="{{ ['ocr' => 'OCR', 'import' => 'Import', 'shortcuts' => 'Shortcuts'][$action] }}" @endif><span class="material-symbols-outlined" aria-hidden="true">{{ $icon }}</span><span>{{ $label }}</span>@if($action === 'ocr')<span class="sheet-ai-badge">AI</span>@endif</button>
         @endforeach
     </div>

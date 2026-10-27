@@ -9,13 +9,13 @@
     const money = value => new Intl.NumberFormat('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2}).format(value / 100);
     const escape = value => String(value ?? '').replace(/[&<>"']/g, character => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[character]));
     const clone = value => JSON.parse(JSON.stringify(value));
-    const labels = ['Basic', 'Taxable Allow', 'De Minimis', '13th & Other Benefits', 'SSS-EE', 'PHIC-EE', 'HDMF-EE', 'WTax', 'SSS-ER', 'PHIC-ER', 'HDMF-ER'];
+    const labels = ['Basic', 'Taxable Allow', 'De Minimis', '13th & Other Benefits', 'SSS-EE', 'PHIC-EE', 'HDMF-EE', 'WTax (actual)', 'SSS-ER', 'PHIC-ER', 'HDMF-ER'];
     const selected = new Set();
-    let details = null, remittanceDialog = null;
+    let details = null, remittanceDialog = null, payrollImportDialog = null;
     let records = [], status = 'all', descending = false, voidAction = null, storageAvailable = true;
     const announce = message => { element('payroll-status').textContent = message; };
     try {
-        const stored = JSON.parse(sessionStorage.getItem(key) || '[]');
+        const stored = window.CompanyLedger ? window.CompanyLedger.payroll() : JSON.parse(sessionStorage.getItem(key) || '[]');
         if (!Array.isArray(stored) || stored.some(run => !run.id || !['draft', 'posted', 'void'].includes(run.status) || !Array.isArray(run.employees))) throw new Error('Invalid payroll data');
         records = stored;
     } catch (exception) {
@@ -24,9 +24,11 @@
     }
     function store(next) {
         if (!storageAvailable) { announce('Payroll storage is unavailable. Reload this tab before editing.'); return false; }
-        const numbered = api.renumber(next);
+        const numbered = api.renumber(next, Boolean(window.CompanyLedger));
         try {
-            sessionStorage.setItem(key, JSON.stringify(numbered.filter(run => run.status !== 'draft' || run.draftTouched)));
+            const saved = numbered.filter(run => run.status !== 'draft' || run.draftTouched);
+            if (window.CompanyLedger) window.CompanyLedger.savePayroll(saved);
+            else sessionStorage.setItem(key, JSON.stringify(saved));
             records = numbered;
             details?.refresh();
             return true;
@@ -78,27 +80,28 @@
                 <td data-flag title="${escape(flag)}">${flag ? (run.status === 'void' ? 'Voided' : 'Review') : '—'}</td>
                 <td class="payroll-actions"><button type="button" class="payroll-more-button" data-action="more" aria-label="More options for ${run.number}" title="More options" aria-haspopup="menu" aria-expanded="false"><span class="material-symbols-outlined" aria-hidden="true">more_horiz</span></button></td>
             </tr><tr class="payroll-detail" data-run="${run.id}"><td colspan="12"><section class="payroll-employees" aria-label="Employees for ${run.number}">
-                <h2>Employee breakdown · ${run.number}</h2><p class="payroll-calculation-error" data-calculation-error role="alert">${escape(run.automationError || '')}</p><div class="payroll-employee-scroll"><table aria-label="Employees for ${run.number}"><thead><tr><th>Employee</th><th>Pay Type</th>${labels.map(label => `<th>${label}</th>`).join('')}${additionalFields.map(field => `<th>${salaryBaseLabels[field]}</th>`).join('')}<th>Net Pay</th><th>Employee actions</th></tr></thead>
-                <tbody>${run.employees.map((employee, index) => employeeRow(employee, index, disabled, run.automation, additionalFields)).join('') || `<tr><td colspan="${15 + additionalFields.length}" class="payroll-empty">No employees yet. Add an employee to begin.</td></tr>`}</tbody></table></div>
+                <h2>Employee breakdown · ${run.number}</h2><p class="payroll-calculation-error" data-calculation-error role="alert">${escape(run.automationError || '')}</p><div class="payroll-employee-scroll"><table aria-label="Employees for ${run.number}"><thead><tr><th>Employee</th><th>Pay Type</th>${labels.map(label => `<th>${label}</th>`).join('')}${additionalFields.map(field => `<th>${salaryBaseLabels[field]}</th>`).join('')}${run.clientPayrollImport ? '<th>Periodic reference tax</th><th>Actual minus reference</th><th>Review note</th>' : ''}<th>Net Pay</th><th>Employee actions</th></tr></thead>
+                <tbody>${run.employees.map((employee, index) => employeeRow(employee, index, disabled, run.automation, additionalFields, run.clientPayrollImport)).join('') || `<tr><td colspan="${15 + additionalFields.length + (run.clientPayrollImport ? 3 : 0)}" class="payroll-empty">No employees yet. Add an employee to begin.</td></tr>`}</tbody></table></div>
                 ${disabled ? '' : button('employee', 'Add employee', 'person_add')}<div class="payroll-totals" data-totals>${totalsMarkup(run)}</div>
             </section></td></tr>`;
         }).join('') : '<tr><td colspan="12" class="payroll-empty">No payroll runs in this working period. Select Add run to begin.</td></tr>';
         for(const run of runs.filter(item=>item.status==='draft')){
             const row=[...body.children].find(node=>node.dataset.run===run.id&&!node.classList.contains('payroll-detail'));
             window.SheetPosting.draftActions(row.querySelector('.payroll-actions'),run,{
-                save:()=>{const next=records.map(item=>item.id===run.id?{...item,draftTouched:true,draftSaved:true}:item);if(store(next)){render();announce(run.number+' draft saved in this browser tab.');}},
+                save:()=>{const next=records.map(item=>item.id===run.id?{...item,draftTouched:true,draftSaved:true}:item);if(store(next)){render();announce(run.number+(window.CompanyLedger?' draft queued for company database saving.':' draft saved in this browser tab.'));}},
                 post:()=>post([run.id]),delete:()=>deleteRuns([run]),more:event=>entryOptions(run,event.currentTarget)
             });
         }
         updateToolbar();
     }
-    function employeeRow(employee, index, disabled, automatic, additionalFields) {
+    function employeeRow(employee, index, disabled, automatic, additionalFields, imported = false) {
         let net = '—';
         try { net = money(api.totals(employee).net); } catch (exception) { /* Invalid input remains visible for correction. */ }
         return `<tr data-employee="${index}"><td><input class="employee-name" data-employee-field="name" aria-label="Employee name" list="payroll-employee-options" value="${escape(employee.name)}" maxlength="150" placeholder="Search employee name" ${disabled ? 'disabled' : ''}></td>
             <td><select data-employee-field="payType" aria-label="Pay Type" ${disabled ? 'disabled' : ''}>${['Taxable', 'Non-taxable', 'Minimum Wage Earner'].map(type => `<option ${employee.payType === type ? 'selected' : ''}>${type}</option>`).join('')}</select></td>
             ${api.amountFields.map((field, position) => `<td><input class="employee-amount" data-employee-field="${field}" aria-label="${labels[position]}" type="text" inputmode="decimal" value="${escape(employee[field] ?? '')}" ${disabled ? 'disabled' : ''} ${automatic && [...automation.fields, 'withholding'].includes(field) ? 'readonly aria-readonly="true"' : ''} placeholder="0.00"></td>`).join('')}
             ${additionalFields.map(field => `<td><input class="employee-amount" data-employee-field="${field}" aria-label="${salaryBaseLabels[field]}" inputmode="decimal" value="${escape(employee[field] ?? '')}" ${disabled ? 'disabled' : ''} placeholder="${field === 'taxableBenefits' ? 'Review taxable portion' : 'Monthly salary base'}"></td>`).join('')}
+            ${imported ? `<td class="payroll-money">${employee.withholdingReview ? money(employee.withholdingReview.reference) : '—'}</td><td class="payroll-money">${employee.withholdingReview ? money(employee.withholdingReview.difference) : '—'}</td><td title="${escape(employee.withholdingReview?.note || '')}">${escape(employee.withholdingReview?.note || 'No difference / regular payroll')}</td>` : ''}
             <td class="payroll-money" data-employee-net>${net}</td><td>${disabled ? '—' : button('remove-employee', 'Remove', 'person_remove')}</td></tr>`;
     }
     function updateToolbar() {
@@ -279,10 +282,10 @@
         const link = document.createElement('a'); link.href = url; link.download = filename; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
     }
     function exportCsv() {
-        const csvCell = value => `"${String(value ?? '').replace(/^[=+@\-\t\r]/, character => `'${character}`).replace(/"/g, '""')}"`;
-        const rows = [['Txn No', 'Status', 'Pay Date', 'Run Name', 'Period Start', 'Period End', 'Employee', 'Pay Type', ...labels, 'Net Pay', 'Frequency', 'Calculation', 'Contribution Share', 'Monthly Basic', 'Monthly SSS Compensation', 'Monthly HDMF Fund Salary', 'Taxable Benefits', 'Rate Version']];
+        const csvCell = value => `"${String(value ?? '').replace(/^\s*[=+@\-\t\r]/, character => `'${character}`).replace(/"/g, '""')}"`;
+        const rows = [['Txn No', 'Status', 'Pay Date', 'Run Name', 'Period Start', 'Period End', 'Employee', 'Pay Type', ...labels, 'Net Pay', 'Frequency', 'Calculation', 'Contribution Share', 'Monthly Basic', 'Monthly SSS Compensation', 'Monthly HDMF Fund Salary', 'Taxable Benefits', 'Rate Version', 'Periodic Reference Tax', 'Actual Minus Reference', 'Review Note']];
         try {
-            for (const run of visible()) for (const employee of run.employees) rows.push([run.number, run.status, run.date, run.name, run.periodStart, run.periodEnd, employee.name, employee.payType, ...api.amountFields.map(field => (api.cents(employee[field]) / 100).toFixed(2)), (api.totals(employee).net / 100).toFixed(2), run.frequency || 'monthly', run.automation ? 'Automatic' : 'Manual', run.contributionShare ?? '', employee.monthlyBasic ?? '', employee.monthlyCompensation ?? '', employee.monthlyFundSalary ?? '', employee.taxableBenefits ?? '', run.rateVersion || '']);
+            for (const run of visible()) for (const employee of run.employees) rows.push([run.number, run.status, run.date, run.name, run.periodStart, run.periodEnd, employee.name, employee.payType, ...api.amountFields.map(field => (api.cents(employee[field]) / 100).toFixed(2)), (api.totals(employee).net / 100).toFixed(2), run.frequency || 'monthly', run.automation ? 'Automatic' : 'Manual', run.contributionShare ?? '', employee.monthlyBasic ?? '', employee.monthlyCompensation ?? '', employee.monthlyFundSalary ?? '', employee.taxableBenefits ?? '', run.rateVersion || '', employee.withholdingReview ? money(employee.withholdingReview.reference) : '', employee.withholdingReview ? money(employee.withholdingReview.difference) : '', employee.withholdingReview?.note || '']);
             download(rows.map(row => row.map(csvCell).join(',')).join('\r\n'), 'payroll.csv'); announce('Visible payroll runs exported.');
         } catch (exception) { announce('Correct invalid amounts before exporting.'); }
     }
@@ -315,37 +318,18 @@
         if (!store(records.filter(run => run.status !== 'draft'))) throw new Error('Could not discard payroll draft.');
     }});
     function openImport() {
-        showInfo('Import payroll', 'Use one row per employee. All rows must belong to the same run. Preview checks the entire file before posting.');
-        const content = element('payroll-dialog-description');
-        const controls = document.createElement('div');
-        controls.innerHTML = '<p><button type="button" data-template>Download template</button></p><label>Payroll CSV<input type="file" accept=".csv,text/csv" data-file></label><pre data-preview style="white-space:pre-wrap;margin-top:12px"></pre>';
-        content.append(controls);
-        const headers = api.importHeaders;
-        controls.querySelector('[data-template]').addEventListener('click', () => {
-            const range = window.WorkingPeriod.current();
-            download(headers.join(',') + '\r\n' + [window.WorkingPeriod.entryDate(), 'Monthly payroll', range.from, range.to, 'Sample employee', 'Taxable', '20000', ...Array(10).fill('0')].join(','), 'payroll-template.csv');
-        });
-        controls.querySelector('[data-file]').addEventListener('change', async event => {
-            element('payroll-confirm').hidden = true; voidAction = null;
-            const file = event.target.files[0]; if (!file) return;
-            try {
-                if (file.size > 1024 * 1024) throw new Error('Use a CSV file smaller than 1 MB.');
-                const rows = window.SheetImport.parseCsv(await file.text());
-                const run = api.importRun(rows, records);
-                const duplicate = () => records.some(item => item.date === run.date && item.periodStart === run.periodStart && item.periodEnd === run.periodEnd && item.status !== 'void');
-                const totals = api.runTotals(run);
-                controls.querySelector('[data-preview]').textContent = `${run.name}\nPay date: ${run.date}\nPeriod: ${run.periodStart} to ${run.periodEnd}\n${run.employees.map(employee => `${employee.name}: ${money(api.totals(employee).net)} net`).join('\n')}\nGross: ${money(totals.gross)} · Net: ${money(totals.net)}\nNo errors or duplicates found.`;
-                element('payroll-confirm').textContent = 'Post batch'; element('payroll-confirm').hidden = false;
-                voidAction = () => {
-                    try {
-                        if (duplicate() || records.some(item => item.status === 'draft')) throw new Error('A matching run or draft now exists. Preview the file again.');
-                        const next = api.renumber([...records, run]);
-                        if (!store(api.post(next, [run.id]))) return;
-                        window.WorkingPeriod.revealDate(run.date); render(); element('payroll-info').close(); announce('Payroll batch posted successfully.');
-                    } catch (exception) { element('payroll-dialog-error').textContent = exception.message; }
-                };
-            } catch (exception) { controls.querySelector('[data-preview]').textContent = exception.message; }
-        });
+        if(window.PayrollImportUI&&window.PayrollImport){
+            payrollImportDialog ||= window.PayrollImportUI.mount({records:()=>records,employees:JSON.parse(element('payroll-import-employees').textContent),config:JSON.parse(element('payroll-import-config').textContent),postRun:async run=>{
+                if(!window.CompanyLedger)throw Error('Open a company database book before importing payroll.');
+                const next=api.renumber([...records,run],true);
+                if(!store(api.post(next,[run.id])))throw Error('The imported payroll could not be staged.');
+                await window.CompanyLedger.flush();
+                if(window.CompanyLedger.pending())throw Error('Payroll is awaiting database confirmation.');
+                window.WorkingPeriod.revealDate(run.date);render();announce('Imported payroll posted using actual client deductions.');
+            }});
+            payrollImportDialog.open();return;
+        }
+        showInfo('Import payroll unavailable', 'Reload this page to load the client payroll comparison before importing.');
     }
     element('payroll-info').addEventListener('close', () => { voidAction = null; element('payroll-confirm').textContent = 'Confirm void'; });
     remittanceDialog = window.PayrollRemittanceDialog.mount({
@@ -381,6 +365,7 @@
             if (action === 'delete') deleteRuns([run]);
             if (action === 'duplicate') { details.close(); add(run); }
             if (action === 'edit' && run.status !== 'void') {
+                if (window.CompanyLedger && run.status === 'posted') { showInfo('Correct a posted run', 'Posted payroll records are preserved. Void this run and duplicate it to make a correction.'); return; }
                 try { window.PayrollRemittance.assertUnremitted(run.id, window.KontaduryaLedger); }
                 catch (exception) { showInfo('Void the remittance first', exception.message); return; }
                 const edit = () => {

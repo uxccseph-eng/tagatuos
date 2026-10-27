@@ -42,6 +42,7 @@ class TeamAccessService
                     $user->must_change_password = true;
                     $user->registration_status = 'approved';
                     $user->is_system_owner = false;
+                    $user->provisioned_by = $owner->id;
                     $user->save();
                 } else {
                     $user = User::query()->where('email', $data['email'])->lockForUpdate()->first();
@@ -53,8 +54,12 @@ class TeamAccessService
                     throw ValidationException::withMessages(['email' => 'This person is already a member of this book. Edit their access instead.']);
                 }
                 $tabs = TeamPermissions::allowed($data['role'], $data['tabs']);
-                $company->users()->attach($user->id, ['role' => $data['role'], 'allowed_tabs' => json_encode($tabs, JSON_THROW_ON_ERROR)]);
-                $this->record($company, $owner, $user, $password === null ? 'Member added' : 'Accountant provisioned', ['name' => $user->name, 'role' => $data['role'], 'tabs' => $tabs]);
+                if ((int) $company->organization_owner_id === (int) $owner->id) {
+                    app(OrganizationTeamService::class)->save($owner, $user, $data);
+                } else {
+                    $company->users()->attach($user->id, ['role' => $data['role'], 'allowed_tabs' => json_encode($tabs, JSON_THROW_ON_ERROR)]);
+                }
+                $this->record($company, $owner, $user, $password === null ? 'Member added' : 'Accountant provisioned', ['name' => $user->name, 'role' => $data['role'], 'tabs' => $tabs, 'scope' => $this->isOrganizationMember($owner, $company, $user->id) ? 'organization' : 'book']);
 
                 return ['user' => $user, 'password' => $password, 'url' => $password === null ? null : $this->newToken($company, $owner, $user)];
             }, attempts: 3);
@@ -71,10 +76,15 @@ class TeamAccessService
             $member = $this->editableMember($company, $userId);
             $tabs = TeamPermissions::allowed($data['role'], $data['tabs']);
             $suspended = (bool) ($data['is_suspended'] ?? false);
+            $scope = $this->isOrganizationMember($owner, $company, $userId) ? 'organization' : 'book';
             $before = ['role' => $member->pivot->role, 'tabs' => TeamPermissions::allowed($member->pivot->role, $member->pivot->allowed_tabs), 'suspended' => (bool) $member->pivot->is_suspended];
-            $company->users()->updateExistingPivot($userId, ['role' => $data['role'], 'allowed_tabs' => json_encode($tabs, JSON_THROW_ON_ERROR), 'is_suspended' => $suspended]);
+            if ($this->isOrganizationMember($owner, $company, $userId)) {
+                app(OrganizationTeamService::class)->save($owner, $member, $data);
+            } else {
+                $company->users()->updateExistingPivot($userId, ['role' => $data['role'], 'allowed_tabs' => json_encode($tabs, JSON_THROW_ON_ERROR), 'is_suspended' => $suspended]);
+            }
             $this->revokeTokens($company, $userId);
-            $this->record($company, $owner, $member, 'Access updated', ['name' => $member->name, 'before' => $before, 'after' => ['role' => $data['role'], 'tabs' => $tabs, 'suspended' => $suspended]]);
+            $this->record($company, $owner, $member, 'Access updated', ['name' => $member->name, 'scope' => $scope, 'before' => $before, 'after' => ['role' => $data['role'], 'tabs' => $tabs, 'suspended' => $suspended]]);
         }, attempts: 3);
     }
 
@@ -84,8 +94,13 @@ class TeamAccessService
             $company = $this->lockedCompany($owner, $companyId);
             $member = $this->editableMember($company, $userId);
             $this->revokeTokens($company, $userId);
-            $company->users()->detach($userId);
-            $this->record($company, $owner, $member, 'Member removed', ['name' => $member->name, 'role' => $member->pivot->role]);
+            $scope = $this->isOrganizationMember($owner, $company, $userId) ? 'organization' : 'book';
+            if ($this->isOrganizationMember($owner, $company, $userId)) {
+                app(OrganizationTeamService::class)->remove($owner, $member);
+            } else {
+                $company->users()->detach($userId);
+            }
+            $this->record($company, $owner, $member, 'Member removed', ['name' => $member->name, 'scope' => $scope, 'role' => $member->pivot->role]);
         }, attempts: 3);
     }
 
@@ -94,8 +109,8 @@ class TeamAccessService
         return DB::transaction(function () use ($owner, $companyId, $userId): string {
             $company = $this->lockedCompany($owner, $companyId);
             $member = $this->editableMember($company, $userId);
-            if ($member->pivot->is_suspended || ! $member->must_change_password || $member->type !== 'accountant' || $member->companies()->count() !== 1) {
-                throw ValidationException::withMessages(['member' => 'Setup links are only available for active, newly provisioned accountants with one assigned book.']);
+            if ($member->pivot->is_suspended || ! $member->must_change_password || $member->type !== 'accountant' || ! app(OrganizationTeamService::class)->canSetUp($owner, $member)) {
+                throw ValidationException::withMessages(['member' => 'Setup links are only available to the provisioning owner for active, newly provisioned accountants.']);
             }
             $url = $this->newToken($company, $owner, $member);
             $this->record($company, $owner, $member, 'Setup link issued', ['name' => $member->name]);
@@ -121,10 +136,17 @@ class TeamAccessService
 
     private function lockedCompany(User $owner, int $companyId): Company
     {
-        $company = Company::query()->lockForUpdate()->findOrFail($companyId);
+        $owner = User::query()->lockForUpdate()->findOrFail($owner->id);
         $this->ownedCompany($owner, $companyId);
+        app(OrganizationTeamService::class)->claimBooks($owner);
+        $company = Company::query()->lockForUpdate()->findOrFail($companyId);
 
         return $company;
+    }
+
+    private function isOrganizationMember(User $owner, Company $company, int $memberId): bool
+    {
+        return (int) $company->organization_owner_id === (int) $owner->id && app(OrganizationTeamService::class)->contains($owner, $memberId);
     }
 
     private function editableMember(Company $company, int $userId): User
@@ -143,6 +165,9 @@ class TeamAccessService
             $company->update(['slug' => 'book-'.$company->id.'-'.Str::lower(Str::random(8))]);
         }
         $this->revokeTokens($company, $member->id);
+        if ($this->isOrganizationMember($owner, $company, $member->id)) {
+            TeamLoginToken::query()->whereIn('company_id', app(OrganizationTeamService::class)->books($owner)->modelKeys())->where('user_id', $member->id)->whereNull('used_at')->update(['used_at' => now()]);
+        }
         $token = TeamLoginToken::query()->create(['company_id' => $company->id, 'user_id' => $member->id, 'issued_by' => $owner->id, 'expires_at' => now()->addMinutes(15)]);
 
         return URL::temporarySignedRoute('portal.access', $token->expires_at, ['firmSlug' => $company->slug, 'tokenId' => $token->id]);
@@ -156,6 +181,9 @@ class TeamAccessService
     /** @param array<string, mixed> $details */
     private function record(Company $company, User $actor, ?User $subject, string $action, array $details): void
     {
-        TeamEvent::query()->create(['company_id' => $company->id, 'actor_id' => $actor->id, 'subject_id' => $subject?->id, 'action' => $action, 'details' => $details]);
+        $books = ($details['scope'] ?? null) === 'organization' ? app(OrganizationTeamService::class)->books($actor) : collect([$company]);
+        foreach ($books as $book) {
+            TeamEvent::query()->create(['company_id' => $book->id, 'actor_id' => $actor->id, 'subject_id' => $subject?->id, 'action' => $action, 'details' => $details]);
+        }
     }
 }

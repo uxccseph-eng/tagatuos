@@ -11,7 +11,8 @@
   <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
   <script src="{{ asset('js/dashboard-config.js') }}"></script>
   <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}?v={{ filemtime(public_path('css/dashboard.css')) }}"><script src="{{ route('masters.accounts.catalog', ['_company_id' => $company['company_id'] ?? null]) }}"></script><script src="{{ asset('js/sheet-masters.js') }}?v={{ filemtime(public_path('js/sheet-masters.js')) }}" defer></script><script src="{{ asset('js/workspace-ledger.js') }}?v={{ filemtime(public_path('js/workspace-ledger.js')) }}" defer></script><script src="{{ asset('js/dashboard-report.js') }}?v={{ filemtime(public_path('js/dashboard-report.js')) }}" defer></script><script src="{{ asset('js/dashboard.js') }}?v={{ filemtime(public_path('js/dashboard.js')) }}" defer></script>
-<script src="{{ asset('js/draft-leave-guard.js') }}?v={{ filemtime(public_path('js/draft-leave-guard.js')) }}" defer></script></head>
+<script src="{{ asset('js/draft-leave-guard.js') }}?v={{ filemtime(public_path('js/draft-leave-guard.js')) }}" defer></script><link rel="stylesheet" href="{{ asset('css/workspace-typography.css') }}?v={{ filemtime(public_path('css/workspace-typography.css')) }}">
+</head>
 <body class="bg-[#f8fafc] dark:bg-[#0e131f] text-slate-800 dark:text-slate-100 font-sans antialiased min-h-screen transition-colors duration-300">
 
 <!-- TOP PERSISTENT NAVIGATION BAR -->
@@ -75,11 +76,6 @@
     @auth
     <a href="{{ route('account.dashboard') }}" class="text-xs font-semibold text-emerald-500">Company books</a>
     @endauth
-    <!-- Notifications Button -->
-    <button data-workspace-topic="Notifications" aria-label="Notifications" class="relative w-8 h-8 rounded-lg bg-slate-100 dark:bg-[#1d2433] border border-slate-200 dark:border-[#2b3548] flex items-center justify-center text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors">
-      <span class="material-symbols-outlined text-[17px]">notifications</span>
-      <span class="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-cyan-500 dark:bg-[#00d8f6]"></span>
-    </button>
 
     <!-- User Profile Avatar (JR) -->
     <button type="button" aria-label="Profile and demo access" data-workspace-topic="Profile" class="profile-button relative w-8 h-8 rounded-full bg-slate-200 dark:bg-gradient-to-br dark:from-slate-700 dark:to-slate-800 border border-slate-300 dark:border-slate-600 flex items-center justify-center cursor-pointer">
@@ -102,7 +98,7 @@
       </span>
       <span>Home</span>
     </a>
-    <a href="#workspace-dialog" data-workspace-topic="My work" class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100/70 dark:hover:bg-[#1d2433] text-xs font-medium transition-colors">
+    <a href="{{ route('my-work') }}" class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100/70 dark:hover:bg-[#1d2433] text-xs font-medium transition-colors">
       <span class="w-5 h-5 flex items-center justify-center shrink-0">
         <span class="material-symbols-outlined text-[18px]">task_alt</span>
       </span>
@@ -270,9 +266,9 @@
               <span class="material-symbols-outlined text-[16px] text-slate-400">edit_note</span>
               <span>Journal</span>
             </a>
-            <a href="#workspace-dialog" data-workspace-topic="Scans" class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md hover:bg-slate-100 dark:hover:bg-[#202838] text-slate-700 dark:text-slate-300 font-mono text-xs transition-colors shrink-0">
+            <a href="#workspace-dialog" data-workspace-topic="Documents" class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md hover:bg-slate-100 dark:hover:bg-[#202838] text-slate-700 dark:text-slate-300 font-mono text-xs transition-colors shrink-0">
               <span class="material-symbols-outlined text-[16px] text-rose-500">document_scanner</span>
-              <span>Scans</span>
+              <span>Documents</span>
             </a>
             <a href="{{ route('reports') }}" data-workspace-topic="Reports" class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md hover:bg-slate-100 dark:hover:bg-[#202838] text-slate-700 dark:text-slate-300 font-mono text-xs transition-colors shrink-0">
               <span class="material-symbols-outlined text-[16px] text-indigo-400">bar_chart</span>

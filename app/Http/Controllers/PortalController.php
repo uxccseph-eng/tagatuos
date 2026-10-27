@@ -6,6 +6,7 @@ use App\Http\Requests\LoginAccountRequest;
 use App\Models\Company;
 use App\Models\TeamLoginToken;
 use App\Models\User;
+use App\Services\OrganizationTeamService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -78,7 +79,8 @@ class PortalController extends Controller
         $member = $company->users()->where('users.id', $token->user_id)->wherePivot('is_suspended', false)->firstOrFail();
         $issuerIsOwner = $company->users()->where('users.id', $token->issued_by)->where('registration_status', 'approved')->wherePivot('role', 'owner')->wherePivot('is_suspended', false)->exists();
         abort_unless($member->hasApprovedAccess(), 410, 'This account has not been approved.');
-        abort_if($token->used_at || $token->expires_at->isPast() || ! $issuerIsOwner || ! $member->must_change_password || $member->type !== 'accountant' || $member->pivot->role === 'owner' || $member->companies()->count() !== 1, 410, 'This setup link is no longer available. Ask the owner for a new link.');
+        $issuer = User::query()->find($token->issued_by);
+        abort_if($token->used_at || $token->expires_at->isPast() || ! $issuerIsOwner || ! $member->must_change_password || $member->type !== 'accountant' || $member->pivot->role === 'owner' || ! $issuer || ! app(OrganizationTeamService::class)->canSetUp($issuer, $member), 410, 'This setup link is no longer available. Ask the owner for a new link.');
 
         return $token;
     }

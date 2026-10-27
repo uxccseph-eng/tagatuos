@@ -28,6 +28,15 @@
         if (!isWorkspaceUrl(url)) return fetch(input, options);
         const headers = new Headers(options.headers || (input instanceof Request ? input.headers : undefined));
         headers.set('X-Company-ID', String(access.companyId));
+        const path = new URL(url, location.href).pathname;
+        const method = (options.method || (input instanceof Request ? input.method : 'GET')).toUpperCase();
+        if (window.CompanyLedger && method === 'POST' && /^\/(?:reports|tax-reports)\//.test(path)) {
+            return window.CompanyLedger.flush().then(() => {
+                if (window.CompanyLedger.pending()) throw Error('Transfer or recover the pending browser records before exporting this company book.');
+                headers.set('X-Ledger-Revision', String(window.CompanyLedgerDatabase.revision));
+                return fetch(input, {...options, headers});
+            });
+        }
         return fetch(input, {...options, headers});
     };
     document.querySelectorAll('a[href]').forEach(link => {

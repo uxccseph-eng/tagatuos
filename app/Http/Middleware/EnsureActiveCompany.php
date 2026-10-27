@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\CompanyLedger;
 use App\Models\CompanySetting;
 use App\TeamPermissions;
 use Closure;
@@ -55,6 +56,7 @@ class EnsureActiveCompany
 
         $allowed = TeamPermissions::allowed($company->pivot->role, $company->pivot->allowed_tabs);
         $modules = match (true) {
+            $request->routeIs('sheets.database.show') => ['sheets', 'books', 'reports', 'tax-reports', 'lapsing'],
             $request->routeIs('masters.accounts.catalog', 'masters.accounts.relief-catalog') => ['sheets', 'books', 'lapsing', 'masters', 'reports', 'tax-reports', 'settings'],
             $request->routeIs('reports.form2307') => ['sheets', 'tax-reports'],
             $request->routeIs('reports.form2316', 'reports.sales.dat', 'reports.purchases.dat', 'reports.sawt.dat', 'reports.qap.dat', 'reports.qap.annual.dat') => ['tax-reports'],
@@ -63,6 +65,10 @@ class EnsureActiveCompany
         };
         abort_if($modules !== [] && array_intersect($modules, $allowed) === [], 403, 'Your company book owner has not enabled this module for your account.');
         $request->attributes->set('company_allowed_tabs', $allowed);
+        if ($request->isMethod('POST') && $request->is('reports/*', 'tax-reports/*')) {
+            $revision = (string) (CompanyLedger::query()->where('company_id', $company->id)->value('revision') ?? 0);
+            abort_unless($request->header('X-Ledger-Revision') === $revision, 409, 'The company records changed or this page is outdated. Reload the latest records before exporting.');
+        }
 
         $settings = CompanySetting::query()->where('workspace_key', $company->workspaceKey())->first();
         $request->attributes->set('active_company', $company);

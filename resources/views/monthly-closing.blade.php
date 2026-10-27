@@ -1,0 +1,32 @@
+<x-account-layout :preview-mode="$previewMode ?? false" title="Monthly closing">
+    <link rel="stylesheet" href="{{ asset('css/my-work.css') }}?v={{ filemtime(public_path('css/my-work.css')) }}">
+    @php($status = $closing?->status ?? 'not_started')
+    @php($reviewer = \App\TeamPermissions::canApproveClosing($company->pivot->role))
+    @php($editable = $canEdit && $status !== 'completed')
+    @php($checklist = $closing?->checklist ?? \App\Models\MonthlyClosing::emptyChecklist())
+    @php($options = match($status) { 'not_started' => ['not_started', 'in_progress'], 'in_progress' => ['not_started', 'in_progress', 'for_review'], 'for_review' => $reviewer ? ['for_review', 'in_progress', 'completed'] : ['for_review', 'in_progress'], default => [] })
+    <a href="{{ route('my-work', ['month' => $month]) }}">← Monthly client closing board</a>
+    <section class="page-heading work-heading closing-heading"><div><span class="eyebrow">{{ $company->name }}</span><h1>{{ \Carbon\CarbonImmutable::createFromFormat('!Y-m', $month)->format('F Y') }} closing</h1><p class="muted">Track the preparation and review of this client’s monthly work.</p></div><span class="work-pill closing-state-{{ $status }}">{{ \App\Models\MonthlyClosing::STATUSES[$status] }}</span></section>
+    <p class="notice">This is a team checklist. It does not lock the accounting period, post transactions, or confirm submission of a tax return.</p>
+    <div class="work-columns closing-columns"><section class="account-card">
+        <h2>Monthly checklist</h2>
+        @if(!$canEdit)<p class="muted">You can review this closing. The assigned accountant, manager or book owner can update it.</p>@endif
+        @if($status === 'for_review')<p class="muted">Submitted for review. Return to In progress to change the checklist, assignment, or notes.</p>@endif
+        @if($status === 'completed')<p class="notice">Completed by {{ $closing->completedBy?->name ?? 'Book owner' }} on {{ $closing->completed_at?->timezone('Asia/Manila')->format('M j, Y, g:i A') }}.</p>@endif
+        <form method="POST" action="{{ route('closing.update', ['companyId' => $company->id, 'month' => $month]) }}" class="field-stack closing-form">@csrf @method('PUT')
+            <input type="hidden" name="version" value="{{ $closing?->version ?? 0 }}"><input type="hidden" name="action" value="save">
+            <div class="field"><label for="closing-assignee">Assigned accountant</label>
+                @if($reviewer && $editable && $status !== 'for_review')
+                    <select name="assignee_id" id="closing-assignee"><option value="">Unassigned</option>@if($closing?->assignee_id && !$members->contains('id', $closing->assignee_id))<option value="{{ $closing->assignee_id }}" selected>{{ $closing->assignee?->name }} · access needs review</option>@endif @foreach($members as $member)<option value="{{ $member->id }}" @selected((string)old('assignee_id', $closing?->assignee_id) === (string)$member->id)>{{ $member->name }}</option>@endforeach</select>
+                @else<input type="hidden" name="assignee_id" value="{{ $closing?->assignee_id }}"><p>{{ $closing?->assignee?->name ?? 'Unassigned' }}</p>@endif
+            </div>
+            <fieldset class="closing-checklist" @disabled(!$editable)><legend>Review steps · {{ count(array_filter($checklist)) }} / {{ count($checklist) }} complete</legend>
+                @foreach(\App\Models\MonthlyClosing::CHECKLIST as $key => $label)<label><input type="hidden" name="checklist[{{ $key }}]" value="{{ $status === 'for_review' ? (int)$checklist[$key] : 0 }}"><input type="checkbox" name="checklist[{{ $key }}]" value="1" @checked(old('checklist.'.$key, $checklist[$key])) @disabled($status === 'for_review')><span>{{ $label }}<small>Mark complete after review; record exceptions or items that do not apply below.</small></span></label>@endforeach
+            </fieldset>
+            <div class="field"><label for="closing-notes">Review notes and exceptions</label><textarea id="closing-notes" name="notes" rows="5" maxlength="4000" @readonly(!$editable || $status === 'for_review') placeholder="Record missing documents, reconciliation notes, or items that do not apply.">{{ old('notes', $closing?->notes) }}</textarea></div>
+            @if($editable)<div class="field"><label for="closing-status">Progress</label><select name="status" id="closing-status">@foreach($options as $option)<option value="{{ $option }}" @selected(old('status', $status) === $option)>{{ \App\Models\MonthlyClosing::STATUSES[$option] }}</option>@endforeach</select></div><p class="muted">All review steps and an assigned accountant are required for For review. A manager or book owner approves completion.</p><button type="submit" class="button primary">Save closing</button>@endif
+        </form>
+        @if($reviewer && $status === 'completed')<details class="closing-reopen"><summary>Reopen this month</summary><form method="POST" action="{{ route('closing.update', ['companyId' => $company->id, 'month' => $month]) }}" class="field-stack">@csrf @method('PUT')<input type="hidden" name="action" value="reopen"><input type="hidden" name="version" value="{{ $closing->version }}"><div class="field"><label for="reopen-reason">Reason for reopening</label><textarea id="reopen-reason" name="reason" minlength="5" maxlength="1000" required></textarea></div><button type="submit" class="button secondary">Reopen with recorded reason</button></form></details>@endif
+    </section>
+    <aside class="account-card work-activity"><span class="eyebrow">REVIEW HISTORY</span><h2>Who changed this month</h2>@forelse($events as $event)<div class="work-activity-item"><span class="work-activity-dot" aria-hidden="true"></span><div><strong>{{ $event->action === 'reopened' ? 'Reopened' : (\App\Models\MonthlyClosing::STATUSES[$event->action] ?? $event->action) }}</strong><span>{{ $event->actor_name ?? 'Former team member' }}</span><small>{{ \Carbon\CarbonImmutable::parse($event->created_at)->timezone('Asia/Manila')->format('M j, Y, g:i A') }}</small>@if($event->reason)<p>{{ $event->reason }}</p>@endif</div></div>@empty<p class="muted">No changes recorded yet. Viewing this page does not create a closing.</p>@endforelse<nav class="work-history-pages" aria-label="Closing history pages">@if($events->previousPageUrl())<a href="{{ $events->previousPageUrl() }}">← Previous</a>@endif @if($events->nextPageUrl())<a href="{{ $events->nextPageUrl() }}">Next →</a>@endif</nav></aside></div>
+</x-account-layout>

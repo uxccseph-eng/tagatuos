@@ -20,7 +20,7 @@ class DashboardController extends Controller
             return to_route('company.setup');
         }
 
-        $dashboardRoutes = ['books' => route('books'), 'masters' => route('masters.accounts'), 'reports' => route('reports')];
+        $dashboardRoutes = ['documents' => route('documents.entry'), 'work' => route('my-work'), 'books' => route('books'), 'masters' => route('masters.accounts'), 'reports' => route('reports')];
         foreach (['sales', 'collections', 'purchases', 'payments', 'journal', 'cwt', 'wtp'] as $sheet) {
             $dashboardRoutes[$sheet] = route('sheets.'.$sheet);
         }

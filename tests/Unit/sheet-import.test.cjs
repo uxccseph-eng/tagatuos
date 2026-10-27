@@ -92,3 +92,88 @@ test('CWT and WTP batch posting generates omitted certificate numbers and retain
     assert.equal(workspace(context.storage).ledger.cwtCertificates().at(-1).certificate,received.number);
     assert.equal(workspace(context.storage).ledger.wtpCertificates().at(-1).certificate,issued.number);
 });
+
+test('guided mapping guesses familiar headers and keeps ambiguous columns unmapped',()=>{
+    const mapping=engine.guessMapping('sales',['Invoice date','Customer name','Total amount','Account code','VAT','ATC','Invoice no']);
+    assert.equal(mapping.Date,0);assert.equal(mapping.Customer,1);assert.equal(mapping['Gross Amount'],2);assert.equal(mapping['Revenue Account'],3);assert.equal(mapping['Income Withholding ATC'],5);
+    assert.equal(engine.guessMapping('sales',['Customer','Client']).Customer,null);
+    const matrix=[['Title'],['Date','Customer','Amount'],['2026-10-19','CUS001','112']];
+    const rows=engine.mapRows('sales',matrix,{Date:0,Customer:1,'Gross Amount':2},2);
+    assert.equal(rows[0]._row,3);assert.equal(rows[0].values.Customer,'CUS001');
+    assert.throws(()=>engine.mapRows('sales',matrix,{Date:0,Customer:0},2),/one field/);
+    assert.throws(()=>engine.mapRows('sales',matrix,{Surprise:0},2),/Unsupported/);
+    assert.throws(()=>engine.mapRows('sales',Array.from({length:502},()=>['data']),{Customer:0}),/500/);
+});
+
+test('guided review requires a tax choice, resolves Masters, and skips excluded errors',()=>{
+    const context=workspace(),rows=[{_row:2,values:sale()},{_row:3,values:sale({Customer:'Unknown'})}];
+    let result=engine.previewMapped('sales',rows,context);assert.match(result.errors[0].message,/Tax Type/);
+    rows[0].values['Tax Type']='VAT';rows[1].skip=true;
+    result=engine.previewMapped('sales',rows,context);assert.deepEqual(result.errors,[]);assert.equal(result.included,1);assert.equal(result.totalGross,11200);
+    rows[0].skip=true;assert.match(engine.previewMapped('sales',rows,context).errors[0].message,/No rows/);
+});
+
+test('guided suggestions fill only blanks and retain current Masters rates',()=>{
+    const context=workspace();context.masters.partyDefaults=()=>({values:{account:'4000 · Merchandise Sales',tax:'12% VAT',cwt:'WC160 · 2%'},sourceNumber:'SI-000099'});
+    const rows=[{_row:2,values:sale({'Revenue Account':'','Tax Type':'','Income Withholding ATC':'None'})}];
+    let result=engine.previewMapped('sales',rows,context);assert.deepEqual(result.errors,[]);assert.equal(result.records[0].account,'4000 · Merchandise Sales');assert.equal(result.records[0].cwt,'None');assert.equal(result.records[0]._suggestion.source,'SI-000099');
+    rows[0].values['Revenue Account']='4020';rows[0].values['Tax Type']='NONVAT';result=engine.previewMapped('sales',rows,context);assert.equal(result.records[0].tax,'Non-VAT');assert.equal(result.records[0].account,'4020 · Sales - Services');
+});
+
+test('guided review blocks exact duplicates and warns on missing-reference matches',()=>{
+    const context=workspace();post('sales',[sale()],context);
+    const rows=[{_row:2,values:sale({'Tax Type':'VAT'})}];
+    assert.match(engine.previewMapped('sales',rows,context).errors[0].message,/Duplicate/);
+    rows[0].values['Invoice Reference']='';let result=engine.previewMapped('sales',rows,context);assert.equal(result.warnings.length,1);assert.equal(result.warnings[0].row,2);
+    rows[0].values['Invoice Reference']='ANOTHER';result=engine.previewMapped('sales',rows,context);assert.equal(result.warnings.length,0);
+});
+
+test('bulk correction touches only selected included blanks unless replacement is requested',()=>{
+    const {applyBulk}=require('../../public/js/guided-sheet-import.js');
+    const rows=[{selected:true,values:{Account:''},duplicateReviewed:true},{selected:true,values:{Account:'7110'}},{selected:true,skip:true,values:{Account:''}},{values:{Account:''}}];
+    applyBulk(rows,'Account','4000');assert.equal(rows[0].values.Account,'4000');assert.equal(rows[0].duplicateReviewed,false);assert.equal(rows[1].values.Account,'7110');assert.equal(rows[2].values.Account,'');assert.equal(rows[3].values.Account,'');
+    applyBulk(rows,'Account','4020',true);assert.equal(rows[1].values.Account,'4020');
+});
+
+test('batch signatures ignore source order and review metadata and repeat posting is blocked',()=>{
+    const {canonicalBatch}=require('../../public/js/guided-sheet-import.js'),context=workspace(),records=preview('sales',[sale(),sale({'Invoice Reference':'TWO'})],context).records;
+    assert.equal(canonicalBatch('sales',records),canonicalBatch('sales',[...records].reverse().map(r=>({...r,_row:99,_suggestion:{source:'ignored'}}))));
+    const hash='a'.repeat(64);context.ledger.postImport('sales',records,'QA',hash);const before=JSON.stringify(context.ledger.sales());
+    assert.equal(context.ledger.sales().at(-1).importBatchKey,hash);assert.equal(context.ledger.sales().at(-1)._suggestion,undefined);
+    assert.throws(()=>context.ledger.postImport('sales',records,'QA',hash),/already/);assert.equal(JSON.stringify(context.ledger.sales()),before);
+});
+
+test('Excel clipboard parser preserves tabs, quoted multiline cells, commas, leading zeros and source row gaps',()=>{
+    const cells=engine.parseClipboard('\uFEFFDate\tCustomer\tAmount\tDescription\r\n2026-10-01\t"ABC, INC"\t1120.00\t"Line 1\r\nLine ""2"""\r\n\r\n2026-10-02\t0000123\t2240.00\t\r\n');
+    assert.deepEqual(cells[0],['Date','Customer','Amount','Description']);assert.equal(cells[1][1],'ABC, INC');assert.equal(cells[1][3],'Line 1\r\nLine "2"');assert.deepEqual(cells[2],['']);assert.equal(cells[3][1],'0000123');assert.equal(cells[3][3],'');
+    assert.deepEqual(engine.parseClipboard('Only one column\nnext row'),[['Only one column'],['next row']]);
+});
+
+test('clipboard input blocks malformed, empty, excessive and binary batches before review',()=>{
+    for(const text of ['', '\t\r\n ', '"unclosed'])assert.throws(()=>engine.parseClipboard(text),/Paste|unclosed/);
+    assert.throws(()=>engine.parseClipboard('x'.repeat(5*1024*1024+1)),/5 MB/);
+    assert.throws(()=>engine.parseClipboard('a\0b'),/binary/);
+    assert.throws(()=>engine.parseClipboard(Array(522).fill('x').join('\n')),/500/);
+    assert.throws(()=>engine.parseClipboard(Array(101).fill('x').join('\t')),/100 columns/);
+    assert.throws(()=>engine.parseClipboard('x'.repeat(4001)),/4,000/);
+});
+
+test('pasted Sales and Purchases share Masters validation, exact duplicate checks and atomic import preview',()=>{
+    const context=workspace();
+    for(const sheet of ['sales','purchases']){
+        const person=sheet==='sales'?'Customer':'Supplier',account=sheet==='sales'?'Revenue Account':'Account';
+        const matrix=engine.parseClipboard(`Date\t${person}\tAmount\t${account}\tTax Type\n2026-10-01\t${sheet==='sales'?'CUS001':'SUP001'}\t112.00\t${sheet==='sales'?'4000':'7110'}\tVAT`);
+        const rows=engine.mapRows(sheet,matrix,engine.guessMapping(sheet,matrix[0]));
+        const before=JSON.stringify([...context.storage]);const result=engine.previewMapped(sheet,rows,context);assert.deepEqual(result.errors,[]);assert.equal(result.records[0].gross,11200);assert.equal(JSON.stringify([...context.storage]),before);
+        assert.match(engine.previewMapped(sheet,[rows[0],{...rows[0],_row:3}],context).errors[0].message,/Duplicate/);
+        rows[0].values[person]='Unknown';assert.match(engine.previewMapped(sheet,rows,context).errors[0].message,/Masters/);
+    }
+});
+
+test('fill down follows source order, preserves existing values and excludes skipped and unselected rows',()=>{
+    const {fillDown}=require('../../public/js/guided-sheet-import.js');
+    const rows=[{_row:4,selected:true,values:{Date:'2026-10-04'}},{_row:2,selected:true,values:{Date:'2026-10-02'}},{_row:3,selected:true,values:{Date:''},duplicateReviewed:true},{_row:1,selected:true,skip:true,values:{Date:'2026-10-01'}},{_row:5,values:{Date:''}}];
+    fillDown(rows,'Date');assert.equal(rows[0].values.Date,'2026-10-04');assert.equal(rows[2].values.Date,'2026-10-02');assert.equal(rows[2].duplicateReviewed,false);assert.equal(rows[3].values.Date,'2026-10-01');assert.equal(rows[4].values.Date,'');
+    fillDown(rows,'Date',true);assert.equal(rows[0].values.Date,'2026-10-02');
+    assert.throws(()=>fillDown([rows[0]],'Date'),/at least two/);assert.throws(()=>fillDown(rows,'Account'),/first selected source row/);
+});

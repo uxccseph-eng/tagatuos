@@ -8,6 +8,7 @@
     let state, storedState;
     try { storedState = sessionStorage.getItem(storageKey); state = JSON.parse(storedState); }
     catch (error) { if (isCompanyBook) throw new Error('Company book storage could not be read. Existing data has not been replaced.'); state = null; }
+    if (window.CompanyLedger) state = window.CompanyLedger.state();
     if (!state || !Array.isArray(state.sales) || !Array.isArray(state.collections)) {
         if (isCompanyBook && storedState !== null) throw new Error('Company book storage is invalid. Existing data has not been replaced.');
         if (isCompanyBook) {
@@ -22,6 +23,7 @@
         }
     }
     function compactAfterRemoval(key,previous) {
+        if (window.CompanyLedger) return;
         if(!previous[key].some(record=>!state[key].some(item=>item.id===record.id)))return;
         const changed=new Map();
         [...state[key]].sort((a,b)=>Number(a.number.split('-').at(-1))-Number(b.number.split('-').at(-1))).forEach((record,index)=>{
@@ -40,6 +42,7 @@
     }
     function synchronizeNumbers(key,input){for(const record of input){const saved=state[key].find(item=>item.id===record.id);if(saved){record.number=saved.number;if(['cwtCertificates','wtpCertificates'].includes(key))record.certificate=saved.certificate;}}}
     function persist() {
+        if (window.CompanyLedger) { window.CompanyLedger.saveState(state); return; }
         try { sessionStorage.setItem(storageKey,JSON.stringify(state)); }
         catch { throw new Error('Browser session storage is unavailable. Records cannot be shared between these pages.'); }
     }
@@ -265,6 +268,7 @@
     syncCashCollections();
     syncCashPayments();
     function bookEntries(){
+        if (window.CompanyLedger) return [...window.CompanyLedger.journals(), ...(window.WorkspaceDepreciationJournals || []).map(record=>({...record,sheet:"lapsing",source:"Depreciation"}))];
         const entries=[];
         function voucher(record,sheet,source,lines){
             const activeLines=lines.filter(line=>line.debit>0||line.credit>0);
@@ -294,15 +298,16 @@
         const fields={sales:['date','customer','gross','reference','account','tax','terms','cwt','vatCwt'],purchases:['date','supplier','gross','reference','account','tax','terms','ewt','wvat'],collections:['date','customer','invoice','amount','reference','type'],payments:['date','supplier','bill','amount','reference','type','account'],cwt:['date','invoice','customer','tin','taxBase','atc','amount'],wtp:['date','bill','supplier','tin','taxBase','ewt','wvat','ewtCode','wvatCode','offset'],journal:['date','reference','type','lines']}[sheet];
         return JSON.stringify(fields.map(field=>typeof record[field]==='string'?record[field].trim().toLowerCase():record[field] ?? ''));
     }
-    function processImport(sheet,records,commit,user){
+    function processImport(sheet,records,commit,user,batchKey){
         const key={sales:'sales',purchases:'purchases',collections:'collections',payments:'payments',cwt:'cwtCertificates',wtp:'wtpCertificates',journal:'journalEntries'}[sheet],prefix={sales:'SI',purchases:'BILL',collections:'CR',payments:'PV',cwt:'2307R',wtp:'2307I',journal:'GJ'}[sheet];
         if(!key||!Array.isArray(records)||!records.length||records.length>500)throw new Error('Import between 1 and 500 entries into a valid sheet.');
+        if(batchKey&&(!/^[a-f0-9]{64}$/.test(batchKey)||state[key].some(record=>record.importBatchKey===batchKey)))throw new Error('This batch was already posted. Reload the company records before importing it again.');
         const previous=state,errors=[],imported=[],seen=new Set(state[key].filter(record=>['posted','draft'].includes(record.status)).map(record=>importFingerprint(sheet,record)));
         state=clone(state);
         try{
             for(const input of records){
                 try{
-                    const record=clone(input),signature=importFingerprint(sheet,record);delete record._row;delete record.voucherKey;
+                    const record=clone(input),signature=importFingerprint(sheet,record);delete record._row;delete record.voucherKey;delete record._suggestion;if(batchKey)record.importBatchKey=batchKey;
                     if(seen.has(signature))throw new Error('Duplicate entry: already in this file or the current sheet.');
                     record.id=state[key].reduce((highest,item)=>Math.max(highest,Number(item.id) || 0),0)+1;
                     if(sheet==='collections')record.id=state.nextCollectionId++;
@@ -342,7 +347,7 @@
     window.KontaduryaLedger = {
         importFingerprint,
         previewImport:(sheet,records)=>processImport(sheet,records,false,'Import preview'),
-        postImport:(sheet,records,user='Demo user')=>processImport(sheet,records,true,user),
+        postImport:(sheet,records,user='Demo user',batchKey)=>processImport(sheet,records,true,user,batchKey),
         bulkTransactions(sheet,ids,action,reason='',user='Demo user') {
             const key={sales:'sales',collections:'collections',purchases:'purchases',payments:'payments',cwt:'cwtCertificates',wtp:'wtpCertificates',journal:'journalEntries'}[sheet];
             if(!key||!['void','delete-drafts','delete-voids','undo-delete-voids'].includes(action))throw new Error('Choose a valid bulk action.');

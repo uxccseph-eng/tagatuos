@@ -5,6 +5,7 @@
     let period=window.WorkingPeriod.current().from.slice(0,7),descending=false,grouped=false,balances=false,analysisMode=book==='cash-analysis'?'receipts':'sales',report;
     const info=(title,text)=>{element('books-info-title').textContent=title;element('books-info-text').textContent=text;if(!element('books-info').open)element('books-info').showModal();};
     if(![...element('books-source').options].some(option=>option.value==='lapsing'))element('books-source').add(new Option('Depreciation','lapsing'));
+    if(window.CompanyLedger&&![...element('books-source').options].some(option=>option.value==='payroll'))element('books-source').add(new Option('Payroll','payroll'));
     const sourceForBook={'subsidiary-sales':'sales','subsidiary-purchase':'purchases','cash-disbursements':'payments','cash-receipts':'collections'}[book];
     if(sourceForBook){element('books-source').value=sourceForBook;element('books-source').disabled=true;}
     const running=['general-ledger','subsidiary-ledger'].includes(book);

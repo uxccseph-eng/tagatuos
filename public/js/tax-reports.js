@@ -15,6 +15,7 @@
     function render(){
         syncSawtForm();
         const range=window.WorkingPeriod.current(),selection=periods.identify(range,endMonth);
+        window.TaxPreflight?.selection({schedule,from:range.from,to:range.to,form:sawt?sawtForm:'',tax_kind:sawt?sawtTax:'income'});
         if(annualReport()&&selection.kind!=='annual'){setPeriod('year',selection.year);return;}
         year=selection.year;el('tax-year').value=year;
         for(let q=1;q<=4;q++){const dates=periods.quarter(year,q,endMonth),month=date=>new Date(date+'T12:00:00Z').toLocaleDateString('en-US',{month:'short',timeZone:'UTC'});el('tax-quarter').querySelector('[value="'+q+'"]').textContent='Q'+q+' · '+month(dates.from)+' – '+month(dates.to);}
@@ -24,6 +25,7 @@
         if(sawt)el('sawt-layout-note').textContent='DAT follows the supplied BIR Alphalist sample layout: header, certificate details, and control totals. Validate the file before submission.';
         syncSawtForm();report=window.TaxReportData.build(ledger,schedule,range,grouped,{sawtTax,qapSchedule,masters:window.WorkspaceMasters});if(nonMwe){report=buildAlphalist();renderAlphalistCards();}el('tax-base-label').textContent=report.baseLabel;el('tax-amount-label').textContent=report.taxLabel;el('tax-base').textContent='₱'+money(report.stats.base);el('tax-amount').textContent='₱'+money(report.stats.tax);
         el('tax-review').textContent=!report.available?'Source needed':!report.stats.count?'No records':report.issues.length?'Review needed':'No missing fields';el('tax-review').classList.toggle('tax-review-warning',report.issues.length>0||!report.available);el('tax-review-summary').textContent=report.stats.count+' source records · '+report.issues.length+' review items';el('tax-note').textContent=report.note;el('tax-period').textContent=range.from+' — '+range.to+' · PHP';
+        window.TaxPreflight?.cards();
         const head=document.createElement('tr');report.columns.forEach((title,index)=>{const th=document.createElement('th');th.scope='col';th.textContent=title;if(report.numeric.includes(index))th.className='tax-money';head.append(th);});if(qap||nonMwe){const th=document.createElement('th');th.scope='col';th.textContent='Actions';head.append(th);}el('tax-head').replaceChildren(head);el('tax-rows').replaceChildren();
         const query=el('sales-global-search').value.trim().toLowerCase(),shown=report.rows.filter(row=>!query||row.cells.join(' ').toLowerCase().includes(query));
         const append=(body,cells,total=false)=>{const tr=document.createElement('tr');if(total)tr.className='tax-total';cells.forEach((value,index)=>{const td=document.createElement('td');td.textContent=report.numeric.includes(index)?value===null?'Review':money(value):report.columns[index]==='Month'&&/^[0-9]{4}-[0-9]{2}$/.test(String(value))?new Date(value+'-01T12:00:00Z').toLocaleDateString('en-PH',{month:'long',year:'numeric',timeZone:'UTC'}):value || '—';if(report.numeric.includes(index))td.className='tax-money';if(sawt&&report.columns[index]==='Status'&&!total){const badge=document.createElement('span');badge.className=value==='Linked'?'sawt-linked':'sawt-unlinked';badge.textContent=value;td.replaceChildren(badge);}tr.append(td);});body.append(tr);};
@@ -40,7 +42,7 @@
     }
     function buildAlphalist(){
         let runs=[],problem='';
-        try{runs=JSON.parse(sessionStorage.getItem('kontadurya.payroll.v1.'+el('workspace-ledger-config').dataset.key)||'[]');if(!Array.isArray(runs)||runs.some(run=>!run||typeof run!=='object'))throw Error('Invalid payroll storage.');}
+        try{runs=window.CompanyLedger?window.CompanyLedger.payroll():JSON.parse(sessionStorage.getItem('kontadurya.payroll.v1.'+el('workspace-ledger-config').dataset.key)||'[]');if(!Array.isArray(runs)||runs.some(run=>!run||typeof run!=='object'))throw Error('Invalid payroll storage.');}
         catch(error){runs=[];problem='Saved payroll could not be read. Open Payroll and review its storage warning; no records were changed.';}
         const result=window.AlphalistData.build(runs,JSON.parse(el('alphalist-employees').textContent),year);
         if(problem){result.issues.unshift(problem);result.available=false;result.emptyTitle='Payroll storage needs review';result.emptyDescription=problem;}

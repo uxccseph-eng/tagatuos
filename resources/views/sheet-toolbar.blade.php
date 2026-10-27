@@ -4,7 +4,7 @@
     $addLabels = ['sales' => 'Add sale', 'collections' => 'Add collection', 'cwt' => 'Add certificate', 'purchases' => 'Add bill', 'payments' => 'Add payment', 'journal' => 'Add entry', 'wtp' => 'Add certificate'];
     $searchId = $sheet === 'sales' ? 'sales-filter' : ($sheet === 'collections' ? 'collection-search' : $sheet.'-search');
 @endphp
-<div class="sheet-toolbar" data-sheet-toolbar="{{ $sheet }}" data-sheet-bulk-user="{{ $company['full_name'] ?? 'Demo user' }}" role="region" aria-label="{{ ucfirst($sheet) }} sheet controls">
+<div class="sheet-toolbar" data-sheet-toolbar="{{ $sheet }}" @if(request()->attributes->get('active_company')) data-sheet-follow-up-url="{{ route('follow-ups.index', ['companyId' => request()->attributes->get('active_company')->id]) }}" @endif data-sheet-bulk-user="{{ $company['full_name'] ?? 'Demo user' }}" role="region" aria-label="{{ ucfirst($sheet) }} sheet controls">
     <div class="sheet-toolbar-row">
         <div class="sheet-toolbar-add">
             <button type="button" @if($usesActions) data-{{ $actionPrefix }}-action="add" @else id="{{ $sheet }}-add" @endif><span class="material-symbols-outlined" aria-hidden="true">add</span>{{ $addLabels[$sheet] }}</button>
@@ -43,4 +43,17 @@
 <script src="{{ asset('js/sheet-toolbar.js') }}?v={{ filemtime(public_path('js/sheet-toolbar.js')) }}" defer></script>
 <link rel="stylesheet" href="{{ asset('css/sheet-import.css') }}?v={{ filemtime(public_path('css/sheet-import.css')) }}">
 <script src="{{ asset('js/sheet-import.js') }}?v={{ filemtime(public_path('js/sheet-import.js')) }}" defer></script>
+@if(in_array($sheet, ['sales', 'purchases']))
+    @php
+        $importServiceConfig = [
+            'companyId' => request()->attributes->get('active_company')?->id,
+            'csrf' => csrf_token(),
+            'workbook' => route('sheets.import.workbook'),
+            'lookup' => route('sheets.import.mapping'),
+            'save' => route('sheets.import.mapping.save'),
+        ];
+    @endphp
+    <script id="sheet-import-service-config" type="application/json">@json($importServiceConfig)</script>
+    <script src="{{ asset('js/guided-sheet-import.js') }}?v={{ filemtime(public_path('js/guided-sheet-import.js')) }}" defer></script>
+@endif
 <script src="{{ asset('js/sheet-import-ui.js') }}?v={{ filemtime(public_path('js/sheet-import-ui.js')) }}" defer></script>
