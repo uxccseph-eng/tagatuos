@@ -47,7 +47,7 @@
         const record={date:date(get('Date')),notes:get('Notes'),_row:raw._row};
         if(sheet==='sales'||sheet==='purchases'){
             const sales=sheet==='sales',person=party(get(sales?'Customer':'Supplier'),sales?'Customer':'Supplier');
-            const draft={status:'draft',[sales?'customer':'supplier']:person.name,account:get(sales?'Revenue Account':'Account'),tax:get('Tax Type'),...(sales?{cwt:get('Income Withholding ATC'),vatCwt:get('VAT Withholding ATC')}:{ewt:'',wvat:'',ewtCode:get('Income Withholding ATC'),wvatCode:get('VAT Withholding ATC')})};
+            const draft={status:'draft',[sales?'customer':'supplier']:person.name,account:get(sales?'Revenue Account':'Account'),tax:get('Tax Type'),...(sales?{cwt:get('Income Withholding ATC'),vatCwt:get('VAT Withholding ATC')}:{ewt:'',wvat:get('VAT Withholding ATC')?'':0,ewtCode:get('Income Withholding ATC'),wvatCode:get('VAT Withholding ATC')})};
             const suggestion=masters.partyDefaults?.(draft,sales) || {values:{},sourceNumber:''},defaults=suggestion.values;
             const suggestedAtc=vat=>sales?String(defaults[vat?'vatCwt':'cwt'] || '').match(/^W[ICVB][0-9]{3}/)?.[0] || '':defaults[vat?'wvatCode':'ewtCode'] || '';
             const it=atc(get('Income Withholding ATC') || suggestedAtc(false)),vt=atc(get('VAT Withholding ATC') || suggestedAtc(true),true);

@@ -8,6 +8,7 @@
     const money=value=>new Intl.NumberFormat('en-PH',{style:'currency',currency:'PHP'}).format((value || 0)/100);
     const cents=value=>{const text=String(value).trim();if(!/^\d{1,9}(\.\d{0,2})?$/.test(text))return 0;const [whole,fraction='']=text.split('.');return Number(whole)*100+Number(fraction.padEnd(2,'0'));};
     const ewtLabel=(rate,code)=>code?code+' · '+Number(rate)+'%':Number(rate || 0)+'%';
+    const fieldValue=(record,key)=>key==='wvat'&&!record.wvatCode&&(record.wvat===''||record.wvat==null)?0:record[key];
     let records=ledger.purchases(),period=window.WorkingPeriod.current().from.slice(0,7),status='all',descending=false,grouped=false,working=null,original=null,editing=false;
     const selected=new Set();
     const announce=message=>{element('purchases-status').textContent=message;if(drawer.open)element('purchase-entry-message').textContent=message;};
@@ -24,7 +25,7 @@
     function history(record,label){record.history=[...(record.history || []),{label,user:company.full_name || 'Demo user',time:new Date().toISOString()}];}
     function add(template){const pending=window.DraftLeaveGuard.continueDraft(records,record=>{window.WorkingPeriod.revealDate(record.date);period=window.WorkingPeriod.current().from.slice(0,7);status='all';element('purchases-search').value='';element('sales-global-search').value='';render();element('purchase-row-'+record.id)?.scrollIntoView({block:'nearest'});announce('Continue '+record.number+'. Only one draft is allowed on this page.');});if(pending)return pending;
         const next=records.reduce((highest,record)=>Math.max(highest,Number(record.number.split('-')[1]) || 0),0)+1;
-        const record={id:crypto.randomUUID(),number:`BILL-${String(next).padStart(6,'0')}`,date:window.WorkingPeriod.entryDate(),supplier:'',tin:'',gross:0,tax:'',account:'',ewt:'',wvat:'',terms:'Cash',reference:'',bank:'1010 · Cash on Hand',description:'',notes:'',attachments:[],status:'draft',createdAt:new Date().toISOString()};
+        const record={id:crypto.randomUUID(),number:`BILL-${String(next).padStart(6,'0')}`,date:window.WorkingPeriod.entryDate(),supplier:'',tin:'',gross:0,tax:'',account:'',ewt:'',wvat:0,wvatCode:'',terms:'Cash',reference:'',bank:'1010 · Cash on Hand',description:'',notes:'',attachments:[],status:'draft',createdAt:new Date().toISOString()};
         if(template)for(const key of ['supplier','tin','gross','tax','account','ewt','wvat','ewtCode','wvatCode','terms','bank','description','notes'])record[key]=template[key];
         history(record,'Created');if(!store([...records,record]))return;
         status='all';element('purchases-search').value='';element('sales-global-search').value='';render();announce(`${record.number} added. Fill its row or click an inactive cell to open the entry popup.`);element(`purchase-row-${record.id}`)?.scrollIntoView({block:'nearest'});return record;
@@ -32,7 +33,7 @@
     function input(record,key){
         const field=fields[key].cloneNode(true);field.removeAttribute('data-purchase-field');field.removeAttribute('id');field.disabled=false;field.readOnly=false;field.setAttribute('aria-label',`${record.number} ${key}`);
         if(field.tagName==='SELECT'&&['account','bank'].includes(key))ledger.setAccountSelect(field,record[key] || '');else field.value=key==='gross'?(record.gross/100).toFixed(2):record[key] ?? '';
-        if(field.tagName==='SELECT'&&key!=='billId')window.SheetMasters.selectValue(field,record[key],record[key+'Code']);
+        if(field.tagName==='SELECT'&&key!=='billId')window.SheetMasters.selectValue(field,fieldValue(record,key),record[key+'Code']);
         field.addEventListener('input',()=>{if(['ewt','wvat'].includes(key))record[key+'Code']=field.selectedOptions[0]?.dataset.masterCode || '';record.draftTouched=true;record.draftSaved=false;const previousAccount=record.account;record[key]=key==='gross'?cents(field.value):['ewt','wvat'].includes(key)?(field.value===''?'':Number(field.value)):field.value;if(key==='account')window.SheetMasters.applyAccountWithholding(record,previousAccount);if(key==='supplier'){Object.assign(record,window.SheetMasters.partySnapshot(record));}store(records);refresh();});
         field.addEventListener('change',()=>{if(key==='supplier'){suggestPurchaseSettings(record,field.closest('tr'));store(records);}render();});return field;
     }
@@ -89,7 +90,7 @@
         drawer.classList.toggle('purchase-is-void',record.status==='void');element('purchase-entry-message').textContent='';
         const badge=element('purchase-entry-badge');badge.className=record.status==='draft'?'draft-status-badge':record.status==='posted'?'posted-status-badge':'void-status-badge';badge.textContent=`${record.status==='draft'?'New entry':record.status==='void'?'Voided':'Posted'} · ${record.number}`;
         element('purchase-entry-title').textContent=record.status==='draft'?'New Bill':record.status==='void'?'Voided Bill':edit?'Edit Bill':'Posted Bill';
-        for(const [key,field] of Object.entries(fields)){field.value=key==='gross'?(record.gross/100).toFixed(2):record[key] ?? '';if(field.tagName==='SELECT')window.SheetMasters.selectValue(field,working[key],working[key+'Code']);field.setCustomValidity('');if(field.tagName==='SELECT')field.disabled=!editing;else field.readOnly=!editing;}
+        for(const [key,field] of Object.entries(fields)){field.value=key==='gross'?(record.gross/100).toFixed(2):record[key] ?? '';if(field.tagName==='SELECT')window.SheetMasters.selectValue(field,fieldValue(working,key),working[key+'Code']);field.setCustomValidity('');if(field.tagName==='SELECT')field.disabled=!editing;else field.readOnly=!editing;}
         element('purchase-draft-actions').hidden=record.status!=='draft';element('purchase-posted-actions').hidden=record.status!=='posted'||edit;element('purchase-edit-actions').hidden=!edit;element('purchase-void-actions').hidden=record.status!=='void';element('purchase-confirm-actions').hidden=true;element('purchase-void-confirm').hidden=true;
         element('purchase-void-audit').hidden=record.status!=='void';element('purchase-void-reason').textContent=record.voidReason || '';element('purchase-void-time').textContent=record.voidedAt?`${record.voidedBy || 'Demo user'} · ${new Date(record.voidedAt).toLocaleString('en-PH',{timeZone:'Asia/Manila'})} PHT`:'';
         element('purchase-upload-label').hidden=record.status==='void';element('purchase-history').hidden=!(record.history?.length);
