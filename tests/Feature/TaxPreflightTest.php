@@ -7,6 +7,7 @@ use App\Models\Company;
 use App\Models\CompanyLedger;
 use App\Models\CompanySetting;
 use App\Models\Party;
+use App\Models\TaxCode;
 use App\Models\User;
 use App\Services\CompanyLedgerService;
 use App\Services\TaxPreflightService;
@@ -19,6 +20,30 @@ use Tests\TestCase;
 class TaxPreflightTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_legacy_na_sales_remain_readable_after_the_default_code_becomes_nr(): void
+    {
+        [$company, $owner] = $this->book();
+        TaxCode::factory()->create(['workspace_key' => $company->workspaceKey(), 'code' => 'NA', 'name' => 'Not applicable', 'kind' => 'Exempt', 'rate' => 0]);
+        TaxCode::seedWorkspace($company->workspaceKey());
+        $state = CompanyLedger::query()->where('company_id', $company->id)->sole()->state;
+        $state['sales'][] = [...$state['sales'][0], 'id' => 2, 'number' => 'SI-000002', 'reference' => 'NR-REF', 'gross' => 10000, 'tax' => 'TAX|NA|Exempt|0'];
+        app(CompanyLedgerService::class)->save($company, $owner, ['state' => $state, 'payroll' => [], 'revision' => 1, 'request_id' => (string) Str::uuid()]);
+        $response = $this->getJson($this->url())->assertOk()->assertJsonPath('source_count', 2);
+        $this->assertNotContains('tax_code', array_column($response->json('issues'), 'code'));
+    }
+
+    public function test_relief_purchases_preflight_excludes_nr_nonvat_and_legacy_na_before_validation(): void
+    {
+        [$company] = $this->book();
+        $ledger = CompanyLedger::query()->where('company_id', $company->id)->firstOrFail();
+        $state = $ledger->state;
+        $state['purchases'] = array_map(fn (string $tax, int $index): array => ['id' => $index + 1, 'number' => 'BILL-'.$index, 'date' => '2026-10-01', 'status' => 'posted', 'tax' => $tax, 'gross' => 10000, 'supplier' => 'No documentation', 'tin' => ''], ['NR', 'NA', 'NONVAT', 'Non-VAT', 'TAX|NR|Exempt|0', 'TAX|NA|Exempt|0', 'TAX|NONVAT|Exempt|0'], range(0, 6));
+        $ledger->update(['state' => $state]);
+        $response = $this->getJson(route('tax-preflight.show', [...$this->selection(), 'schedule' => 'relief-purchases']));
+        $response->assertOk()->assertJsonPath('source_count', 0)->assertJsonPath('reconciled_count', 0);
+        $this->assertNotContains('party_tin', array_column($response->json('issues'), 'code'));
+    }
 
     public function test_saved_sources_reconcile_to_books_without_claiming_bir_acceptance(): void
     {

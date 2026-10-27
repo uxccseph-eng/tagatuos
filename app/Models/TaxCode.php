@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 
 #[Fillable(['workspace_key', 'code', 'name', 'kind', 'rate', 'atc', 'archived'])]
 #[Hidden(['workspace_key'])]
@@ -23,13 +24,25 @@ class TaxCode extends Model
     /** @return list<array<string, mixed>> */
     public static function defaults(): array
     {
-        return array_map(fn (array $row): array => array_combine(['code', 'name', 'kind', 'rate'], $row), [['EXEMPT', 'VAT-exempt', 'Exempt', 0], ['IMPORT-EXEMPT', 'VAT-exempt importation', 'Exempt', 0], ['NA', 'Not applicable', 'Exempt', 0], ['NONVAT', 'Non-VAT', 'Exempt', 0], ['VAT', 'Default VAT 12%', 'VAT', 12], ['VAT-IMPORT', 'Import VAT 12%', 'VAT', 12], ['ZERO', 'Zero-rated', 'Zero Rated', 0]]);
+        return array_map(fn (array $row): array => array_combine(['code', 'name', 'kind', 'rate'], $row), [['EXEMPT', 'VAT-exempt', 'Exempt', 0], ['IMPORT-EXEMPT', 'VAT-exempt importation', 'Exempt', 0], ['NR', 'No Receipt', 'Exempt', 0], ['NONVAT', 'Non-VAT', 'Exempt', 0], ['VAT', 'Default VAT 12%', 'VAT', 12], ['VAT-IMPORT', 'Import VAT 12%', 'VAT', 12], ['ZERO', 'Zero-rated', 'Zero Rated', 0]]);
     }
 
     public static function seedWorkspace(string $workspaceKey): void
     {
-        $now = now();
-        self::query()->insertOrIgnore(array_map(fn (array $row): array => [...$row, 'workspace_key' => $workspaceKey, 'created_at' => $now, 'updated_at' => $now], self::defaults()));
+        DB::transaction(function () use ($workspaceKey): void {
+            $legacy = self::query()->where('workspace_key', $workspaceKey)->where('code', 'NA')->where('name', 'Not applicable')->where('kind', 'Exempt')->where('rate', 0)->lockForUpdate()->first();
+            if ($legacy) {
+                if (self::query()->where('workspace_key', $workspaceKey)->where('code', 'NR')->exists()) {
+                    if (! $legacy->archived) {
+                        $legacy->update(['archived' => true]);
+                    }
+                } else {
+                    $legacy->update(['code' => 'NR', 'name' => 'No Receipt']);
+                }
+            }
+            $now = now();
+            self::query()->insertOrIgnore(array_map(fn (array $row): array => [...$row, 'workspace_key' => $workspaceKey, 'created_at' => $now, 'updated_at' => $now], self::defaults()));
+        });
     }
 
     /** @return list<array<string, mixed>> */

@@ -83,7 +83,12 @@ class TaxPreflightService
             return $sheet !== 'cwtCertificates' || (($selection['tax_kind'] ?? 'income') === 'vat') === (bool) preg_match('/^W[VB]/i', (string) ($record['atc'] ?? ''));
         }));
         if ($sheet === 'purchases') {
-            $records = array_values(array_filter($records, fn (array $record): bool => empty($record['isImportation']) && empty($record['importation']) && empty($record['customs']) && ! str_contains(strtoupper((string) ($record['tax'] ?? '')), 'IMPORT')));
+            $records = array_values(array_filter($records, function (array $record): bool {
+                $tax = strtoupper(trim((string) ($record['tax'] ?? '')));
+                $code = str_starts_with($tax, 'TAX|') ? (explode('|', $tax)[1] ?? '') : $tax;
+
+                return ! in_array($code, ['NR', 'NA', 'NONVAT', 'NON-VAT', 'NO RECEIPT'], true) && empty($record['isImportation']) && empty($record['importation']) && empty($record['customs']) && ! str_contains($tax, 'IMPORT');
+            }));
         }
         if ($sheet === 'wtpCertificates') {
             $records = array_values(array_filter($records, fn (array $record): bool => (float) ($record['ewt'] ?? 0) > 0 || preg_match('/^W[IC][0-9]{3}/i', (string) ($record['ewtCode'] ?? $record['atc'] ?? ''))));
@@ -139,7 +144,8 @@ class TaxPreflightService
                     continue;
                 }
                 $parts = explode('|', (string) ($record['tax'] ?? ''));
-                $code = count($parts) === 4 ? $taxes->get($parts[1]) : null;
+                $legacyNoReceipt = ($parts[1] ?? null) === 'NA' && ($parts[2] ?? null) === 'Exempt' && (float) ($parts[3] ?? -1) === 0.0;
+                $code = count($parts) === 4 ? ($legacyNoReceipt ? ($taxes->get('NR') ?? $taxes->get('NA')) : $taxes->get($parts[1])) : null;
                 $legacy = in_array($record['tax'] ?? '', ['12% VAT', 'VAT (12%)'], true);
                 $knownLegacy = in_array($record['tax'] ?? '', ['Non-VAT', 'VAT Exempt', 'Exempt', 'Zero-Rated (0%)', 'Zero-Rated'], true);
                 if (! $legacy && ! $knownLegacy && (! $code || $code->archived || $code->kind !== ($parts[2] ?? ''))) {

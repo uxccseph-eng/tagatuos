@@ -40,7 +40,7 @@ class SheetsExcelTemplateTest extends TestCase
 
     public function test_template_selectors_use_form_choices_for_all_500_entry_rows(): void
     {
-        foreach (['sales' => ['H2:H501' => ['Cash', 'On Account'], 'J2:J501' => ['Regular', 'Top Withholding Agent', 'Government', 'ZeroRated', 'PEZA']], 'payments' => ['I2:I501' => ['AP Settlement', 'Direct Expense', 'Supplier Advance']], 'journal' => ['E2:E501' => ['General', 'Adjusting', 'Opening', 'Closing', 'Reclassification']], 'payroll' => ['F2:F501' => ['Taxable', 'Non-taxable', 'Minimum Wage Earner'], 'T2:T501' => ['regular', 'year_end', 'final_pay', 'other']]] as $sheet => $ranges) {
+        foreach (['sales' => ['D2:D501' => ['VAT', 'NONVAT', 'EXEMPT', 'ZERO', 'NR'], 'H2:H501' => ['Cash', 'On Account'], 'J2:J501' => ['Regular', 'Top Withholding Agent', 'Government', 'ZeroRated', 'PEZA']], 'purchases' => ['D2:D501' => ['VAT', 'NONVAT', 'EXEMPT', 'ZERO', 'NR']], 'payments' => ['I2:I501' => ['AP Settlement', 'Direct Expense', 'Supplier Advance']], 'journal' => ['E2:E501' => ['General', 'Adjusting', 'Opening', 'Closing', 'Reclassification']], 'payroll' => ['F2:F501' => ['Taxable', 'Non-taxable', 'Minimum Wage Earner'], 'T2:T501' => ['regular', 'year_end', 'final_pay', 'other']]] as $sheet => $ranges) {
             $path = resource_path('templates/sheets-'.$sheet.'-import.xlsx');
             $zip = new ZipArchive;
             $zip->open($path);

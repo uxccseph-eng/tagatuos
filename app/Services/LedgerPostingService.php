@@ -236,7 +236,14 @@ class LedgerPostingService
             return $gross;
         }
         $parts = explode('|', $tax);
+        $legacyNoReceipt = ($parts[1] ?? null) === 'NA' && ($parts[2] ?? null) === 'Exempt' && (float) ($parts[3] ?? -1) === 0.0;
+        if ($legacyNoReceipt) {
+            $parts[1] = 'NR';
+        }
         $saved = count($parts) === 4 ? TaxCode::query()->where('workspace_key', $this->workspace)->where('code', $parts[1])->where('archived', false)->first() : null;
+        if (! $saved && $legacyNoReceipt) {
+            $saved = TaxCode::query()->where('workspace_key', $this->workspace)->where('code', 'NA')->where('archived', false)->first();
+        }
         if (! $saved || $saved->kind !== $parts[2] || $this->decimal($saved->rate, 4) !== $this->decimal($parts[3], 4)) {
             $this->fail('Select a tax code and rate from this company’s Masters.');
         }

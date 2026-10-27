@@ -1,4 +1,4 @@
-const test=require('node:test'),assert=require('node:assert/strict'),{build}=require('../../public/js/tax-report-data.js');
+const test=require('node:test'),assert=require('node:assert/strict'),{build,purchasesExcelRows}=require('../../public/js/tax-report-data.js');
 const range={from:'2026-10-01',to:'2026-12-31'};
 const sales=[{id:1,number:'SI1',date:'2026-10-01',status:'posted',customer:'Customer',customerTin:'12345678900000',gross:11200,tax:'VAT'},{id:2,number:'SI2',date:'2026-10-02',status:'posted',customer:'Customer',customerTin:'12345678900000',gross:5000,tax:'EXEMPT'},{id:3,number:'SI3',date:'2026-10-03',status:'posted',customer:'Customer',customerTin:'12345678900000',gross:2000,tax:'NONVAT'},{id:4,number:'DRAFT',date:'2026-10-04',status:'draft',customer:'Customer',gross:99999,tax:'VAT'}];
 const ledger={sales:()=>sales,purchases:()=>[{id:1,number:'BILL1',date:'2026-10-02',status:'posted',supplier:'Supplier',tin:'23456789000000',gross:11200,tax:'VAT',account:'7110 · Rent',ewt:2,ewtCode:'WC160'}],accountProfile:code=>code==='7110'?{relief_category:'services'}:undefined,taxAmounts:(gross,tax)=>({net:tax==='VAT'?Math.round(gross*100/112):gross,tax:{code:tax,kind:tax==='VAT'?'VAT':tax==='ZERO'?'Zero Rated':'Exempt',rate:tax==='VAT'?12:0}}),purchaseAmounts:()=>({net:10000,ewt:200}),cwtCertificates:()=>[{date:'2026-10-10',status:'posted',customer:'Customer',tin:'12345678900000',saleId:1,invoice:'SI1',amount:100,taxBase:10000,atc:'WC160',number:'2307R1'},{date:'2027-01-01',status:'posted',saleId:1,invoice:'SI1',amount:100}],cwtSource:id=>id===1?{withheld:200}:null,wtpCertificates:()=>[{status:'posted',date:'2026-10-02',billId:1,number:'LINKED'},{status:'posted',date:'2026-10-03',billId:null,number:'STANDALONE',supplier:'Supplier',tin:'23456789000000',ewt:2,ewtCode:'WC160'}],wtpAmounts:()=>({base:5000,ewt:100})};
@@ -129,9 +129,23 @@ test('Purchase schedule uses Masters categories and the reference column order w
     assert.equal(report.stats.base,30003);assert.equal(report.stats.count,5);assert.equal(JSON.stringify(records),before);assert.equal(build(source,'relief-purchases',range,false).rows.length,5);
 });
 
-test('Unclassified and Non-VAT purchases remain visible without assigning a Masters category',()=>{
+test('Unclassified VAT purchases remain visible while Non-VAT purchases are excluded',()=>{
     const base=ledger.purchases()[0],source={...ledger,accountProfile:()=>({relief_category:null}),purchases:()=>[base,{...base,id:2,number:'N',tax:'NONVAT',gross:123}]},report=build(source,'relief-purchases',range);
-    assert.ok(report.columns.includes('Unclassified'));assert.ok(report.columns.includes('Non-VAT'));assert.equal(report.rows[0].cells[report.columns.indexOf('Unclassified')],10000);assert.equal(report.rows[0].cells[report.columns.indexOf('Non-VAT')],123);assert.match(report.issues[0],/Masters/);assert.equal(report.totals.at(-1),10123);
+    assert.ok(report.columns.includes('Unclassified'));assert.equal(report.columns.includes('Non-VAT'),false);assert.equal(report.rows[0].cells[report.columns.indexOf('Unclassified')],10000);assert.match(report.issues[0],/Masters/);assert.equal(report.totals.at(-1),10000);assert.equal(report.stats.count,1);
+});
+
+test('RELIEF Purchases excludes No Receipt legacy NA and Non-VAT from schedules Excel and DAT without changing Books sources',()=>{
+    const base=ledger.purchases()[0],excluded=['NR','NA','NONVAT','Non-VAT','No Receipt','TAX|NR|Exempt|0','TAX|NA|Exempt|0','TAX|NONVAT|Exempt|0'];
+    const records=[base,{...base,id:'exempt',number:'EXEMPT',tax:'EXEMPT',gross:100},{...base,id:'zero',number:'ZERO',tax:'ZERO',gross:200},...excluded.map((tax,index)=>({...base,id:'excluded-'+index,number:'EXCLUDED-'+index,tax,gross:999999,supplier:'Missing documentation',tin:''}))];
+    const source={...ledger,purchases:()=>records},before=JSON.stringify(records);
+    const report=build(source,'relief-purchases',range),detail=build(source,'relief-purchases',range,false);
+    assert.equal(report.stats.count,3);assert.equal(report.totals.at(-1),10300);assert.equal(detail.rows.length,3);
+    assert.equal(report.issues.length,0);assert.equal(report.rows.some(row=>row.documents.some(number=>number.startsWith('EXCLUDED'))),false);
+    const excel=purchasesExcelRows(source,range);assert.equal(excel.length,1);assert.equal(excel[0][5],103);assert.equal(excel[0].at(-2),12);
+    const dat=purchasesDatPayload(source,{company_name:'Company',tin:'123456789'},range);
+    assert.equal(dat.purchase_records.length,3);assert.equal(dat.purchase_records.some(row=>row.document_number.startsWith('EXCLUDED')),false);
+    assert.equal(JSON.stringify(records),before);assert.equal(source.purchases().length,records.length);
+    assert.equal(build({...ledger,sales:()=>sales},'relief-sales',range).stats.count,3);
 });
 
 test('Importation uses saved customs centavo amounts and is excluded from domestic reports and DAT',()=>{

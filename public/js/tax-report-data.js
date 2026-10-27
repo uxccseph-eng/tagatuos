@@ -3,9 +3,10 @@
     const tin=value=>{const digits=String(value || '').replace(/\D/g,'');return [9,12,13,14].includes(digits.length)?digits.slice(0,9).replace(/(\d{3})(\d{3})(\d{3})/,'$1-$2-$3')+'-'+digits.slice(9).padStart(5,'0'):String(value || '');};
     const hasTin=value=>/^\d{3}-\d{3}-\d{3}-(?:\d{3}|\d{5})$/.test(tin(value))&&/[1-9]/.test(tin(value));
     function isImportPurchase(record,ledger){const code=ledger.taxAmounts(record.gross,record.tax).tax?.code || '';return record.isImportation===true||Boolean(record.importation&&typeof record.importation==='object')||Boolean(record.customs&&typeof record.customs==='object')||/IMPORT/i.test(code);}
+    function includedReliefPurchase(record,ledger){const raw=String(record.tax||'').trim(),code=raw.startsWith('TAX|')?raw.split('|')[1]:ledger.taxAmounts(record.gross,record.tax).tax?.code;return !['NR','NA','NONVAT'].includes(String(code||'').toUpperCase())&&!['NR','NA','NONVAT','NON-VAT','NO RECEIPT'].includes(raw.toUpperCase());}
     function purchaseSchedule(ledger,range,grouped){
         const rows=[],issues=[],groups=new Map(),stats={base:0,tax:0,count:0};let hasNonVat=false,hasUnclassified=false;
-        for(const record of posted(ledger.purchases(),range).filter(item=>!isImportPurchase(item,ledger))){
+        for(const record of posted(ledger.purchases(),range).filter(item=>!isImportPurchase(item,ledger)&&includedReliefPurchase(item,ledger))){
             const name=record.supplier || '',identity=tin(record.supplierTin ?? record.tin),amount=ledger.taxAmounts(record.gross,record.tax),info=amount.tax,vat=record.gross-amount.net,code=String(record.account || '').split(' · ')[0],category=ledger.accountProfile?.(code)?.relief_category;
             if(!name)issues.push(record.number+': missing party name.');if(!hasTin(identity))issues.push(record.number+': missing or invalid TIN.');
             const values={exempt:0,zero:0,services:0,capital_goods:0,goods:0,nonvat:0,unclassified:0};
@@ -19,7 +20,7 @@
         const numeric=columns.map((_,index)=>index).filter(index=>index>=(grouped?3:4));
         for(const item of [...groups.values()].sort((a,b)=>a.date.localeCompare(b.date)||a.name.localeCompare(b.name)))rows.push({cells:[item.date,item.name,item.tin,...(!grouped?[item.number]:[]),item.values.exempt,item.values.zero,item.values.services,item.values.capital_goods,item.values.goods,...(hasNonVat?[item.values.nonvat]:[]),...(hasUnclassified?[item.values.unclassified]:[]),item.vat,item.net],documents:item.documents});
         const totals=columns.map((_,index)=>numeric.includes(index)?rows.reduce((sum,row)=>sum+row.cells[index],0):'');totals[0]='Total';
-        return {columns,rows,numeric,totals,stats,baseLabel:'Net taxable purchases',taxLabel:'Input VAT',note:'Posted domestic purchases only. Services, Capital Goods, and Other Goods follow Masters → Chart of Accounts. Import VAT purchases appear in RELIEF Importation. Total Purchases excludes input VAT.',issues:[...new Set(issues)],available:true};
+        return {columns,rows,numeric,totals,stats,baseLabel:'Net taxable purchases',taxLabel:'Input VAT',note:'Posted domestic purchases only. NR (No Receipt), legacy NA, and NONVAT entries are excluded. Services, Capital Goods, and Other Goods follow Masters → Chart of Accounts. Import VAT purchases appear in RELIEF Importation. Total Purchases excludes input VAT.',issues:[...new Set(issues)],available:true};
     }
     function importationSchedule(ledger,range){
         const columns=['Month','Entry No.','Supplier','Country','Dutiable','Charges','Exempt','Taxable','VAT Paid'],numeric=[4,5,6,7,8],rows=[],issues=[],stats={base:0,tax:0,count:0};
@@ -203,7 +204,7 @@
             from:range.from,to:range.to,tax_period:range.to.slice(5,7)+'/'+range.to.slice(0,4),};
     }
     function purchasesDatPayload(ledger,company,range,masters={},overrides={}){
-        const records=posted(ledger.purchases(),range).filter(record=>!isImportPurchase(record,ledger)).sort((a,b)=>a.date.localeCompare(b.date)||String(a.number).localeCompare(String(b.number)));
+        const records=posted(ledger.purchases(),range).filter(record=>!isImportPurchase(record,ledger)&&includedReliefPurchase(record,ledger)).sort((a,b)=>a.date.localeCompare(b.date)||String(a.number).localeCompare(String(b.number)));
         if(!records.length)throw Error('No posted purchases rows found in the selected reporting period to export.');
         const purchases=records.map(record=>{
             const key=String(record.id ?? record.number),override=overrides[key] || {};
@@ -234,7 +235,7 @@
     }
     function purchasesExcelRows(ledger, range, masters = {}) {
         const groups = new Map();
-        for (const record of posted(ledger.purchases(), range).filter(item => !isImportPurchase(item, ledger))) {
+        for (const record of posted(ledger.purchases(), range).filter(item => !isImportPurchase(item, ledger) && includedReliefPurchase(item, ledger))) {
             const name = String(record.supplier || '').trim();
             const party = (masters.parties || []).find(item => (!item.classification || ['Supplier', 'Both'].includes(item.classification)) && (record.partyId ? String(item.id) === String(record.partyId) : String(item.name).trim().toLowerCase() === name.toLowerCase()));
             const tinCandidates = [record.supplierTin, record.tin, party?.tin];

@@ -6,6 +6,15 @@ test('new selections autofill party details without rewriting posted historical 
 test('withholding choices accept catalog rates beyond the old hardcoded set',()=>{const {SheetMasters:m}=masters();assert.equal(m.allowedRate(0.5),true);assert.equal(m.allowedRate(12,true),true);assert.equal(m.allowedRate(12),false);assert.equal(m.allowedRate(88,true),false);assert.equal(m.rate('WI156 · 0.5%'),0.5);});
 test('party picker searches names, codes and TINs while excluding archived parties',()=>{const {SheetMasters:m}=masters();assert.equal(m.searchParties('active','Customer').length,1);assert.equal(m.searchParties('CUST-001','Customer')[0].name,'Active Customer');assert.equal(m.searchParties('123-456','Customer')[0].name,'Active Customer');assert.equal(m.searchParties('archived','Supplier').length,0);assert.equal(m.searchParties('Both','Supplier')[0].name,'Both Party');assert.equal(m.searchParties('',null,1).length,1);});
 
+test('No Receipt choices use NR and keep legacy NA readable without duplicate options',()=>{
+    const window=masters(),m=window.SheetMasters;
+    window.WorkspaceMasters.taxCodes.push({code:'NA',name:'Not applicable',kind:'Exempt',rate:0},{code:'NR',name:'No Receipt',kind:'Exempt',rate:0});
+    const choices=m.taxChoices(false).filter(item=>item.code==='NR');
+    assert.equal(choices.length,1);assert.match(choices[0].label,/NR.*No Receipt/);assert.equal(choices[0].value,'TAX|NR|Exempt|0');
+    assert.equal(m.taxInfo('TAX|NA|Exempt|0').code,'NR');assert.equal(m.taxInfo('TAX|NR|Exempt|0').rate,0);
+    assert.equal(m.taxAmounts(10000,'TAX|NR|Exempt|0').net,10000);assert.equal(m.taxLabel('TAX|NA|Exempt|0'),'NR · No Receipt · 0%');
+});
+
 test('petty cash supplier selections keep an unknown TIN blank and do not suggest previous tax settings',()=>{
     const window=masters(),m=window.SheetMasters;
     window.WorkspaceMasters.parties.push({id:44,name:'PETTY CASH / MISCELLANEOUS PAYEES',classification:'Supplier',is_petty_cash:true,tin:null});

@@ -8,6 +8,7 @@ use App\Models\CompanyLedger;
 use App\Models\CompanySetting;
 use App\Models\Employee;
 use App\Models\Party;
+use App\Models\TaxCode;
 use App\Models\User;
 use App\Services\CompanyLedgerService;
 use Illuminate\Database\Events\QueryExecuted;
@@ -20,6 +21,21 @@ use Tests\TestCase;
 class CompanyLedgerTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_new_nr_and_legacy_na_purchases_post_without_rewriting_saved_tax_treatments(): void
+    {
+        [$company, $owner] = $this->book();
+        $this->asMember($owner, $company);
+        TaxCode::factory()->create(['workspace_key' => $company->workspaceKey(), 'code' => 'NA', 'name' => 'Not applicable', 'kind' => 'Exempt', 'rate' => 0]);
+        TaxCode::seedWorkspace($company->workspaceKey());
+        Party::factory()->create(['workspace_key' => $company->workspaceKey(), 'name' => 'Receipt Supplier', 'classification' => 'Supplier']);
+        $state = CompanyLedgerService::emptyState();
+        foreach (['NA', 'NR'] as $index => $code) {
+            $state['purchases'][] = ['id' => $index + 1, 'number' => 'BILL-00000'.($index + 1), 'date' => '2026-10-01', 'status' => 'posted', 'supplier' => 'Receipt Supplier', 'gross' => 10000, 'tax' => 'TAX|'.$code.'|Exempt|0', 'account' => '7110 · Rent Expense', 'terms' => 'On Account', 'ewt' => 0, 'wvat' => 0];
+        }
+        $this->save($state)->assertOk()->assertJsonPath('state.purchases.0.tax', 'TAX|NA|Exempt|0')->assertJsonPath('state.purchases.1.tax', 'TAX|NR|Exempt|0');
+        $this->assertDatabaseCount('journal_entries', 2);
+    }
 
     public function test_drafts_in_every_sheet_and_payroll_are_saved_without_transaction_numbers(): void
     {
