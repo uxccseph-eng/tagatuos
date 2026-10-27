@@ -43,17 +43,18 @@
 <script src="{{ asset('js/sheet-toolbar.js') }}?v={{ filemtime(public_path('js/sheet-toolbar.js')) }}" defer></script>
 <link rel="stylesheet" href="{{ asset('css/sheet-import.css') }}?v={{ filemtime(public_path('css/sheet-import.css')) }}">
 <script src="{{ asset('js/sheet-import.js') }}?v={{ filemtime(public_path('js/sheet-import.js')) }}" defer></script>
-@if(in_array($sheet, ['sales', 'purchases']))
     @php
         $importServiceConfig = [
             'companyId' => request()->attributes->get('active_company')?->id,
             'csrf' => csrf_token(),
             'workbook' => route('sheets.import.workbook'),
+            'excelTemplate' => route('sheets.import.template', ['sheet' => $sheet]),
             'lookup' => route('sheets.import.mapping'),
             'save' => route('sheets.import.mapping.save'),
         ];
     @endphp
     <script id="sheet-import-service-config" type="application/json">@json($importServiceConfig)</script>
+@if(in_array($sheet, ['sales', 'purchases']))
     <script src="{{ asset('js/guided-sheet-import.js') }}?v={{ filemtime(public_path('js/guided-sheet-import.js')) }}" defer></script>
 @endif
 <script src="{{ asset('js/sheet-import-ui.js') }}?v={{ filemtime(public_path('js/sheet-import-ui.js')) }}" defer></script>

@@ -50,6 +50,20 @@
         const rows=[columns[sheet],...(withSamples?sampleRows(sheet).map(row=>columns[sheet].map(column=>row[column]??'')):[])];
         return '\uFEFF'+rows.map(row=>row.map(value=>'"'+String(value).replace(/"/g,'""')+'"').join(',')).join('\r\n')+'\r\n';
     }
+    async function fileText(file,config,request=root?.fetch?.bind(root)){
+        if(/\.csv$/i.test(file.name)){
+            if(file.size>5*1024*1024)throw Error('Choose a CSV file up to 5 MB.');
+            return file.text();
+        }
+        if(!/\.xlsx$/i.test(file.name)||file.size>2*1024*1024)throw Error('Choose CSV up to 5 MB or Excel .xlsx up to 2 MB.');
+        if(!config.companyId||!config.workbook||!request)throw Error('Open an assigned company book to import Excel files.');
+        const data=new FormData();data.append('file',file);data.append('worksheet','0');
+        const response=await request(config.workbook,{method:'POST',headers:{Accept:'application/json','X-CSRF-TOKEN':config.csrf,'X-Company-ID':String(config.companyId)},body:data});
+        let payload;try{payload=await response.json();}catch{throw Error('Could not read the Excel response (HTTP '+response.status+').');}
+        if(!response.ok)throw Error(Object.values(payload.errors||{}).flat().join(' ')||payload.message||'Excel upload failed (HTTP '+response.status+').');
+        if(!Array.isArray(payload.rows)||payload.rows.some(row=>!Array.isArray(row)))throw Error('The Excel response did not contain spreadsheet rows.');
+        return '\uFEFF'+payload.rows.map(row=>row.map(value=>'"'+String(value??'').replace(/"/g,'""')+'"').join(',')).join('\r\n');
+    }
     function amount(value,label='Amount',zero=false){const text=String(value || '').replace(/[₱,\s]/g,'');if(!text&&zero)return 0;if(!/^\d{1,9}(\.\d{1,2})?$/.test(text))throw Error(label+' must be a number with no more than two decimal places.');const [whole,fraction='']=text.split('.');const cents=Number(whole)*100+Number(fraction.padEnd(2,'0'));if(!zero&&cents<=0)throw Error(label+' must be greater than zero.');return cents;}
     function date(value){let text=String(value || '').trim();const match=text.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);if(match)text=match[3]+'-'+match[1].padStart(2,'0')+'-'+match[2].padStart(2,'0');const parsed=new Date(text+'T12:00:00Z');if(!/^\d{4}-\d{2}-\d{2}$/.test(text)||!Number.isFinite(parsed.getTime())||parsed.toISOString().slice(0,10)!==text)throw Error('Date must be a real date in YYYY-MM-DD or MM/DD/YYYY format.');return text;}
     function fingerprint(sheet,record){const fields={sales:['date','customer','gross','reference','account','tax','terms','cwt','vatCwt'],purchases:['date','supplier','gross','reference','account','tax','terms','ewt','wvat'],collections:['date','customer','invoice','amount','reference','type'],payments:['date','supplier','bill','amount','reference','type','account'],cwt:['date','invoice','customer','tin','taxBase','atc','amount'],wtp:['date','bill','supplier','tin','taxBase','ewt','wvat','ewtCode','wvatCode','offset'],journal:['date','reference','type','lines']}[sheet];return JSON.stringify(fields.map(field=>{const value=record[field];return typeof value==='string'?value.trim().toLowerCase():value ?? '';}));}
@@ -134,5 +148,5 @@
         if(!errors.length&&records.length)errors.push(...context.ledger.previewImport(sheet,records).errors);
         return {records,errors,warnings,rowCount:rows.length,included:rows.filter(row=>!row.skip).length,totalGross:records.reduce((sum,record)=>sum+record.gross,0)};
     }
-    const api={columns,methods,parseCsv,parseClipboard,sampleRows,template,amount,date,fingerprint,preview,guessMapping,mapRows,previewMapped};if(typeof module!=='undefined'&&module.exports)module.exports=api;if(root)root.SheetImport=api;
+    const api={columns,methods,parseCsv,parseClipboard,sampleRows,template,fileText,amount,date,fingerprint,preview,guessMapping,mapRows,previewMapped};if(typeof module!=='undefined'&&module.exports)module.exports=api;if(root)root.SheetImport=api;
 })(typeof window==='undefined'?null:window);

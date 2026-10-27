@@ -39,6 +39,7 @@
         'csrf' => csrf_token(),
         'frequency' => $company['sheet_settings']['payroll_frequency'] ?? 'monthly',
         'workbook' => route('sheets.import.workbook'),
+        'excelTemplate' => route('sheets.import.template', ['sheet' => 'payroll']),
         'lookup' => route('sheets.import.mapping'),
         'save' => route('sheets.import.mapping.save'),
         'followups' => request()->attributes->get('active_company') ? route('follow-ups.batch', ['companyId' => request()->attributes->get('active_company')->id]) : null,

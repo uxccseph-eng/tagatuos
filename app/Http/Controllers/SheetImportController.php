@@ -13,9 +13,20 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use RuntimeException;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class SheetImportController extends Controller
 {
+    public function template(Request $request, string $sheet): BinaryFileResponse
+    {
+        $this->company($request);
+
+        return response()->download(resource_path('templates/sheets-'.$sheet.'-import.xlsx'), 'sheets-'.$sheet.'-dropdown-template.xlsx', [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Cache-Control' => 'private, no-store',
+        ]);
+    }
+
     private const COLUMNS = [
         'sales' => ['Date', 'Customer', 'Gross Amount', 'Tax Type', 'Revenue Account', 'Income Withholding ATC', 'VAT Withholding ATC', 'Terms', 'Invoice Reference', 'Classification', 'Deposit Account', 'Description', 'Particulars'],
         'purchases' => ['Date', 'Supplier', 'Supplier TIN', 'Gross Amount', 'Tax Type', 'Account', 'Income Withholding ATC', 'VAT Withholding ATC', 'Terms', 'Invoice Reference', 'Bank', 'Description', 'Notes'],

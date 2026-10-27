@@ -148,7 +148,9 @@
         q('[data-exceptions]').addEventListener('change',render);q('[data-recheck]').addEventListener('click',render);
         q('[data-prev]').addEventListener('click',()=>{page--;render();});q('[data-next]').addEventListener('click',()=>{page++;render();});
         const templateButton=q('[data-template]'),blankTemplate=el('button','Download blank template');blankTemplate.type='button';templateButton.textContent='Download template with samples';templateButton.after(blankTemplate);
+        if(config.excelTemplate){const excelTemplate=el('button','Excel template with dropdowns');excelTemplate.type='button';templateButton.before(excelTemplate);excelTemplate.addEventListener('click',()=>{const link=el('a');link.href=config.excelTemplate;link.download='sheets-'+sheet+'-dropdown-template.xlsx';document.body.append(link);link.click();link.remove();});}
         const sampleGuide=el('p','Sample rows are examples only. Replace or remove them before importing. Use your actual dates, amounts, Masters codes and posted source numbers.');templateButton.closest('.sheet-import-controls').after(sampleGuide);
+        sampleGuide.textContent+=' Excel: fill the blank Import worksheet; green columns have dropdowns. Examples and Choices are reference sheets. CSV files do not have dropdowns.';
         const downloadTemplate=withSamples=>{const url=URL.createObjectURL(new Blob([engine.template(sheet,withSamples)],{type:'text/csv;charset=utf-8'})),link=el('a');link.href=url;link.download='tagatuos-'+sheet+(withSamples?'-sample-template.csv':'-blank-template.csv');link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
         templateButton.addEventListener('click',()=>downloadTemplate(true));blankTemplate.addEventListener('click',()=>downloadTemplate(false));
         q('[data-import-post]').addEventListener('click',async()=>{

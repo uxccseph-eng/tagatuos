@@ -67,6 +67,7 @@ Route::middleware('auth')->group(function (): void {
         Route::put('/{itemId}', [ClientFollowUpController::class, 'update'])->middleware('throttle:60,1,follow-up-update:')->name('update');
         Route::post('/{itemId}/open-entry', [ClientFollowUpController::class, 'openEntry'])->name('open-entry');
     });
+    Route::get('/sheets/import/template/{sheet}', [SheetImportController::class, 'template'])->where('sheet', 'sales|purchases|collections|payments|cwt|wtp|journal|payroll')->name('sheets.import.template');
     Route::post('/sheets/import/workbook', [SheetImportController::class, 'workbook'])->middleware('throttle:15,1,import-file:')->name('sheets.import.workbook');
     Route::post('/sheets/import/mapping', [SheetImportController::class, 'lookup'])->middleware('throttle:60,1,import-map:')->name('sheets.import.mapping');
     Route::put('/sheets/import/mapping', [SheetImportController::class, 'save'])->middleware('throttle:20,1,import-map-save:')->name('sheets.import.mapping.save');
