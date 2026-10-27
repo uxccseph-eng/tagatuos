@@ -14,7 +14,23 @@
         el('masters-count').textContent=accounts.length+' Registered';el('masters-archived-count').textContent=accounts.filter(account=>account.archived).length;el('masters-showing').textContent='Showing '+shown.length+' of '+visible.length+' matching accounts';el('masters-range').textContent=(visible.length?start+1:0)+' – '+Math.min(start+size,visible.length)+' of '+visible.length+' accounts';el('masters-page-number').textContent=page+' / '+pages;
         document.querySelectorAll('[data-type-count]').forEach(node=>{node.textContent=accounts.filter(account=>(el('masters-show-archived').checked||!account.archived)&&(node.dataset.typeCount==='All'||account.type===node.dataset.typeCount)).length;});document.querySelectorAll('[data-account-type]').forEach(button=>button.setAttribute('aria-pressed',String(type===button.dataset.accountType)));document.querySelectorAll('[data-page]').forEach(button=>button.disabled=['first','previous'].includes(button.dataset.page)?page===1:page===pages);
     }
-    async function request(url,method,body){const response=await fetch(url,{method,headers:{'Accept':'application/json','Content-Type':'application/json','X-CSRF-TOKEN':token},body:body?JSON.stringify(body):undefined});let data;try{data=await response.json();}catch{throw new Error('Unable to read the server response. Refresh the page and try again.');}if(!response.ok)throw new Error(response.status===422?Object.values(data.errors||{}).flat().join(' '):response.status===419?'Your session expired. Refresh the page before saving.':'Unable to save this change. Please try again.');return data.account;}
+    async function request(url,method,body){
+        const response=await fetch(url,{method,headers:{'Accept':'application/json','Content-Type':'application/json','X-CSRF-TOKEN':token},body:body?JSON.stringify(body):undefined});
+        let data;
+        try{data=await response.json();}catch{throw new Error('Could not read the account response (HTTP '+response.status+'). Refresh the page or sign in again before retrying.');}
+        if(!response.ok){
+            const errors=Object.values(data.errors||{}).flat().join(' ');
+            const message=response.status===422?(errors||data.message||'Review the account fields.'):
+                [401,419].includes(response.status)?'Your session expired. Refresh the page and sign in again before saving.':
+                response.status===403?(data.message||'Your role does not allow editing this account.'):
+                response.status===404?'This account is not available in the active company. Refresh the Chart of Accounts before editing.':
+                response.status===409?(data.message||'The active company changed. Reopen the correct company book and try again.'):
+                response.status>=500?'The server could not save this account. Ask the administrator to check the application log.':
+                data.message||'Unable to save this account.';
+            throw new Error(message+' (HTTP '+response.status+')');
+        }
+        return data.account;
+    }
     function remember(account){accounts=accounts.filter(item=>item.id!==account.id);accounts.push(account);render();}
     function syncSalesRelief(){const automatic=main.dataset.vatRegistered==='true'&&form.elements.type.value==='Income';for(const option of form.elements.relief_category.options)option.hidden=option.value==='vatable_sales'&&!automatic;if(automatic){form.elements.relief_category.value='vatable_sales';form.elements.relief.checked=true;}else if(form.elements.relief_category.value==='vatable_sales'){form.elements.relief_category.value='';form.elements.relief.checked=false;}form.elements.relief_category.disabled=automatic;form.elements.relief.disabled=automatic;form.elements.relief_category.title=automatic?'Income accounts are automatically classified as Vatable Sales for VAT-registered companies.':'';}
     function defaultType(){const value=form.elements.type.value;form.elements.normal_balance.value=['Asset','Expense'].includes(value)?'Debit':'Credit';form.elements.statement_section.value=({Asset:'Current Assets',Liability:'Current Liabilities',Equity:'Capital',Income:'Revenue',Expense:'General and Administrative Expenses'})[value];syncSalesRelief();}

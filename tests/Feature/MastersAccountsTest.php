@@ -45,6 +45,15 @@ class MastersAccountsTest extends TestCase
         $this->withSession(['preview_access' => true, 'company_setup' => $this->workspace()['company_setup'], 'different_session_marker' => true])->get('/masters/chart-of-accounts')->assertSee('Freight and Delivery');
     }
 
+    public function test_seeded_cost_of_sales_account_can_be_renamed_without_replacing_its_code_or_id(): void
+    {
+        $this->withSession($this->workspace())->get('/masters/chart-of-accounts')->assertOk();
+        $account = ChartAccount::query()->where('code', '5000')->sole();
+        $this->putJson('/masters/chart-of-accounts/'.$account->id, [...$this->payload(), 'code' => '5000', 'name' => 'Cost of Services', 'statement_section' => 'Cost of Goods Sold', 'ewt' => false])
+            ->assertOk()->assertJsonPath('account.id', $account->id)->assertJsonPath('account.name', 'Cost of Services')->assertJsonPath('account.code', '5000');
+        $this->assertDatabaseHas('chart_accounts', ['id' => $account->id, 'code' => '5000', 'name' => 'Cost of Services']);
+    }
+
     public function test_validation_prevents_duplicate_codes_including_archived_codes_and_invalid_flags(): void
     {
         $this->withSession($this->workspace())->postJson('/masters/chart-of-accounts', $this->payload())->assertCreated();
