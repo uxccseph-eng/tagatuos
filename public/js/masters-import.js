@@ -194,8 +194,11 @@
         link.href = url; link.download = name; document.body.append(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000);
     }
     const templateButton = field('template'), blankTemplate = cell('button', 'Download blank template');
+    const excelTemplate = cell('button', 'Excel template with dropdowns');
+    excelTemplate.type = 'button'; templateButton.before(excelTemplate);
+    excelTemplate.addEventListener('click', () => {const link = document.createElement('a'); link.href = config.excelTemplateUrl; link.download = 'masters-'+registry+'-dropdown-template.xlsx'; document.body.append(link); link.click(); link.remove();});
     blankTemplate.type = 'button'; templateButton.textContent = 'Download template with samples'; templateButton.after(blankTemplate);
-    const sampleGuide = cell('p', 'Sample rows are examples only. Replace or remove them before importing. Use actual TINs and account codes; keep bank numbers and identifiers as text in Excel.');
+    const sampleGuide = cell('p', 'Excel: fill the blank Import worksheet; green columns have dropdowns for fixed form choices. See Examples for '+(registry === 'parties' ? 'company, individual and petty cash samples' : 'sample rows')+', and Choices for instructions. CSV files have no dropdowns. Replace sample details with actual TINs and account codes.');
     templateButton.closest('.sheet-import-controls').after(sampleGuide);
     templateButton.addEventListener('click', () => download('tagatuos-masters-'+registry+'-sample-template.csv', tools.template(registry, config.columns, true)));
     blankTemplate.addEventListener('click', () => download('tagatuos-masters-'+registry+'-blank-template.csv', tools.template(registry, config.columns)));

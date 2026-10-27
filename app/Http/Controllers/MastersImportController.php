@@ -15,9 +15,20 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use RuntimeException;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class MastersImportController extends Controller
 {
+    public function template(Request $request, string $registry): BinaryFileResponse
+    {
+        abort_unless($request->session()->get('preview_access') && $request->session()->has('company_setup'), 403);
+
+        return response()->download(resource_path('templates/masters-'.$registry.'-import.xlsx'), 'masters-'.$registry.'-dropdown-template.xlsx', [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Cache-Control' => 'private, no-store',
+        ]);
+    }
+
     public function workbook(Request $request, string $registry, SheetImportWorkbookReader $reader): JsonResponse
     {
         abort_unless($request->session()->get('preview_access') && $request->session()->has('company_setup'), 403);

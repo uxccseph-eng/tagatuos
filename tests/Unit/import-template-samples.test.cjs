@@ -33,8 +33,9 @@ test('all Masters samples round-trip through mapping with optional blanks preser
     assert.equal(masters.sampleRows('bank-accounts')[0].account_number,'001234567890');
     const parties = masters.sampleRows('parties');
     assert.equal(parties[0].street,'');
-    assert.equal(parties[1].is_petty_cash,'Yes'); assert.equal(parties[1].tin,'');
-    assert.equal(parties[1].classification,'Supplier');
+    const individual = parties.find(row=>row.entity_type==='individual'), pettyCash = parties.find(row=>row.is_petty_cash==='Yes');
+    assert.equal(individual.first_name,'JUAN'); assert.equal(individual.last_name,'DELA CRUZ');
+    assert.equal(pettyCash.tin,''); assert.equal(pettyCash.classification,'Supplier');
 });
 test('payroll example includes every required actual amount and maps without column errors', () => {
     const matrix = sheets.parseCsv(payroll.template(true));

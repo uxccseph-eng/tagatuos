@@ -161,6 +161,7 @@ Route::get('/books/{book}', [BooksController::class, 'index'])->name('books.show
 
 Route::redirect('/masters', '/masters/chart-of-accounts')->name('masters');
 Route::prefix('masters/{registry}')->where(['registry' => 'chart-of-accounts|parties|tax-codes|bank-accounts|atc-codes|employees'])->group(function (): void {
+    Route::get('/import/template', [MastersImportController::class, 'template'])->name('masters.import.template');
     Route::post('/import/preview', [MastersImportController::class, 'preview'])->name('masters.import.preview');
     Route::post('/import/workbook', [MastersImportController::class, 'workbook'])->middleware('throttle:20,1')->name('masters.import.workbook');
     Route::post('/import', [MastersImportController::class, 'store'])->name('masters.registry.import');
