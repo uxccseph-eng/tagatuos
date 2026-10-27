@@ -62,11 +62,11 @@
     </div>
 
     <!-- Company Switcher -->
-    <button data-workspace-topic="Company" aria-label="Company settings" class="h-8 px-2.5 rounded-lg bg-slate-100 dark:bg-[#1d2433] border border-slate-200 dark:border-[#2b3548] hover:bg-slate-200/70 dark:hover:bg-[#252f42] flex items-center gap-1.5 text-slate-800 dark:text-slate-200 font-mono text-xs transition-colors">
+    <a href="{{ route('account.dashboard') }}" aria-label="Switch company book" class="h-8 px-2.5 rounded-lg bg-slate-100 dark:bg-[#1d2433] border border-slate-200 dark:border-[#2b3548] hover:bg-slate-200/70 dark:hover:bg-[#252f42] flex items-center gap-1.5 text-slate-800 dark:text-slate-200 font-mono text-xs transition-colors">
       <span class="material-symbols-outlined text-[15px] text-cyan-600 dark:text-[#00d8f6]">domain</span>
       <span class="font-semibold tracking-tight max-w-[120px] xl:max-w-[160px] truncate">{{ $company['company_name'] }}</span>
       <span class="material-symbols-outlined text-[14px] text-slate-400">unfold_more</span>
-    </button>
+    </a>
 
     <!-- LIVE INTERACTIVE THEME TOGGLE (DARK / LIGHT) -->
     <button id="themeToggleBtn" type="button" aria-label="Toggle dark/light theme" title="Toggle theme (Light / Dark)" class="relative w-8 h-8 rounded-lg bg-slate-100 dark:bg-[#1d2433] border border-slate-200 dark:border-[#2b3548] flex items-center justify-center text-slate-600 dark:text-amber-400 hover:text-slate-900 dark:hover:text-amber-300 hover:bg-slate-200/70 dark:hover:bg-[#252f42] transition-colors focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer">

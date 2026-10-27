@@ -58,7 +58,6 @@ function openWorkspaceTopic(topic) {
     if (searchDialog.open) searchDialog.close();
     document.getElementById('workspace-dialog-title').textContent = topic;
     let description = `${topic} is a planned workspace module. This module is not connected yet. Your posted records remain available in Sheets and Books.`;
-    if (topic === 'Company') description = `Your current company is ${workspaceDialog.dataset.company}. You can edit its saved profile in company setup. Multiple company switching is not connected yet.`;
     if (topic === 'Profile') description = `Demo profile: ${workspaceDialog.dataset.owner}. This is a local session, not a verified account. Exit demo to clear the company details from this session.`;
     if (topic === 'Notifications') description = 'No workspace notifications. BIR services and external integrations are not connected.';
     if (topic === 'Create') description = 'Choose a transaction module to preview. Record entries in Sheets and review posted records in Books.';
