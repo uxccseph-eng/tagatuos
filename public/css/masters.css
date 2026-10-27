@@ -40,3 +40,14 @@
 .party-address-grid>label{display:block;font-size:12px;line-height:1.5;color:rgb(var(--sales-on-surface-variant))}.party-address-grid>label>input{display:block;margin-top:7px}
 
 #registry-form [hidden],.sheet-master-create [hidden]{display:none!important}
+
+#masters-freeze[aria-pressed=true]{color:rgb(var(--sales-primary-container));border-color:rgb(var(--sales-primary-container) / .45);background:rgb(var(--sales-primary-container) / .1)}
+.masters-grid.is-frozen{--masters-code-width:84px;--masters-name-width:250px}
+.masters-grid.is-frozen #masters-table :is(th,td):first-child:not(.masters-empty){box-sizing:border-box;position:sticky;left:0;width:var(--masters-code-width);min-width:var(--masters-code-width);max-width:var(--masters-code-width);z-index:2}
+.masters-grid.is-frozen #masters-table :is(th,td):nth-child(2){box-sizing:border-box;position:sticky;left:var(--masters-code-width);width:var(--masters-name-width);min-width:var(--masters-name-width);max-width:var(--masters-name-width);white-space:normal;overflow-wrap:anywhere;z-index:2;box-shadow:2px 0 0 rgb(var(--sales-outline-variant) / .35)}
+.masters-grid.is-frozen #masters-table :is(th,td):last-child:not(.masters-empty){position:sticky;right:0;min-width:96px;z-index:2;white-space:nowrap;box-shadow:-2px 0 0 rgb(var(--sales-outline-variant) / .35)}
+.masters-grid.is-frozen #masters-table td:is(:first-child,:nth-child(2),:last-child):not(.masters-empty){background:rgb(var(--sales-surface-container-low));opacity:1}
+.masters-grid.is-frozen #masters-table th{z-index:3}
+.masters-grid.is-frozen #masters-table th:is(:first-child,:nth-child(2),:last-child){z-index:4}
+@media(max-width:600px){.masters-grid.is-frozen{--masters-code-width:68px;--masters-name-width:130px}.masters-grid.is-frozen #masters-table :is(th,td):last-child:not(.masters-empty){min-width:84px;padding-left:8px;padding-right:8px}}
+@media print{.masters-grid.is-frozen #masters-table :is(th,td){position:static!important;box-shadow:none!important}}

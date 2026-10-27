@@ -4,6 +4,12 @@
     const flags=['is_cash_bank','is_advance','is_control','relief','percentage_tax','ewt','allow_subsidiaries'];
     const token=document.querySelector('meta[name="csrf-token"]').content;
     const announce=message=>{el('masters-status').textContent=message;};
+    el('masters-freeze').addEventListener('click',()=>{
+        const frozen=main.querySelector('.masters-grid').classList.toggle('is-frozen');
+        el('masters-freeze').setAttribute('aria-pressed',String(frozen));
+        el('masters-freeze').querySelector('[data-freeze-label]').textContent=frozen?'Unfreeze':'Freeze';
+        announce(frozen?'Account code, name and Edit/Archive actions are frozen while scrolling.':'Account columns are unfrozen.');
+    });
     const info=(title,text)=>{el('masters-info-title').textContent=title;el('masters-info-text').textContent=text;infoDialog.showModal();};
     function filtered(){const query=(el('masters-search').value+' '+el('sales-global-search').value).trim().toLowerCase();return accounts.filter(account=>(el('masters-show-archived').checked||!account.archived)&&(type==='All'||account.type===type)&&[account.code,account.name,account.type,account.statement_section,account.subsidiary,account.ppe_category].join(' ').toLowerCase().includes(query)).sort((a,b)=>a.code.localeCompare(b.code));}
     function action(label,icon,run){const button=document.createElement('button');button.type='button';button.className='masters-row-action';button.title=label;button.setAttribute('aria-label',label);const symbol=document.createElement('span');symbol.className='material-symbols-outlined';symbol.textContent=icon;symbol.setAttribute('aria-hidden','true');button.append(symbol);button.addEventListener('click',run);return button;}
