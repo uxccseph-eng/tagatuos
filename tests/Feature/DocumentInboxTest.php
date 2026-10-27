@@ -83,13 +83,13 @@ class DocumentInboxTest extends TestCase
         $this->assertSame('draft', $record['status']);
         $this->assertSame(50000, $record['gross']);
         $this->assertSame($party->id, $record['partyId']);
-        $this->assertSame('BILL-000001', $record['number']);
+        $this->assertSame('', $record['number']);
         $this->assertSame('linked', $document->status);
         $this->assertSame((string) $record['id'], $document->linked_record_id);
         $this->assertStringContainsString('/account/companies/'.$company->id.'/documents/'.$document->id.'/file', $record['attachments'][0]['data']);
         $this->assertDatabaseCount('journal_entries', 0);
         $this->assertDatabaseCount('company_ledger_changes', 1);
-        $this->get(route('documents.show', ['companyId' => $company->id, 'documentId' => $document->id]))->assertOk()->assertSee('BILL-000001')->assertDontSee('id="document-entry-form"', false);
+        $this->get(route('documents.show', ['companyId' => $company->id, 'documentId' => $document->id]))->assertOk()->assertSee('Draft')->assertDontSee('BILL-000001')->assertDontSee('id="document-entry-form"', false);
         $this->post(route('documents.open-entry', ['companyId' => $company->id, 'documentId' => $document->id]))->assertRedirect(route('sheets.purchases', ['entry' => $record['id'], 'period' => '2026-10']))->assertSessionHas('active_company_id', $company->id);
     }
 
@@ -104,7 +104,7 @@ class DocumentInboxTest extends TestCase
         $this->putJson($this->url($document), [...$data, 'party_id' => $foreignParty->id])->assertUnprocessable()->assertJsonValidationErrors('party_id');
         $this->putJson($this->url($document), $data)->assertRedirect();
         $record = CompanyLedger::query()->sole()->state['sales'][0];
-        $this->assertSame('SI-000001', $record['number']);
+        $this->assertSame('', $record['number']);
         $this->assertSame($party->name, $record['customer']);
         $this->assertSame('None', $record['cwt']);
         $this->assertDatabaseMissing('company_ledgers', ['company_id' => $foreign->id]);
@@ -140,6 +140,7 @@ class DocumentInboxTest extends TestCase
         $ledger = CompanyLedger::query()->sole();
         $state = $ledger->state;
         $state['sales'][0]['status'] = 'posted';
+        $state['sales'][0]['number'] = 'SI-000001';
         app(CompanyLedgerService::class)->save($company, $user, ['state' => $state, 'payroll' => [], 'revision' => 1, 'request_id' => (string) Str::uuid()]);
         $second = $this->upload($user, $company, 'Different scan');
         $this->putJson($this->url($second), [...$data, 'ledger_revision' => 2])->assertUnprocessable()->assertJsonValidationErrors('reference');

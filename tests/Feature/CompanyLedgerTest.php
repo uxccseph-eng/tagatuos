@@ -21,6 +21,46 @@ class CompanyLedgerTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_drafts_in_every_sheet_and_payroll_are_saved_without_transaction_numbers(): void
+    {
+        [$company, $owner] = $this->book();
+        $this->asMember($owner, $company);
+        $state = CompanyLedgerService::emptyState();
+        foreach (CompanyLedgerService::SHEETS as $sheet) {
+            $state[$sheet] = [['id' => 'draft-'.$sheet, 'number' => 'LEGACY-000099', 'date' => '2026-10-01', 'status' => 'draft']];
+        }
+        $payroll = [['id' => 'draft-payroll', 'number' => 'PYRJ-000099', 'date' => '2026-10-01', 'status' => 'draft', 'employees' => []]];
+        $response = $this->save($state, 0, $payroll)->assertOk()->assertJsonPath('payroll.0.number', '');
+        foreach (CompanyLedgerService::SHEETS as $sheet) {
+            $response->assertJsonPath('state.'.$sheet.'.0.number', '');
+            $this->assertSame('', CompanyLedger::query()->sole()->state[$sheet][0]['number']);
+        }
+        $this->assertSame('', CompanyLedger::query()->sole()->payroll[0]['number']);
+        $this->assertDatabaseCount('journal_entries', 0);
+        $legacy = CompanyLedger::query()->sole();
+        $legacy->update(['state' => $state, 'payroll' => $payroll]);
+        $this->getJson(route('sheets.database.show'))->assertOk()->assertJsonPath('state.journalEntries.0.number', '')->assertJsonPath('payroll.0.number', '');
+    }
+
+    public function test_failed_posting_leaves_the_saved_draft_unnumbered_and_a_retry_posts_once(): void
+    {
+        [$company, $owner] = $this->book();
+        $this->asMember($owner, $company);
+        $state = CompanyLedgerService::emptyState();
+        $state['journalEntries'] = [$this->journal('draft-journal', '', 'draft')];
+        $this->save($state)->assertOk()->assertJsonPath('state.journalEntries.0.number', '');
+        $attempt = $state;
+        $attempt['journalEntries'][0] = $this->journal('draft-journal', 'GJ-000001');
+        $attempt['journalEntries'][0]['lines'][1]['credit'] = 999;
+        $this->save($attempt, 1)->assertUnprocessable();
+        $this->assertSame(1, CompanyLedger::query()->sole()->revision);
+        $this->assertSame('', CompanyLedger::query()->sole()->state['journalEntries'][0]['number']);
+        $this->assertDatabaseCount('journal_entries', 0);
+        $attempt['journalEntries'][0]['lines'][1]['credit'] = 1000;
+        $this->save($attempt, 1)->assertOk()->assertJsonPath('state.journalEntries.0.number', 'GJ-000001');
+        $this->assertDatabaseCount('journal_entries', 1);
+    }
+
     public function test_two_accountants_read_the_same_company_records_and_stale_save_cannot_overwrite(): void
     {
         [$company, $first, $second] = $this->book();

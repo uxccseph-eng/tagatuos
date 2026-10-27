@@ -29,7 +29,7 @@ test('preview resolves Masters without consuming numbers or changing storage and
     const context=workspace(),draft={...context.ledger.sales()[0],id:4,number:'SI-000004',status:'draft',customer:'Draft customer'};context.ledger.saveSales([...context.ledger.sales(),draft]);
     const before=JSON.stringify(context.ledger.sales()),stored=JSON.stringify([...context.storage]);const result=preview('sales',[sale({'Revenue Account':'4000 · Merchandise Sales','Deposit Account':'1010 · Cash on Hand'})],context);
     assert.deepEqual(result.errors,[]);assert.equal(result.records[0].customer,'Import Customer');assert.equal(result.records[0].tax,'12% VAT');assert.equal(JSON.stringify(context.ledger.sales()),before);assert.equal(JSON.stringify([...context.storage]),stored);
-    const posted=context.ledger.postImport('sales',result.records);assert.equal(posted.records[0].number,'SI-000005');assert.equal(context.ledger.sales().filter(record=>record.status==='draft').length,1);
+    const posted=context.ledger.postImport('sales',result.records);assert.equal(posted.records[0].number,'SI-000004');assert.equal(context.ledger.sales().filter(record=>record.status==='draft').length,1);
 });
 test('Sales batch posts cash receipts automatically and leaves on-account invoices unpaid',()=>{
     const context=workspace(),before=context.ledger.collections().length;post('sales',[sale({Terms:'Cash'}),sale({'Invoice Reference':'IMPORT-SI-002'})],context);

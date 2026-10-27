@@ -32,7 +32,7 @@ function directPost(sheet,{invalid=false,failSave=false,certificate='CERT-001'}=
     const record={id:'draft-1',number:'TXN-000001',date:'2026-10-20',status:'draft',customer:'Sample Customer',supplier:'Sample Supplier',gross:10000,amount:10000,tin:'000-000-000-00000',certificate,saleId:'sale-1'};
     const messages=[],saved=[],rendered=[];
     const context={window:{SheetMasters:{withholdingError:()=>''}},records:sheet==='collections'?new Map([[record.id,record]]):[record],selected:new Set(),clone:value=>JSON.parse(JSON.stringify(value)),history:()=>{},invalid:()=>invalid,invalidDraft:()=>invalid,match:()=>true,validate:()=>!invalid,announce:message=>messages.push(message),render:()=>rendered.push(true),update:()=>{},open:()=>{throw Error('Posting must not open a popup');},inspect:()=>{throw Error('Posting must not inspect a popup');}};
-    const save=next=>{if(failSave)throw Error('Storage full');saved.push(JSON.parse(JSON.stringify(next)));};
+    const save=next=>{if(failSave)throw Error('Storage full');if(sheet==='cwt')for(const item of next)if(item.status==='posted'&&!item.certificate)item.certificate=item.number;saved.push(JSON.parse(JSON.stringify(next)));};
     context.store=next=>{try{save(next);context.records=next;return true;}catch(error){context.announce(error.message);return false;}};
     context.ledger={wtpAtc:record=>record.ewtCode || '',wtpVatAtc:record=>record.wvatCode || '',certificateNumber:inlineSales().ledger.certificateNumber,saveCollections:save,saveCwtCertificates:save,paymentError:()=>invalid?'Complete payment fields.':'',wtpError:()=>invalid?'Complete certificate fields.':'',journalError:()=>invalid?'Unbalanced journal.':''};
     const source=fs.readFileSync(path.join(__dirname,'../../public/js',sheet+'.js'),'utf8');

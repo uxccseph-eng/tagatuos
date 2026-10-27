@@ -94,7 +94,7 @@ test('one voucher remits selected liabilities across multiple runs and leaves ot
     assert.throws(() => remittance.saveBatch([first, second], selected, books, catalog), /already remitted/);
 });
 
-test('saved remittance draft preserves run choices and can be posted in place without a new voucher number', () => {
+test('saved remittance draft preserves run choices and receives its number when posted in place', () => {
     const books = ledger(), source = run();
     const draft = remittance.saveBatch([source], {...choices(), bank: '', accounts: {}, liabilities: ['sss']}, books, catalog, 'draft');
     assert.equal(draft.status, 'draft');
@@ -103,7 +103,7 @@ test('saved remittance draft preserves run choices and can be posted in place wi
     assert.throws(() => remittance.assertUnremitted(source.id, books), /reserved/);
     assert.throws(() => remittance.post(source, choices(), books, catalog), /Continue remittance draft/);
     const posted = remittance.saveBatch([source], {...choices(), liabilities: ['sss']}, books, catalog, 'posted', draft.id);
-    assert.equal(posted.number, draft.number);
+    assert.equal(draft.number, '');assert.equal(posted.number, 'GJ-000001');
     assert.equal(posted.id, draft.id);
     assert.equal(books.journalEntries().length, 1);
     assert.equal(books.journalError(posted), null);

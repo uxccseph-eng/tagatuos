@@ -36,7 +36,13 @@ class CompanyLedgerService
             'lines' => ($lines[$header->id] ?? collect())->map(fn ($line): array => ['account' => $line->account_name, 'debit' => $this->storedCents((string) $line->debit), 'credit' => $this->storedCents((string) $line->credit), 'party' => $line->party, 'remarks' => $line->remarks])->all(),
         ])->all();
 
-        return ['company_id' => $company->id, 'revision' => $ledger?->revision ?? 0, 'initialized' => $ledger !== null, 'state' => $ledger?->state ?? self::emptyState(), 'payroll' => $ledger?->payroll ?? [], 'journals' => $journals];
+        $withoutDraftNumbers = fn (array $record): array => ($record['status'] ?? null) === 'draft' ? [...$record, 'number' => ''] : $record;
+        $state = array_replace(self::emptyState(), $ledger?->state ?? []);
+        foreach (self::SHEETS as $sheet) {
+            $state[$sheet] = array_map($withoutDraftNumbers, $state[$sheet]);
+        }
+
+        return ['company_id' => $company->id, 'revision' => $ledger?->revision ?? 0, 'initialized' => $ledger !== null, 'state' => $state, 'payroll' => array_map($withoutDraftNumbers, $ledger?->payroll ?? []), 'journals' => $journals];
     }
 
     public function snapshotFor(Company $company, array $tabs): array
@@ -164,7 +170,7 @@ class CompanyLedgerService
         }
     }
 
-    private function validateState(array $state, array $payroll): array
+    private function validateState(array $state, array &$payroll): array
     {
         $allowed = [...self::SHEETS, 'nextCollectionId', 'nextCollectionNumber'];
         if (array_diff(array_keys($state), $allowed)) {
@@ -179,9 +185,13 @@ class CompanyLedgerService
             $ids = [];
             $numbers = [];
             $drafts = 0;
-            foreach ($rows as $record) {
+            foreach ($rows as &$record) {
                 if (! is_array($record)) {
                     $this->fail('Every transaction must be an object.');
+                }
+                $isDraft = ($record['status'] ?? null) === 'draft';
+                if ($isDraft) {
+                    $record['number'] = '';
                 }
                 Validator::make($record, [
                     'id' => ['required', function (string $attribute, mixed $value, \Closure $fail): void {
@@ -189,15 +199,17 @@ class CompanyLedgerService
                             $fail('Use a valid transaction identity.');
                         }
                     }],
-                    'number' => ['required', 'string', 'max:100', 'regex:/^[A-Za-z0-9_-]+$/D'],
+                    'number' => [($record['status'] ?? null) === 'posted' ? 'required' : 'nullable', 'string', 'max:100', 'regex:/^[A-Za-z0-9_-]+$/D'],
                     'date' => ['required', 'date_format:Y-m-d'], 'status' => ['required', 'in:draft,posted,void,archived'],
                     'importBatchKey' => ['nullable', 'string', 'regex:/^[a-f0-9]{64}$/D'],
                 ])->validate();
-                if (isset($ids[(string) $record['id']]) || isset($numbers[$record['number']])) {
+                if (isset($ids[(string) $record['id']]) || (! empty($record['number']) && isset($numbers[$record['number']]))) {
                     $this->fail('Duplicate transaction identities or numbers are not allowed on '.$sheet.'.');
                 }
                 $ids[(string) $record['id']] = true;
-                $numbers[$record['number']] = true;
+                if (! empty($record['number'])) {
+                    $numbers[$record['number']] = true;
+                }
                 if ($record['status'] === 'draft' && ($record['origin'] ?? '') !== 'cash-sale' && ($record['origin'] ?? '') !== 'cash-purchase') {
                     $drafts++;
                 }
@@ -207,6 +219,12 @@ class CompanyLedgerService
                 if ($record['status'] === 'void' && ! in_array($record['origin'] ?? '', ['cash-sale', 'cash-purchase'], true) && trim((string) ($record['voidReason'] ?? $record['voidAudit']['reason'] ?? $record['voidNote'] ?? '')) === '') {
                     $this->fail('A void transaction must include its reason.');
                 }
+            }
+            unset($record);
+            if ($sheet === 'payroll') {
+                $payroll = $rows;
+            } else {
+                $state[$sheet] = $rows;
             }
             if ($drafts > 1) {
                 $this->fail('Only one saved draft is allowed per company sheet. Another accountant may already have saved a draft.');

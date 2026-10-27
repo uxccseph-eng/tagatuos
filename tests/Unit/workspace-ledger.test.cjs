@@ -75,7 +75,7 @@ test('standalone issued certificates support manual withholding and retained aud
     const ledger=openLedger(),manual=issuedCertificate(ledger,{billId:null,bill:'',taxBase:500000,ewt:2,wvat:0});
     ledger.saveWtpCertificates([manual]);assert.equal(ledger.wtpAmounts(manual).total,10000);
     const draft={...ledger.nextWtpCertificate(),status:'draft'};ledger.saveWtpCertificates([manual,draft]);ledger.saveWtpCertificates([manual]);assert.equal(ledger.nextWtpCertificate().number,draft.number);
-    ledger.saveWtpCertificates([{...manual,status:'archived',voidReason:'Superseded'}]);assert.equal(ledger.nextWtpCertificate().number,'2307I-000002');
+    ledger.saveWtpCertificates([{...manual,status:'archived',voidReason:'Superseded'}]);assert.equal(ledger.nextWtpCertificate().number,'');
 });
 
 test('cash purchases generate one net payment each and stay settled after reload',()=>{
@@ -216,36 +216,36 @@ test('purge is recoverable and preserves void history through reload and sales s
     reloaded.restoreCollection(cash.id);assert.equal(reloaded.invoices()[0].balance,0);
 });
 
-test('discarding a trailing draft releases its transaction number but never reuses its internal id',()=>{
+test('discarding a trailing unnumbered draft never reuses its internal id',()=>{
     const storage=new Map();const ledger=openLedger(storage);
     const draft={...ledger.newCollection(),status:'draft'};
-    assert.equal(draft.number,'CR-000003');
+    assert.equal(draft.number,'');
     ledger.saveCollections([...ledger.collections(),draft]);
     ledger.saveCollections(ledger.collections().filter(record=>record.id!==draft.id));
     const replacement=openLedger(storage).newCollection();
-    assert.equal(replacement.number,'CR-000003');
+    assert.equal(replacement.number,'');
     assert.ok(replacement.id>draft.id);
 });
 
-test('discarding several trailing drafts resets numbering after the last retained receipt',()=>{
+test('discarding several trailing drafts never reserves receipt numbers',()=>{
     const ledger=openLedger();
     const first={...ledger.newCollection(),status:'draft'};
     const second={...ledger.newCollection(),status:'draft'};
     ledger.saveCollections([...ledger.collections(),first,second]);
     ledger.saveCollections(ledger.collections().filter(record=>record.status!=='draft'));
-    assert.equal(ledger.newCollection().number,'CR-000003');
+    assert.equal(ledger.newCollection().number,'');
 });
 
-test('discarding an older draft closes numbering gaps while preserving record identities',()=>{
+test('discarding an older draft preserves posted numbering and record identities',()=>{
     const ledger=openLedger();
     const draft={...ledger.newCollection(),status:'draft'};
     const posted={...ledger.newCollection(),status:'posted'};
-    const voided={...ledger.newCollection(),status:'void'};
-    const archived={...ledger.newCollection(),status:'archived'};
+    const voided={...ledger.newCollection(),number:'CR-000004',status:'void'};
+    const archived={...ledger.newCollection(),number:'CR-000005',status:'archived'};
     ledger.saveCollections([...ledger.collections(),draft,posted,voided,archived]);
     ledger.saveCollections(ledger.collections().filter(record=>record.id!==draft.id));
-    assert.deepEqual(Array.from(ledger.collections().slice(-3),record=>record.number),['CR-000003','CR-000004','CR-000005']);
-    assert.equal(ledger.newCollection().number,'CR-000006');
+    assert.deepEqual(Array.from(ledger.collections().slice(-3),record=>record.number),['CR-000006','CR-000004','CR-000005']);
+    assert.equal(ledger.newCollection().number,'');
     assert.deepEqual(Array.from(ledger.collections().slice(-3),record=>record.id),[posted.id,voided.id,archived.id]);
 });
 
@@ -256,7 +256,7 @@ test('automatic cash collections use the number released by a discarded draft',(
     const sales=ledger.sales();sales[1].terms='Cash';ledger.saveSales(sales);
     const automatic=ledger.collections().find(record=>record.saleId===2);
     assert.equal(automatic.number,'CR-000003');assert.ok(automatic.id>draft.id);
-    assert.equal(ledger.newCollection().number,'CR-000004');
+    assert.equal(ledger.newCollection().number,'');
 });
 
 test('legacy counters inflated by discarded drafts recover from retained numbers on reload',()=>{
@@ -264,7 +264,7 @@ test('legacy counters inflated by discarded drafts recover from retained numbers
     const key='kontadurya.ledger.v1.company-a';const state=JSON.parse(storage.get(key));
     state.nextCollectionId=20;delete state.nextCollectionNumber;storage.set(key,JSON.stringify(state));
     const recovered=openLedger(storage).newCollection();
-    assert.equal(recovered.number,'CR-000003');assert.equal(recovered.id,20);
+    assert.equal(recovered.number,'');assert.equal(recovered.id,20);
 });
 
 test('CWT sources use posted sales and copy their existing income withholding separately from final VAT',()=>{
@@ -288,6 +288,29 @@ test('CWT records survive reload and sales collection updates without changing i
 function journalVoucher(ledger,overrides={}) {
     return {...ledger.nextJournalEntry(),date:'2026-10-16',reference:'JV-QA-001',particulars:'Test accrual',type:'Adjusting',status:'posted',lines:[{account:'6110 · Office Supplies',party:'QA Supplier',debit:601,credit:0,remarks:''},{account:'6150 · Packaging Supplies',party:'QA Supplier',debit:400,credit:0,remarks:''},{account:'2010 · Accounts Payable - Trade',party:'QA Supplier',debit:0,credit:1001,remarks:''}],...overrides};
 }
+
+for(const [read,save,prefix,create] of [
+    ['sales','saveSales','SI',ledger=>({...ledger.sales()[0],id:'numbering-sale',origin:'manual',terms:'On Account'})],
+    ['purchases','savePurchases','BILL',ledger=>({...ledger.purchases()[0],id:'numbering-bill',origin:'manual',terms:'On Account'})],
+    ['collections','saveCollections','CR',ledger=>({...ledger.collections()[0],id:'numbering-receipt',origin:'manual'})],
+    ['payments','savePayments','PV',ledger=>({...ledger.payments()[0],id:'numbering-payment',origin:'manual',type:'Direct Expense',billId:null,bill:'',account:'7110 · Rent Expense',amount:1000})],
+    ['cwtCertificates','saveCwtCertificates','2307R',()=>({id:'numbering-cwt',date:'2026-10-01',certificate:''})],
+    ['wtpCertificates','saveWtpCertificates','2307I',ledger=>issuedCertificate(ledger)],
+    ['journalEntries','saveJournalEntries','GJ',ledger=>journalVoucher(ledger)]
+])test(read+' drafts are unnumbered and a failed save does not consume the next posting number',()=>{
+    const storage=new Map(),ledger=openLedger(storage),record={...create(ledger),number:prefix+'-000099',status:'draft'};
+    ledger[save]([...ledger[read](),record]);
+    assert.equal(record.number,'');
+    const before=JSON.stringify(ledger[read]()),next=ledger[read]();
+    const highest=Math.max(0,...next.filter(row=>row.status!=='draft').map(row=>Number(String(row.number).split('-').at(-1))||0));
+    const candidate=next.find(row=>row.id===record.id);candidate.status='posted';
+    const set=storage.set.bind(storage);storage.set=()=>{throw Error('Storage full');};
+    assert.throws(()=>ledger[save](next),/storage/i);
+    assert.equal(candidate.number,'');assert.equal(JSON.stringify(ledger[read]()),before);
+    storage.set=set;ledger[save](next);
+    assert.equal(candidate.number,prefix+'-'+String(highest+1).padStart(6,'0'));
+    assert.equal(ledger[read]().find(row=>row.id===record.id).number,candidate.number);
+});
 
 test('journal vouchers sum multiple lines using cents and require balanced positive single-sided amounts',()=>{
     const ledger=openLedger(),record=journalVoucher(ledger);
@@ -321,8 +344,9 @@ test('journal posting is atomic and remains independent of source sheet balances
 test('journal drafts retain partial work and release trailing numbers while archived vouchers retain theirs',()=>{
     const storage=new Map(),ledger=openLedger(storage),record=journalVoucher(ledger,{status:'draft',draftSaved:true,reference:'',lines:[]});
     ledger.saveJournalEntries([record]);assert.equal(openLedger(storage).journalEntries()[0].draftSaved,true);assert.ok(ledger.journalError(record));
-    assert.equal(ledger.nextJournalEntry().number,'GJ-000002');ledger.saveJournalEntries([]);assert.equal(ledger.nextJournalEntry().number,'GJ-000001');
-    ledger.saveJournalEntries([journalVoucher(ledger,{status:'archived',voidReason:'Duplicate'})]);assert.equal(ledger.nextJournalEntry().number,'GJ-000002');
+    assert.equal(ledger.nextJournalEntry().number,'');ledger.saveJournalEntries([]);assert.equal(ledger.nextJournalEntry().number,'');
+    const posted=journalVoucher(ledger);ledger.saveJournalEntries([posted]);
+    ledger.saveJournalEntries([{...posted,status:'archived',voidReason:'Duplicate'}]);assert.equal(ledger.journalEntries()[0].number,posted.number);assert.equal(ledger.nextJournalEntry().number,'');
 });
 
 test('journal storage failures roll back an attempted posting',()=>{
@@ -503,36 +527,36 @@ test('master party and tax snapshots flow into source invoices, cash settlements
  const amounts=ledger.purchaseAmounts({gross:10750,tax:'TAX|CUSTOM|VAT|7.5',ewt:0.5,wvat:0});assert.equal(amounts.net,10000);assert.equal(amounts.ewt,50);
 });
 
-test('deleting middle invoices compacts displayed numbers and keeps linked receipt and certificate identities',()=>{
+test('deleting a draft keeps posted invoice numbers and linked references stable',()=>{
  const storage=new Map(),ledger=openLedger(storage),sales=ledger.sales();
  sales[1].status='draft';ledger.saveSales(sales);
  ledger.saveCwtCertificates([{id:1,number:'2307R-000001',saleId:3,invoice:'SI-000003',status:'draft'}]);
  const receipt=ledger.collections().find(record=>record.saleId===3);
  const remaining=ledger.sales().filter(record=>record.id!==2);ledger.saveSales(remaining);
- assert.equal(remaining.find(record=>record.id===3).number,'SI-000002');
- assert.equal(ledger.collections().find(record=>record.id===receipt.id).invoice,'SI-000002');
- assert.equal(ledger.cwtCertificates()[0].invoice,'SI-000002');
+ assert.equal(remaining.find(record=>record.id===3).number,'SI-000003');
+ assert.equal(ledger.collections().find(record=>record.id===receipt.id).invoice,'SI-000003');
+ assert.equal(ledger.cwtCertificates()[0].invoice,'SI-000003');
  assert.equal(ledger.cwtCertificates()[0].saleId,3);
- assert.equal(openLedger(storage).sales().find(record=>record.id===3).number,'SI-000002');
+ assert.equal(openLedger(storage).sales().find(record=>record.id===3).number,'SI-000003');
 });
 test('deleting a middle bill updates bill references without changing source identifiers',()=>{
  const ledger=openLedger(),bills=ledger.purchases();
  bills[0].status='draft';ledger.savePurchases(bills);
  ledger.saveWtpCertificates([{id:1,number:'2307I-000001',billId:2,bill:'BILL-000002',status:'draft'}]);
  ledger.savePurchases(ledger.purchases().filter(record=>record.id!==1));
- assert.equal(ledger.purchases()[0].number,'BILL-000001');
- assert.equal(ledger.wtpCertificates()[0].bill,'BILL-000001');
+ assert.equal(ledger.purchases()[0].number,'BILL-000002');
+ assert.equal(ledger.wtpCertificates()[0].bill,'BILL-000002');
  assert.equal(ledger.wtpCertificates()[0].billId,2);
 });
-test('all remaining sheet sequences compact after a middle draft deletion',()=>{
+test('all remaining sheet drafts stay unnumbered after another draft is deleted',()=>{
  const ledger=openLedger();
  for(const [read,save,prefix] of [['payments','savePayments','PV'],['cwtCertificates','saveCwtCertificates','2307R'],['wtpCertificates','saveWtpCertificates','2307I'],['journalEntries','saveJournalEntries','GJ']]){
  const existing=ledger[read](),base=Math.max(0,...existing.map(record=>Number(record.number.split('-').at(-1))));
  const drafts=[1,2,3].map(n=>({id:'draft-'+n,number:prefix+'-'+String(base+n).padStart(6,'0'),status:'draft',customer:'Draft customer'}));
  ledger[save]([...existing,...drafts]);
  const kept=ledger[read]().filter(record=>record.id!=='draft-2');ledger[save](kept);
- assert.equal(ledger[read]().find(record=>record.id==='draft-3').number,prefix+'-'+String(base+2).padStart(6,'0'));
- assert.equal(kept.find(record=>record.id==='draft-3').number,prefix+'-'+String(base+2).padStart(6,'0'));
+ assert.equal(ledger[read]().find(record=>record.id==='draft-3').number,'');
+ assert.equal(kept.find(record=>record.id==='draft-3').number,'');
  }
 });
 

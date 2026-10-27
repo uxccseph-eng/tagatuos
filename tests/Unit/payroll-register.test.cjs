@@ -62,12 +62,22 @@ test('toolbar posts the single visible draft without opening an entry popup', ()
     assert.throws(() => payroll.post(records, ['posted']));
     assert.throws(() => payroll.post([{...draft(), employees: []}], ['run-1']));
 });
-test('deletion closes numbering gaps without changing stable identifiers', () => {
+test('drafts stay unnumbered without changing stable identifiers', () => {
     const records = [draft(), {...draft(), id: 'run-3', number: 'PYRJ-000003'}];
     const result = payroll.renumber(records);
-    assert.equal(result[1].number, 'PYRJ-000002');
+    assert.equal(result[1].number, '');
     assert.equal(result[1].id, 'run-3');
     assert.equal(records[1].number, 'PYRJ-000003');
+});
+
+test('payroll assigns a number only after all posting checks pass and preserves existing numbers',()=>{
+    const posted={...draft(),id:'posted',status:'posted',number:'PYRJ-000007'},pending={...draft(),number:''};
+    assert.equal(payroll.renumber([posted,pending])[1].number,'');
+    assert.throws(()=>payroll.post([posted,{...pending,employees:[]}],[pending.id]));
+    assert.equal(pending.number,'');
+    const result=payroll.post([posted,pending],[pending.id]);
+    assert.equal(result[0].number,'PYRJ-000007');assert.equal(result[1].number,'PYRJ-000008');
+    assert.equal(pending.number,'');assert.equal(pending.status,'draft');
 });
 test('import previews a single run atomically and blocks duplicates or incomplete employee rows', () => {
     const row = ['2026-10-20', 'October payroll', '2026-10-01', '2026-10-15', employee.name, 'Taxable', ...payroll.amountFields.map(field => employee[field] || '')];

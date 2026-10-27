@@ -321,7 +321,7 @@
 </td>
 <!-- Txn Auto No. -->
 <td class="px-3 py-2 font-label-md text-label-md text-sky-700 dark:text-secondary-fixed-dim border-r border-slate-200 dark:border-surface-container-highest/40 italic font-medium">
-                SI-000004*
+                Draft
               </td>
 <!-- Customer Selector Dropdown -->
 <td class="px-2 py-1.5 border-r border-slate-200 dark:border-surface-container-highest/40">

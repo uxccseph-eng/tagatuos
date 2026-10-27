@@ -22,26 +22,20 @@
         ],collections:[],nextCollectionId:1};
         }
     }
-    function compactAfterRemoval(key,previous) {
-        if (window.CompanyLedger) return;
-        if(!previous[key].some(record=>!state[key].some(item=>item.id===record.id)))return;
-        const changed=new Map();
-        [...state[key]].sort((a,b)=>Number(a.number.split('-').at(-1))-Number(b.number.split('-').at(-1))).forEach((record,index)=>{
-            const number=record.number.replace(/\d+$/,String(index+1).padStart(6,'0'));
-            if(record.number!==number)changed.set(record.number,number);
-            record.number=number;
-        });
-        if(key==='sales'){
-            state.collections=clone(state.collections).map(record=>({...record,invoice:changed.get(record.invoice) || record.invoice}));
-            state.cwtCertificates=clone(state.cwtCertificates).map(record=>({...record,invoice:changed.get(record.invoice) || record.invoice}));
+    function assignPostedNumbers(key,records) {
+        const prefix={sales:'SI',purchases:'BILL',collections:'CR',payments:'PV',cwtCertificates:'2307R',wtpCertificates:'2307I',journalEntries:'GJ'}[key];
+        let next=Math.max(0,...[...state[key].filter(record=>record.status!=='draft'),...records.filter(record=>record.status!=='draft'&&!state[key].some(previous=>previous.id===record.id&&previous.status==='draft'))].map(record=>Number(String(record.number||'').match(new RegExp('^'+prefix+'-(\\d+)$'))?.[1])||0));
+        for(const record of records){
+            if(record.status==='draft'){record.number='';continue;}
+            const previous=state[key].find(item=>item.id===record.id);
+            if(record.status!=='posted'){if(previous?.status==='draft')record.number='';continue;}
+            if(!record.number||previous?.status==='draft')record.number=previous&&previous.status!=='draft'?previous.number:prefix+'-'+String(++next).padStart(6,'0');
         }
-        if(key==='purchases'){
-            state.payments=clone(state.payments).map(record=>({...record,bill:changed.get(record.bill) || record.bill}));
-            state.wtpCertificates=clone(state.wtpCertificates).map(record=>({...record,bill:changed.get(record.bill) || record.bill}));
-        }
+        return records;
     }
     function synchronizeNumbers(key,input){for(const record of input){const saved=state[key].find(item=>item.id===record.id);if(saved){record.number=saved.number;if(['cwtCertificates','wtpCertificates'].includes(key))record.certificate=saved.certificate;}}}
     function persist() {
+        for(const key of ['sales','purchases','collections','payments','cwtCertificates','wtpCertificates','journalEntries'])for(const record of state[key])if(record.status==='draft')record.number='';
         if (window.CompanyLedger) { window.CompanyLedger.saveState(state); return; }
         try { sessionStorage.setItem(storageKey,JSON.stringify(state)); }
         catch { throw new Error('Browser session storage is unavailable. Records cannot be shared between these pages.'); }
@@ -184,10 +178,10 @@
         return '';
     }
     if(!Array.isArray(state.payments))state.payments=[];
-    function nextPayment() {
+    function nextPayment(posted=false) {
         const id=state.payments.reduce((highest,record)=>Math.max(highest,Number(record.id) || 0),0)+1;
         const number=state.payments.reduce((highest,record)=>Math.max(highest,Number(String(record.number).split('-')[1]) || 0),0)+1;
-        return {id,number:`PV-${String(number).padStart(6,'0')}`};
+        return {id,number:posted?`PV-${String(number).padStart(6,'0')}`:''};
     }
     function syncCashPayments() {
         state.purchases.forEach(bill=>{
@@ -195,7 +189,7 @@
             const cash=bill.status==='posted'&&bill.terms==='Cash';
             const otherPaid=state.payments.filter(record=>record.id!==payment?.id&&record.billId===bill.id&&record.status==='posted'&&record.type==='AP Settlement').reduce((sum,record)=>sum+record.amount,0);
             const remaining=Math.max(0,purchaseAmounts(bill).payable-otherPaid);
-            if(!payment&&cash&&remaining>0){payment={...nextPayment(),origin:'cash-purchase',billId:bill.id,attachments:[],history:[],notes:bill.description || ''};state.payments.push(payment);}
+            if(!payment&&cash&&remaining>0){payment={...nextPayment(true),origin:'cash-purchase',billId:bill.id,attachments:[],history:[],notes:bill.description || ''};state.payments.push(payment);}
             if(payment)Object.assign(payment,{date:bill.date,supplier:bill.supplier,tin:bill.tin || '',billId:bill.id,bill:bill.number,amount:payment.paymentVoided||payment.paymentArchived?payment.amount:remaining,bank:bill.bank,method:'Cash',reference:bill.reference || '',type:'AP Settlement',account:'2010 · Accounts Payable',status:payment.paymentArchived?'archived':cash&&!payment.paymentVoided?'posted':'void'});
         });
     }
@@ -237,17 +231,17 @@
         const rate = label => Number(String(label || '').match(/(\d+(?:\.\d+)?)%/)?.[1] || 0);
         return Math.max(0,sale.gross-Math.round(net*rate(sale.cwt)/100)-Math.round(net*rate(sale.vatCwt)/100));
     }
-    function nextCollection() {
+    function nextCollection(posted=false) {
         const id=state.nextCollectionId++;
-        const number=state.nextCollectionNumber++;
-        return {id,number:`CR-${String(number).padStart(6,'0')}`};
+        const number=posted?state.nextCollectionNumber++:0;
+        return {id,number:posted?`CR-${String(number).padStart(6,'0')}`:''};
     }
     function syncCashCollections() {
         state.sales.forEach(sale=>{
             let collection=state.collections.find(record=>record.origin==='cash-sale' && record.saleId===sale.id);
             const postedCash = sale.status==='posted' && sale.terms==='Cash';
             if(!collection && postedCash) {
-                collection={...nextCollection(),origin:'cash-sale',saleId:sale.id};state.collections.push(collection);
+                collection={...nextCollection(true),origin:'cash-sale',saleId:sale.id};state.collections.push(collection);
             }
             if(collection)Object.assign(collection,{date:sale.date,customer:sale.customer,invoice:sale.number,amount:receivable(sale),bank:sale.bank,reference:sale.reference,method:'Cash',type:'Settlement',status:sale.status==='archived'||collection.collectionArchived?'archived':postedCash&&!collection.collectionVoided?'posted':'void'});
         });
@@ -265,6 +259,7 @@
         const previous=clone(state);
         try {change(record);persist();return clone(record);} catch(error){state=previous;throw error;}
     }
+    for(const key of ['sales','purchases','collections','payments','cwtCertificates','wtpCertificates','journalEntries'])for(const record of state[key])if(record.status==='draft')record.number='';
     syncCashCollections();
     syncCashPayments();
     function bookEntries(){
@@ -371,7 +366,6 @@
                     }
                     record.history=[...(record.history || []),{label:action==='void'?'Voided':action==='delete-voids'?'Archived':'Unarchived',user,time}];
                 }
-                if(action==='delete-drafts')compactAfterRemoval(key,previous);
                 state.nextCollectionNumber=nextCollectionNumber();syncCashCollections();syncCashPayments();persist();
             }catch(error){state=previous;throw error;}
             return {count:targets.length,ids:targets.map(record=>record.id)};
@@ -386,14 +380,13 @@
         journalError,
         nextJournalEntry(){
             const id=state.journalEntries.reduce((max,record)=>Math.max(max,Number(record.id) || 0),0)+1;
-            const suffix=state.journalEntries.reduce((max,record)=>Math.max(max,Number(String(record.number).split('-')[1]) || 0),0)+1;
-            return {id,number:'GJ-'+String(suffix).padStart(6,'0')};
+            return {id,number:''};
         },
         saveJournalEntries(entries){
-            const next=clone(entries),ids=new Set(),numbers=new Set(),remittedPayrolls=new Set();
+            const next=assignPostedNumbers('journalEntries',clone(entries)),ids=new Set(),numbers=new Set(),remittedPayrolls=new Set();
             for(const record of next){
-                if(ids.has(record.id)||numbers.has(record.number))throw new Error('Duplicate journal transaction.');
-                ids.add(record.id);numbers.add(record.number);
+                if(ids.has(record.id)||(record.number&&numbers.has(record.number)))throw new Error('Duplicate journal transaction.');
+                ids.add(record.id);if(record.number)numbers.add(record.number);
                 if(record.origin==='payroll-remittance'&&record.status==='posted'){
                     const allocations=record.payrollAllocations || [{runId:record.payrollRunId,amounts:{salary:1,sss:1,phic:1,hdmf:1,withholding:1}}];
                     for(const allocation of allocations){
@@ -413,7 +406,7 @@
                 if(record.status==='void'&&!record.voidReason?.trim())throw new Error('A reason is required to void a journal entry.');
             }
             const previous=state;state={...state,journalEntries:next};
-            try{compactAfterRemoval('journalEntries',previous);persist();synchronizeNumbers('journalEntries',entries);}catch(error){state=previous;throw error;}
+            try{persist();synchronizeNumbers('journalEntries',entries);}catch(error){state=previous;throw error;}
         },
         wtpCertificates:()=>clone(state.wtpCertificates),
         wtpAmounts,
@@ -424,11 +417,10 @@
         certificateNumber,
         nextWtpCertificate() {
             const id=state.wtpCertificates.reduce((highest,record)=>Math.max(highest,Number(record.id) || 0),0)+1;
-            const suffix=state.wtpCertificates.reduce((highest,record)=>Math.max(highest,Number(String(record.number).split('-')[1]) || 0),0)+1;
-            return {id,number:`2307I-${String(suffix).padStart(6,'0')}`};
+            return {id,number:''};
         },
         saveWtpCertificates(certificates) {
-            const next=clone(certificates);
+            const next=assignPostedNumbers('wtpCertificates',clone(certificates));
             for(const record of next.filter(record=>record.status==='posted'))record.certificate=certificateNumber(record,next);
             for(const record of next.filter(record=>record.status==='posted')){
                 const previous=state.wtpCertificates.find(item=>item.id===record.id&&item.status==='posted');
@@ -436,7 +428,7 @@
                 const error=wtpError(record,next,!sameSource);if(error)throw new Error(error);
             }
             const previous=state;state={...state,wtpCertificates:next};
-            try{compactAfterRemoval('wtpCertificates',previous);persist();synchronizeNumbers('wtpCertificates',certificates);}catch(error){state=previous;throw error;}
+            try{persist();synchronizeNumbers('wtpCertificates',certificates);}catch(error){state=previous;throw error;}
         },
         payments:()=>clone(state.payments),
         payableBills,
@@ -444,19 +436,19 @@
         nextPayment,
         savePayments(payments) {
             const previous=clone(state);
-            state.payments=clone(payments).map(record=>window.SheetMasters?window.SheetMasters.partySnapshot(record,previous.payments.find(item=>item.id===record.id)):record);
+            state.payments=assignPostedNumbers('payments',clone(payments)).map(record=>window.SheetMasters?window.SheetMasters.partySnapshot(record,previous.payments.find(item=>item.id===record.id)):record);
             try {
                 for(const record of state.payments.filter(record=>record.status==='posted')){const error=paymentError(record);if(error)throw new Error(error);}
-                compactAfterRemoval('payments',previous);persist();synchronizeNumbers('payments',payments);
+                persist();synchronizeNumbers('payments',payments);
             }catch(error){state=previous;throw error;}
         },
         purchases:()=>clone(state.purchases),
         purchaseAmounts,
         savePurchases(purchases) {
             const previous=clone(state);
-            state={...state,purchases:clone(purchases).map(record=>window.SheetMasters?window.SheetMasters.partySnapshot(record,previous.purchases.find(item=>item.id===record.id)):record)};
+            state={...state,purchases:assignPostedNumbers('purchases',clone(purchases)).map(record=>window.SheetMasters?window.SheetMasters.partySnapshot(record,previous.purchases.find(item=>item.id===record.id)):record)};
             try {
-                compactAfterRemoval('purchases',previous);syncCashPayments();
+                syncCashPayments();
                 for(const record of state.payments.filter(record=>record.status==='posted')){const error=paymentError(record);if(error)throw new Error(error);}
                 persist();synchronizeNumbers('purchases',purchases);
             } catch(error){state=previous;throw error;}
@@ -476,20 +468,19 @@
         },
         saveCwtCertificates(certificates) {
             const previous=state;
-            state={...state,cwtCertificates:clone(certificates)};
+            state={...state,cwtCertificates:assignPostedNumbers('cwtCertificates',clone(certificates))};
             for(const record of state.cwtCertificates.filter(record=>record.status==='posted'))record.certificate=certificateNumber(record,state.cwtCertificates);
-            try {compactAfterRemoval('cwtCertificates',previous);persist();synchronizeNumbers('cwtCertificates',certificates);} catch(error){state=previous;throw error;}
+            try {persist();synchronizeNumbers('cwtCertificates',certificates);} catch(error){state=previous;throw error;}
         },
         saveSales(sales) {
             const previous=state;
-            state={...state,sales:normalizeTerms(clone(sales)).map(record=>window.SheetMasters?window.SheetMasters.partySnapshot(record,previous.sales.find(item=>item.id===record.id)):record),collections:clone(state.collections)};
-            compactAfterRemoval('sales',previous);syncCashCollections();
+            state={...state,sales:normalizeTerms(assignPostedNumbers('sales',clone(sales))).map(record=>window.SheetMasters?window.SheetMasters.partySnapshot(record,previous.sales.find(item=>item.id===record.id)):record),collections:clone(state.collections)};
+            syncCashCollections();
             try {persist();synchronizeNumbers('sales',sales);} catch(error){state=previous;throw error;}
         },
         saveCollections(collections) {
             const previous=state;
-            state={...state,collections:clone(collections).map(record=>window.SheetMasters?window.SheetMasters.partySnapshot(record,previous.collections.find(item=>item.id===record.id)):record)};
-            compactAfterRemoval('collections',previous);
+            state={...state,collections:assignPostedNumbers('collections',clone(collections)).map(record=>window.SheetMasters?window.SheetMasters.partySnapshot(record,previous.collections.find(item=>item.id===record.id)):record)};
             state.nextCollectionNumber=nextCollectionNumber();
             syncCashCollections();
             try {persist();synchronizeNumbers('collections',collections);} catch(error){state=previous;throw error;}

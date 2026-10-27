@@ -74,7 +74,7 @@ class DocumentInboxController extends Controller
                 if (! in_array($record['status'], ['posted', 'draft'], true)) {
                     continue;
                 }
-                $label = $record['number'].' · '.($record['customer'] ?? $record['supplier'] ?? ucfirst($sheet)).' · '.$record['date'].' · '.$record['status'];
+                $label = ($record['status'] === 'draft' ? 'Draft' : $record['number']).' · '.($record['customer'] ?? $record['supplier'] ?? ucfirst($sheet)).' · '.$record['date'].' · '.$record['status'];
                 if (($filters['txn_q'] ?? '') !== '' && ! str_contains(mb_strtolower($label), mb_strtolower($filters['txn_q']))) {
                     continue;
                 }

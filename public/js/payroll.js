@@ -17,7 +17,7 @@
     try {
         const stored = window.CompanyLedger ? window.CompanyLedger.payroll() : JSON.parse(sessionStorage.getItem(key) || '[]');
         if (!Array.isArray(stored) || stored.some(run => !run.id || !['draft', 'posted', 'void'].includes(run.status) || !Array.isArray(run.employees))) throw new Error('Invalid payroll data');
-        records = stored;
+        records = stored.map(record=>record.status==='draft'?{...record,number:''}:record);
     } catch (exception) {
         storageAvailable = false;
         announce('Payroll storage could not be read. Reload this tab before editing; existing saved data has not been overwritten.');

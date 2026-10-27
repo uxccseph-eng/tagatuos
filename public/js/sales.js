@@ -107,16 +107,16 @@ function renderEntry(entry, existingRow) {
 [...tbody.querySelectorAll('tr')].filter(row=>row!==draft).forEach(row=>row.remove());
 window.KontaduryaLedger.sales().forEach(entry=>renderEntry(entry));
 nextNumber = Math.max(0,...entries.keys()) + 1;
-function nextSaleNumber(){return autoSalesDraft?.number || 'SI-'+String(Math.max(0,...[...entries.values()].map(record=>Number(record.number.split('-').at(-1))))+1).padStart(6,'0');}
+function nextSaleNumber(){return '';}
 function persistSales() {
     const values=[...entries.values()].map(({row,attachments,...entry})=>entry);
     if(autoSalesDraft&&!values.some(entry=>entry.id===autoSalesDraft.id))values.push(autoSalesDraft);else if(autoSalesDraft)autoSalesDraft=null;
-    try {window.KontaduryaLedger.saveSales(values);for(const saved of values){const entry=entries.get(saved.id);if(entry&&entry.number!==saved.number){entry.number=saved.number;renderEntry(entry,entry.row);}}if(autoSalesDraft){autoSalesDraft.number=nextSaleNumber();draft.cells[3].textContent=autoSalesDraft.number+'*';}}
+    try {window.KontaduryaLedger.saveSales(values);for(const saved of values){const entry=entries.get(saved.id);if(entry&&entry.number!==saved.number){entry.number=saved.number;renderEntry(entry,entry.row);}}if(autoSalesDraft){autoSalesDraft.number=nextSaleNumber();draft.cells[3].textContent='Draft';}}
     catch(error){announce(error.message);}
 }
 const emptyRow=document.createElement('tr');
 const emptyCell=document.createElement('td'); emptyCell.colSpan=16; emptyCell.className='px-5 py-8 text-body-sm text-on-surface-variant'; emptyCell.textContent='No sales rows match this period and filter.'; emptyRow.append(emptyCell); tbody.insertBefore(emptyRow,draft);
-function deleteSalesDraft(entry){window.DraftLeaveGuard.confirmDelete(()=>{entries.delete(entry.id);entry.row.remove();if(editingEntry?.id===entry.id)entryDrawer.close();updateSheet();announce('Draft deleted. Transaction numbers updated.');},entry.number);}
+function deleteSalesDraft(entry){window.DraftLeaveGuard.confirmDelete(()=>{entries.delete(entry.id);entry.row.remove();if(editingEntry?.id===entry.id)entryDrawer.close();updateSheet();announce('Draft deleted.');},entry.number);}
 function selectedEntries() { return [...entries.values()].filter(entry=>!entry.row.hidden && entry.row.querySelector('input[type="checkbox"]').checked); }
 function postingCandidates(){const visible=[...entries.values()].filter(entry=>!entry.row.hidden);if(autoSalesDraft&&!draft.hidden&&window.WorkingPeriod.matches(autoSalesDraft.date))visible.push(autoSalesDraft);return window.SheetPosting.candidates(visible,selectedEntries().map(entry=>entry.id));}
 function refreshPostCount(){document.querySelector('[data-post-count]').textContent='('+postingCandidates().length+')';}
@@ -167,7 +167,7 @@ function openDraft(copy=null,confirmed=false) {
     inlineBaseline=JSON.stringify(editorFields.map(field=>field.value));
     inlineDraftStarted=true;
     draft.hidden = false;
-    draft.cells[3].textContent = nextSaleNumber()+'*';
+    draft.cells[3].textContent = 'Draft';
     draft.scrollIntoView({block:'nearest',inline:'nearest'});
     editorFields[1].focus({preventScroll:true});
 }
@@ -680,8 +680,8 @@ function requestCloseEntry() {
 }
 const leaveGuard=new window.DraftLeaveGuard({hasChanges:()=>hasSalesDrafts()||inlineDraftChanged()||popupDraftChanged(),discard:discardSalesDrafts});
 const requestedSale=new URLSearchParams(location.search).get('entry');
-if(requestedSale){const sale=[...entries.values()].find(entry=>entry.number===requestedSale);if(sale)openEntryDrawer(sale);}
+if(requestedSale){const sale=[...entries.values()].find(entry=>String(entry.id)===requestedSale||entry.number===requestedSale);if(sale)openEntryDrawer(sale);}
 
-window.SheetBulk={selected:selectedEntries,refresh:()=>{const saved=window.KontaduryaLedger.sales();for(const entry of [...entries.values()])if(!saved.some(item=>item.id===entry.id)){entry.row.remove();entries.delete(entry.id);}for(const item of saved){if(autoSalesDraft?.id===item.id){Object.assign(autoSalesDraft,item);continue;}const previous=entries.get(item.id);renderEntry({...item,attachments:previous?.attachments || []},previous?.row);}nextNumber=autoSalesDraft?.id || Math.max(0,...saved.map(item=>Number(item.id) || 0))+1;if(!draft.hidden)draft.cells[3].textContent=nextSaleNumber()+'*';updateSheet();},announce};
+window.SheetBulk={selected:selectedEntries,refresh:()=>{const saved=window.KontaduryaLedger.sales();for(const entry of [...entries.values()])if(!saved.some(item=>item.id===entry.id)){entry.row.remove();entries.delete(entry.id);}for(const item of saved){if(autoSalesDraft?.id===item.id){Object.assign(autoSalesDraft,item);continue;}const previous=entries.get(item.id);renderEntry({...item,attachments:previous?.attachments || []},previous?.row);}nextNumber=autoSalesDraft?.id || Math.max(0,...saved.map(item=>Number(item.id) || 0))+1;if(!draft.hidden)draft.cells[3].textContent='Draft';updateSheet();},announce};
 
 document.addEventListener('working-period:change',event=>{workingPeriod=event.detail.period;updatePeriod();});

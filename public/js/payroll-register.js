@@ -50,9 +50,9 @@
         if (existing) return existing;
         return {id: root.crypto.randomUUID(), number: '', status: 'draft', draftTouched: false, date: dates.date, periodStart: dates.from, periodEnd: dates.to, name: '', employees: []};
     }
-    function renumber(records, preserve = false) {
-        if (preserve) { let next = records.reduce((highest,record)=>Math.max(highest,Number(String(record.number || "").match(/^PYRJ-(\d+)$/)?.[1] || 0)),0); return records.map(record=>({...record,number:record.number || `PYRJ-${String(++next).padStart(6,"0")}`})); }
-        return records.map((record, index) => ({...record, number: `PYRJ-${String(index + 1).padStart(6, '0')}`}));
+    function renumber(records) {
+        let next = records.filter(record=>record.status!=='draft').reduce((highest,record)=>Math.max(highest,Number(String(record.number||'').match(/^PYRJ-(\d+)$/)?.[1]||0)),0);
+        return records.map(record=>({...record,number:record.status==='draft'?'':record.number||(record.status==='posted'?`PYRJ-${String(++next).padStart(6,'0')}`:'')}));
     }
     function reopenForEditing(records, id) {
         const run = records.find(record => record.id === id);
@@ -71,7 +71,8 @@
             const message = error(run);
             if (message) throw new Error(`${run.number}: ${message}`);
         }
-        return records.map(record => runs.includes(record) ? {...record, status: 'posted', postedAt: new Date().toISOString()} : record);
+        let next=records.filter(record=>record.status!=='draft').reduce((highest,record)=>Math.max(highest,Number(String(record.number||'').match(/^PYRJ-(\d+)$/)?.[1]||0)),0);
+        return records.map(record => runs.includes(record) ? {...record, number:`PYRJ-${String(++next).padStart(6,'0')}`, status: 'posted', postedAt: new Date().toISOString()} : record);
     }
     const importHeaders = ['pay_date', 'run_name', 'period_start', 'period_end', 'employee', 'pay_type', ...amountFields];
     function importRun(rows, records) {

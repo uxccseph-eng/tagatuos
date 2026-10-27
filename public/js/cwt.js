@@ -37,8 +37,7 @@
         const sale=ledger.cwtSource(saleId);
         const existing=records.find(record=>record.saleId===saleId&&record.status!=='void');
         if(sale&&existing){window.WorkingPeriod.revealDate(existing.date);period=window.WorkingPeriod.current().from.slice(0,7);status='all';element('cwt-search').value='';element('sales-global-search').value='';render();announce(`Continue ${existing.number}; a certificate already exists for this invoice.`);element(`cwt-row-${existing.id}`)?.scrollIntoView({block:'nearest'});return;}
-        const next=records.reduce((highest,record)=>Math.max(highest,Number(record.number.split('-')[1]) || 0),0)+1;
-        const record={id:crypto.randomUUID(),number:`2307R-${String(next).padStart(6,'0')}`,date:window.WorkingPeriod.entryDate(),saleId:sale?.id || null,invoice:sale?.number || '',customer:sale?.customer || '',tin:sale?.tin || '',taxBase:sale?.taxBase || 0,atc:sale?.cwt || '',amount:sale?.withheld || 0,offset:'1150 · CWT Asset',certificate:'',status:'draft'};
+        const record={id:crypto.randomUUID(),number:'',date:window.WorkingPeriod.entryDate(),saleId:sale?.id || null,invoice:sale?.number || '',customer:sale?.customer || '',tin:sale?.tin || '',taxBase:sale?.taxBase || 0,atc:sale?.cwt || '',amount:sale?.withheld || 0,offset:'1150 · CWT Asset',certificate:'',status:'draft'};
         records.push(record);status='all';element('cwt-search').value='';element('sales-global-search').value='';persist();render();
         element(`cwt-row-${record.id}`).scrollIntoView({block:'nearest'});announce(`${record.number} added as an editable draft. Enter the received certificate details.`);
     }
@@ -53,16 +52,15 @@
         const saleIds=new Set(records.filter(record=>record.status==='posted').map(record=>record.saleId));
         for(const record of candidates){
             const atcError=window.SheetMasters.withholdingError({cwt:record.atc,vatCwt:'None'},true);if(atcError){announce(record.number+': '+atcError);return false;}
-            record.certificate=ledger.certificateNumber(record,records);
             if(invalidDraft(record)||!/^\d{3}-?\d{3}-?\d{3}(?:-?\d{3,5})?$/.test(record.tin)){announce(`${record.number}: enter a date, agent TIN and withholding amount.`);return;}
             if(!match(record)){announce(`${record.number}: the source sale is missing or changed. Select its invoice again to refresh the draft.`);return;}
-            if(numbers.has(String(record.certificate || '').toLowerCase())||saleIds.has(record.saleId)){announce(`${record.number}: this certificate number or invoice already has a posted certificate.`);return;}
-            numbers.add(String(record.certificate || '').toLowerCase());saleIds.add(record.saleId);
+            if((record.certificate&&numbers.has(String(record.certificate).toLowerCase()))||saleIds.has(record.saleId)){announce(`${record.number}: this certificate number or invoice already has a posted certificate.`);return;}
+            if(record.certificate)numbers.add(String(record.certificate).toLowerCase());saleIds.add(record.saleId);
         }
         const ids=new Set(candidates.map(record=>record.id)),postedAt=new Date().toISOString();
         const next=records.map(record=>ids.has(record.id)?{...record,status:'posted',postedAt}:record);
         try{ledger.saveCwtCertificates(next);}catch(error){announce(error.message);return false;}
-        candidates.forEach(record=>{record.status='posted';record.postedAt=postedAt;});selected.clear();render();announce(`${candidates.length} certificate(s) posted.`);return true;
+        records=next;selected.clear();render();announce(`${candidates.length} certificate(s) posted.`);return true;
     }
     function inspect(record){
         activeRecord=record;memoEditing=false;element('cwt-entry-message').textContent='';

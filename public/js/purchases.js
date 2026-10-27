@@ -24,8 +24,7 @@
     function deleteDraft(record){window.DraftLeaveGuard.confirmDelete(()=>{if(!store(records.filter(item=>item.id!==record.id)))return false;if(drawer.open&&working?.id===record.id){drawer.close();editing=false;}render();announce('Draft deleted.');},record.number);}
     function history(record,label){record.history=[...(record.history || []),{label,user:company.full_name || 'Demo user',time:new Date().toISOString()}];}
     function add(template){const pending=window.DraftLeaveGuard.continueDraft(records,record=>{window.WorkingPeriod.revealDate(record.date);period=window.WorkingPeriod.current().from.slice(0,7);status='all';element('purchases-search').value='';element('sales-global-search').value='';render();element('purchase-row-'+record.id)?.scrollIntoView({block:'nearest'});announce('Continue '+record.number+'. Only one draft is allowed on this page.');});if(pending)return pending;
-        const next=records.reduce((highest,record)=>Math.max(highest,Number(record.number.split('-')[1]) || 0),0)+1;
-        const record={id:crypto.randomUUID(),number:`BILL-${String(next).padStart(6,'0')}`,date:window.WorkingPeriod.entryDate(),supplier:'',tin:'',gross:0,tax:'',account:'',ewt:'',wvat:0,wvatCode:'',terms:'Cash',reference:'',bank:'1010 · Cash on Hand',description:'',notes:'',attachments:[],status:'draft',createdAt:new Date().toISOString()};
+        const record={id:crypto.randomUUID(),number:'',date:window.WorkingPeriod.entryDate(),supplier:'',tin:'',gross:0,tax:'',account:'',ewt:'',wvat:0,wvatCode:'',terms:'Cash',reference:'',bank:'1010 · Cash on Hand',description:'',notes:'',attachments:[],status:'draft',createdAt:new Date().toISOString()};
         if(template)for(const key of ['supplier','tin','gross','tax','account','ewt','wvat','ewtCode','wvatCode','terms','bank','description','notes'])record[key]=template[key];
         history(record,'Created');if(!store([...records,record]))return;
         status='all';element('purchases-search').value='';element('sales-global-search').value='';render();announce(`${record.number} added. Fill its row or click an inactive cell to open the entry popup.`);element(`purchase-row-${record.id}`)?.scrollIntoView({block:'nearest'});return record;
@@ -156,7 +155,7 @@
     document.addEventListener('keydown',event=>{if(drawer.open||infoDialog.open||document.querySelector('.draft-leave-dialog[open]'))return;if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==='k'){event.preventDefault();element('purchases-search').focus();}if(!event.target.matches('input,select,textarea')&&event.shiftKey&&event.key.toLowerCase()==='n'){event.preventDefault();add();}});
     render();
     const requestedBill=new URLSearchParams(location.search).get('entry');
-    const linkedBill=records.find(record=>record.number===requestedBill&&record.status==='posted');
+    const linkedBill=records.find(record=>String(record.id)===requestedBill||(record.number===requestedBill&&record.status==='posted'));
     if(linkedBill)open(linkedBill,true);
     function entryOptions(record,event){event.stopPropagation();window.SheetEntryActions.open(event.currentTarget,record,{delete:()=>deleteDraft(record),edit:()=>{open(record);element('purchase-edit').click();},duplicate:()=>{const draft=add(record);if(draft)open(draft);},print:()=>{open(record);element('purchase-print').click();},void:()=>{open(record);element('purchase-void').click();},view:()=>open(record)});}
     window.SheetBulk={selected:()=>current().filter(record=>selected.has(record.id)),refresh:()=>{records=ledger.purchases();selected.clear();render();},announce};

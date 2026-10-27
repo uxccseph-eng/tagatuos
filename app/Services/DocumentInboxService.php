@@ -205,14 +205,8 @@ class DocumentInboxService
                 $this->fail('reference', 'Possible duplicate of '.$existing['number'].'. Review or link the existing transaction before creating another.');
             }
         }
-        $sequence = 0;
-        foreach ($rows as $existing) {
-            if (preg_match('/(\d+)$/', $existing['number'], $match)) {
-                $sequence = max($sequence, (int) $match[1]);
-            }
-        }
         $atc = $account->ewt && $account->ewt_atc_code ? collect(TaxCode::atcCatalog($workspace))->firstWhere('code', $account->ewt_atc_code) : null;
-        $record = ['id' => (string) Str::uuid(), 'number' => ($sales ? 'SI-' : 'BILL-').str_pad((string) ($sequence + 1), 6, '0', STR_PAD_LEFT), 'date' => $data['date'], 'status' => 'draft', 'draftSaved' => true, 'draftTouched' => true, 'partyId' => $party->id, 'tin' => $party->tin ?? '', 'address' => $party->address ?? '', 'gross' => $gross, 'tax' => 'TAX|'.$tax->code.'|'.$tax->kind.'|'.$tax->rate, 'account' => $account->code.' · '.$account->name, 'terms' => 'On Account', 'reference' => $reference, 'description' => $data['description'] ?? '', 'notes' => '', 'attachments' => [], 'createdAt' => now()->toIso8601String(), 'preparedFromDocument' => $document->id];
+        $record = ['id' => (string) Str::uuid(), 'number' => '', 'date' => $data['date'], 'status' => 'draft', 'draftSaved' => true, 'draftTouched' => true, 'partyId' => $party->id, 'tin' => $party->tin ?? '', 'address' => $party->address ?? '', 'gross' => $gross, 'tax' => 'TAX|'.$tax->code.'|'.$tax->kind.'|'.$tax->rate, 'account' => $account->code.' · '.$account->name, 'terms' => 'On Account', 'reference' => $reference, 'description' => $data['description'] ?? '', 'notes' => '', 'attachments' => [], 'createdAt' => now()->toIso8601String(), 'preparedFromDocument' => $document->id];
 
         return $sales ? [...$record, 'customer' => $party->name, 'cwt' => $atc ? $atc['code'].' · '.$atc['rate'].'%' : 'None', 'vatCwt' => 'None', 'classification' => 'Services'] : [...$record, 'supplier' => $party->name, 'ewt' => $atc ? (string) $atc['rate'] : 0, 'ewtCode' => $atc['code'] ?? '', 'wvat' => 0, 'wvatCode' => ''];
     }
