@@ -46,7 +46,8 @@
         const petty=form.elements.is_petty_cash.value==='1';
         form.elements.tin.required=!petty;
         if(petty)form.elements.classification.value='Supplier';
-        for(const key of ['street','city','province'])form.elements[key].required=!petty;
+        form.elements.street.required=false;
+        for(const key of ['city','province'])form.elements[key].required=!petty;
         el('party-tin-help').textContent=petty?'TIN and unknown address details may be left blank. This does not establish tax deductibility or input VAT eligibility.':'Required: 14 digits including the five-digit branch.';
     }
     if(parties){form.elements.is_petty_cash.addEventListener('change',updatePettyCash);form.elements.classification.addEventListener('change',updatePettyCash);}

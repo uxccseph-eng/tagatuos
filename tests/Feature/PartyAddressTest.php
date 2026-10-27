@@ -35,7 +35,6 @@ class PartyAddressTest extends TestCase
     public function test_structured_addresses_validate_location_zip_and_combined_length(): void
     {
         $this->postJson('/masters/parties', [...$this->payload(), 'city' => '', 'province' => '', 'zip_code' => '12345'])->assertUnprocessable()->assertJsonValidationErrors(['city', 'province', 'zip_code']);
-        $this->postJson('/masters/parties', [...$this->payload(), 'building' => '', 'street' => ''])->assertUnprocessable()->assertJsonValidationErrors('street');
         $this->postJson('/masters/parties', [...$this->payload(), 'street' => str_repeat('a', 255), 'building' => str_repeat('b', 255)])->assertUnprocessable()->assertJsonValidationErrors('address');
         $this->assertDatabaseCount('parties', 0);
     }
@@ -49,5 +48,17 @@ class PartyAddressTest extends TestCase
         $this->get('/masters/parties')->assertOk()->assertSee('Unit / Floor / Building')->assertSee('data-party-address-part', false);
         $this->assertDatabaseHas('parties', ['id' => $legacy->id, 'address' => 'Previously saved address', 'city' => null]);
         $this->postJson('/masters/parties', ['name' => 'Legacy input', 'classification' => 'Customer', 'tin' => '234567890000', 'address' => 'Legacy API address'])->assertCreated()->assertJsonPath('record.address', 'Legacy API address');
+    }
+
+    public function test_street_and_building_can_be_blank_when_creating_editing_and_importing_parties(): void
+    {
+        $payload = [...$this->payload(), 'building' => '', 'street' => ''];
+        $created = $this->postJson('/masters/parties', $payload)->assertCreated()->assertJsonPath('record.street', null)
+            ->assertJsonPath('record.address', 'Sample Barangay, Sample City, Sample Province, 0100');
+        $this->putJson('/masters/parties/'.$created->json('record.id'), [...$payload, 'code' => $created->json('record.code'), 'name' => 'Edited party'])
+            ->assertOk()->assertJsonPath('record.street', null);
+        $rows = [[...$payload, 'name' => 'Imported without street', 'tin' => '234-567-890-00000']];
+        $preview = $this->postJson('/masters/parties/import/preview', ['records' => $rows])->assertOk()->assertJsonPath('errors', []);
+        $this->postJson('/masters/parties/import', ['records' => $rows, 'preview_token' => $preview->json('preview_token')])->assertCreated()->assertJsonPath('records.0.street', null);
     }
 }

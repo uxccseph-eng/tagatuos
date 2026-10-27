@@ -134,7 +134,6 @@ class SaveMasterRecordRequest extends FormRequest
             }
             $rules['zip_code'] = ['nullable', 'regex:/^[0-9]{4}$/D'];
             if ($structured && ! $pettyCash) {
-                $rules['street'][] = 'required_without:building';
                 $rules['city'][] = 'required';
                 $rules['province'][] = 'required';
             }
