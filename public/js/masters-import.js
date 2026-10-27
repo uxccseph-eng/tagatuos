@@ -190,10 +190,15 @@
         } catch (problem) {fail(problem);} finally {setBusy(false);}
     });
     function download(name, values) {
-        const url = URL.createObjectURL(new Blob([tools.csv(values)], {type:'text/csv;charset=utf-8'})), link = document.createElement('a');
+        const url = URL.createObjectURL(new Blob([typeof values === 'string' ? values : tools.csv(values)], {type:'text/csv;charset=utf-8'})), link = document.createElement('a');
         link.href = url; link.download = name; document.body.append(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000);
     }
-    field('template').addEventListener('click', () => download('tagatuos-masters-'+registry+'-template.csv', [config.columns]));
+    const templateButton = field('template'), blankTemplate = cell('button', 'Download blank template');
+    blankTemplate.type = 'button'; templateButton.textContent = 'Download template with samples'; templateButton.after(blankTemplate);
+    const sampleGuide = cell('p', 'Sample rows are examples only. Replace or remove them before importing. Use actual TINs and account codes; keep bank numbers and identifiers as text in Excel.');
+    templateButton.closest('.sheet-import-controls').after(sampleGuide);
+    templateButton.addEventListener('click', () => download('tagatuos-masters-'+registry+'-sample-template.csv', tools.template(registry, config.columns, true)));
+    blankTemplate.addEventListener('click', () => download('tagatuos-masters-'+registry+'-blank-template.csv', tools.template(registry, config.columns)));
     field('report').addEventListener('click', () => download('tagatuos-masters-'+registry+'-errors.csv', [['Source row','Field','Issue',...config.columns], ...issues.map(issue => {const row = rows.find(item => item.sourceRow === issue.row); return [issue.row, issue.field, issue.message, ...config.columns.map(column => row?.record[column] ?? '')];})]));
     dialog.querySelectorAll('[data-close]').forEach(button => button.addEventListener('click', () => {if (!busy) dialog.close();}));
     dialog.addEventListener('cancel', event => event.preventDefault());

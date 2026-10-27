@@ -31,7 +31,25 @@
         if(rows.some(row=>row.some(cell=>cell.length>4000)))throw Error('Each pasted cell must contain at most 4,000 characters.');
         return rows;
     }
-    function template(sheet){if(!columns[sheet])throw Error('Unknown sheet.');return '\uFEFF'+columns[sheet].map(value=>'"'+value+'"').join(',')+'\r\n';}
+    function sampleRows(sheet){
+        const date='2026-10-01',customer='REPLACE WITH CUSTOMER CODE',supplier='REPLACE WITH SUPPLIER CODE',bank='REPLACE WITH CASH OR BANK ACCOUNT';
+        const samples={
+            sales:[{Date:date,Customer:customer,'Gross Amount':'1120.00','Tax Type':'VAT','Revenue Account':'REPLACE WITH INCOME ACCOUNT','Income Withholding ATC':'None','VAT Withholding ATC':'None',Terms:'On Account','Invoice Reference':'SAMPLE-SI-001-REPLACE',Classification:'Regular','Deposit Account':bank,Description:'SAMPLE ONLY - replace with your actual sale',Particulars:'Replace or delete this sample row'}],
+            purchases:[{Date:date,Supplier:supplier,'Supplier TIN':'','Gross Amount':'1120.00','Tax Type':'VAT',Account:'REPLACE WITH EXPENSE ACCOUNT','Income Withholding ATC':'None','VAT Withholding ATC':'None',Terms:'On Account','Invoice Reference':'SAMPLE-BILL-001-REPLACE',Bank:bank,Description:'SAMPLE ONLY - replace with your actual purchase',Notes:'Replace or delete this sample row'}],
+            collections:[{Date:date,Customer:customer,'Source Invoice':'REPLACE WITH POSTED INVOICE NUMBER',Amount:'1000.00',Bank:bank,Reference:'SAMPLE-COL-001-REPLACE','Payment Method':'Bank Transfer','Entry Type':'Settlement',Notes:'SAMPLE ONLY - replace with actual receipt details'}],
+            payments:[{Date:date,Supplier:supplier,'Supplier TIN':'','Source Bill':'REPLACE WITH POSTED BILL NUMBER',Amount:'1000.00',Bank:bank,'Payment Method':'Bank Transfer',Reference:'SAMPLE-PAY-001-REPLACE','Entry Type':'AP Settlement',Account:'',Notes:'SAMPLE ONLY - replace with actual payment details'}],
+            cwt:[{Date:date,'Source Invoice':'REPLACE WITH INVOICE WITH INCOME WITHHOLDING','Customer TIN':'','Certificate Number':'SAMPLE-2307-001-REPLACE',Notes:'SAMPLE ONLY - use an actual source invoice and certificate'}],
+            wtp:[{Date:date,'Source Bill':'REPLACE WITH BILL WITH WITHHOLDING',Supplier:'','Supplier TIN':'','Tax Base':'','Income Withholding ATC':'','VAT Withholding ATC':'','Offset Account':'REPLACE WITH PAYABLE ACCOUNT','Certificate Number':'SAMPLE-WTP-001-REPLACE',Notes:'SAMPLE ONLY - source bill supplies the tax details'}],
+            journal:[{Account:'REPLACE WITH DEBIT ACCOUNT',Debit:'1000.00',Credit:'0.00'},{Account:'REPLACE WITH CREDIT ACCOUNT',Debit:'0.00',Credit:'1000.00'}].map(line=>({'Voucher Key':'SAMPLE-JV-001',Date:date,Reference:'SAMPLE-JV-001-REPLACE',Particulars:'SAMPLE ONLY - balanced two-line journal','Entry Type':'General',Party:'',Remarks:'Replace with actual journal details',Notes:'Replace both sample lines before importing',...line}))
+        };
+        if(!samples[sheet])throw Error('Unknown sheet.');
+        return samples[sheet];
+    }
+    function template(sheet,withSamples=false){
+        if(!columns[sheet])throw Error('Unknown sheet.');
+        const rows=[columns[sheet],...(withSamples?sampleRows(sheet).map(row=>columns[sheet].map(column=>row[column]??'')):[])];
+        return '\uFEFF'+rows.map(row=>row.map(value=>'"'+String(value).replace(/"/g,'""')+'"').join(',')).join('\r\n')+'\r\n';
+    }
     function amount(value,label='Amount',zero=false){const text=String(value || '').replace(/[₱,\s]/g,'');if(!text&&zero)return 0;if(!/^\d{1,9}(\.\d{1,2})?$/.test(text))throw Error(label+' must be a number with no more than two decimal places.');const [whole,fraction='']=text.split('.');const cents=Number(whole)*100+Number(fraction.padEnd(2,'0'));if(!zero&&cents<=0)throw Error(label+' must be greater than zero.');return cents;}
     function date(value){let text=String(value || '').trim();const match=text.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);if(match)text=match[3]+'-'+match[1].padStart(2,'0')+'-'+match[2].padStart(2,'0');const parsed=new Date(text+'T12:00:00Z');if(!/^\d{4}-\d{2}-\d{2}$/.test(text)||!Number.isFinite(parsed.getTime())||parsed.toISOString().slice(0,10)!==text)throw Error('Date must be a real date in YYYY-MM-DD or MM/DD/YYYY format.');return text;}
     function fingerprint(sheet,record){const fields={sales:['date','customer','gross','reference','account','tax','terms','cwt','vatCwt'],purchases:['date','supplier','gross','reference','account','tax','terms','ewt','wvat'],collections:['date','customer','invoice','amount','reference','type'],payments:['date','supplier','bill','amount','reference','type','account'],cwt:['date','invoice','customer','tin','taxBase','atc','amount'],wtp:['date','bill','supplier','tin','taxBase','ewt','wvat','ewtCode','wvatCode','offset'],journal:['date','reference','type','lines']}[sheet];return JSON.stringify(fields.map(field=>{const value=record[field];return typeof value==='string'?value.trim().toLowerCase():value ?? '';}));}
@@ -116,5 +134,5 @@
         if(!errors.length&&records.length)errors.push(...context.ledger.previewImport(sheet,records).errors);
         return {records,errors,warnings,rowCount:rows.length,included:rows.filter(row=>!row.skip).length,totalGross:records.reduce((sum,record)=>sum+record.gross,0)};
     }
-    const api={columns,methods,parseCsv,parseClipboard,template,amount,date,fingerprint,preview,guessMapping,mapRows,previewMapped};if(typeof module!=='undefined'&&module.exports)module.exports=api;if(root)root.SheetImport=api;
+    const api={columns,methods,parseCsv,parseClipboard,sampleRows,template,amount,date,fingerprint,preview,guessMapping,mapRows,previewMapped};if(typeof module!=='undefined'&&module.exports)module.exports=api;if(root)root.SheetImport=api;
 })(typeof window==='undefined'?null:window);

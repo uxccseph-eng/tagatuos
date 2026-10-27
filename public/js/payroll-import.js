@@ -4,6 +4,10 @@
     const automation=typeof module!=='undefined'&&module.exports?require('./payroll-automation.js'):root.PayrollAutomation;
     const importer=typeof module!=='undefined'&&module.exports?require('./sheet-import.js'):root.SheetImport;
     const headers=[...payroll.importHeaders,'employee_code','taxable_benefits','review_basis'];
+    function template(withSamples=false){
+        const sample={pay_date:'2026-10-31',run_name:'SAMPLE Monthly Payroll - REPLACE',period_start:'2026-10-01',period_end:'2026-10-31',employee:'REPLACE WITH EMPLOYEE NAME',employee_code:'REPLACE WITH EMPLOYEE CODE',pay_type:'Taxable',basic:'20000.00',taxableAllowance:'0.00',deMinimis:'0.00',benefits:'0.00',sssEe:'0.00',phicEe:'0.00',hdmfEe:'0.00',withholding:'0.00',sssEr:'0.00',phicEr:'0.00',hdmfEr:'0.00',taxable_benefits:'0.00',review_basis:'regular'};
+        return '\uFEFF'+[headers,...(withSamples?[headers.map(field=>sample[field]??'')]:[])].map(row=>row.map(value=>'"'+String(value).replace(/"/g,'""')+'"').join(',')).join('\r\n')+'\r\n';
+    }
     const normalize=value=>String(value??'').trim().replace(/\s+/g,' ').toLowerCase();
     const headerKey=value=>normalize(value).replace(/[^a-z0-9]/g,'');
     const money=value=>(value/100).toFixed(2);
@@ -84,5 +88,5 @@
         }
         return [...totals.values()];
     }
-    const api={headers,guessMapping,validateMapping,rowsFromMatrix,compare,preview,signature,cumulative,money};if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.PayrollImport=api;
+    const api={headers,template,guessMapping,validateMapping,rowsFromMatrix,compare,preview,signature,cumulative,money};if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.PayrollImport=api;
 })(typeof window==='undefined'?null:window);

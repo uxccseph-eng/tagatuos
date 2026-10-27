@@ -147,7 +147,10 @@
         q('[data-select]').addEventListener('click',()=>{rows.forEach(r=>r.selected=!r.skip);render();});q('[data-clear]').addEventListener('click',()=>{rows.forEach(r=>r.selected=false);render();});
         q('[data-exceptions]').addEventListener('change',render);q('[data-recheck]').addEventListener('click',render);
         q('[data-prev]').addEventListener('click',()=>{page--;render();});q('[data-next]').addEventListener('click',()=>{page++;render();});
-        q('[data-template]').addEventListener('click',()=>{const url=URL.createObjectURL(new Blob([engine.template(sheet)],{type:'text/csv;charset=utf-8'})),link=el('a');link.href=url;link.download='tagatuos-'+sheet+'-import-template.csv';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);});
+        const templateButton=q('[data-template]'),blankTemplate=el('button','Download blank template');blankTemplate.type='button';templateButton.textContent='Download template with samples';templateButton.after(blankTemplate);
+        const sampleGuide=el('p','Sample rows are examples only. Replace or remove them before importing. Use your actual dates, amounts, Masters codes and posted source numbers.');templateButton.closest('.sheet-import-controls').after(sampleGuide);
+        const downloadTemplate=withSamples=>{const url=URL.createObjectURL(new Blob([engine.template(sheet,withSamples)],{type:'text/csv;charset=utf-8'})),link=el('a');link.href=url;link.download='tagatuos-'+sheet+(withSamples?'-sample-template.csv':'-blank-template.csv');link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
+        templateButton.addEventListener('click',()=>downloadTemplate(true));blankTemplate.addEventListener('click',()=>downloadTemplate(false));
         q('[data-import-post]').addEventListener('click',async()=>{
             if(busy||locked||q('[data-import-post]').disabled)return;busy=true;let committed=false;
             const controls=[...dialog.querySelectorAll('input,select,textarea,button')],disabled=controls.map(c=>c.disabled);controls.forEach(c=>c.disabled=true);

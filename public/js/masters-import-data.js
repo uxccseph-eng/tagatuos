@@ -54,7 +54,21 @@
         return changed;
     }
     function csv(rows){return '\uFEFF'+rows.map(row=>row.map(value=>'"'+String(value??'').replace(/^[=+@\-\t\r]/,"'$&").replace(/"/g,'""')+'"').join(',')).join('\r\n');}
-    const api={guessMapping,source,mapRows,included,fillBlanks,csv};
+    function sampleRows(registry){
+        const samples={
+            'chart-of-accounts':[{code:'',name:'SAMPLE Internet Expense - REPLACE',type:'Expense',normal_balance:'Debit',statement_section:'General and Administrative Expenses',description:'SAMPLE ONLY - replace or remove before importing',is_cash_bank:'No',is_advance:'No',is_control:'No'}],
+            parties:[{code:'',name:'SAMPLE Supplier Corporation - REPLACE',entity_type:'corporation',classification:'Supplier',is_petty_cash:'No',tin:'REPLACE WITH ACTUAL SUPPLIER TIN',email:'supplier@example.com',phone:'',building:'',street:'',barangay:'Sample Barangay',city:'Quezon City',province:'Metro Manila',zip_code:'1100',address:'',description:'SAMPLE ONLY - regular supplier; street optional; use the actual registered address'},
+                {code:'',name:'SAMPLE Petty Cash Payee - REPLACE',entity_type:'corporation',classification:'Supplier',is_petty_cash:'Yes',tin:'',description:'SAMPLE ONLY - petty cash supplier; TIN and address optional'}],
+            employees:[{code:'',name:'SAMPLE Employee - REPLACE',classification:'Regular',tin:'',email:'employee@example.com',phone:'',address:'Replace with actual employee address',birth_date:'1995-01-15',hire_date:'2026-10-01',end_date:'',sss_no:'',philhealth_no:'',pagibig_no:''}],
+            'bank-accounts':[{name:'SAMPLE Operating Bank - REPLACE',bank:'SAMPLE Bank - REPLACE',account_number:'001234567890',gl_account:'REPLACE WITH ACTIVE CASH OR BANK ACCOUNT CODE',currency:'PHP'}],
+            'tax-codes':[{code:'',name:'SAMPLE VAT 12% - REPLACE',kind:'VAT',rate:'12',atc:''}],
+            'atc-codes':[{code:'REPLACE WITH ACTUAL CUSTOM ATC',name:'SAMPLE Custom Withholding - REPLACE',rate:'1'}]
+        };
+        if(!samples[registry])throw Error('Unknown Masters registry.');
+        return samples[registry];
+    }
+    function template(registry,columns,withSamples=false){return csv([columns,...(withSamples?sampleRows(registry).map(row=>columns.map(column=>row[column]??'')):[])])+'\r\n';}
+    const api={guessMapping,source,mapRows,included,fillBlanks,csv,sampleRows,template};
     if(typeof module!=='undefined'&&module.exports)module.exports=api;
     if(root)root.MasterImportData=api;
 })(typeof window!=='undefined'?window:null);
