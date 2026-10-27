@@ -19,6 +19,7 @@ class TaxReportsTest extends TestCase
         $this->get('/tax-reports')->assertOk()->assertViewHas('schedule', 'relief-sales');
         foreach (array_keys(TaxReportsController::SCHEDULES) as $schedule) {
             $this->get('/tax-reports/'.$schedule)->assertOk()->assertViewIs('tax-reports')->assertViewHas('schedule', $schedule)->assertSee('Tax Reports navigation')->assertSee('Tax QA Company')->assertSee('tax-quarter')->assertSee('tax-excel')->assertSee('tax-issues')->assertSee('Not BIR validated')->assertSeeInOrder(['tax-report-data.js', 'tax-reports.js'])->assertDontSee('Verified clean by BIR')->assertDontSee('TRND MARKETING');
+            $this->get('/tax-reports/'.$schedule)->assertDontSee('Pre-filing checklist')->assertDontSee('tax-preflight.js')->assertDontSee('tax-preflight.css')->assertDontSee('data-preflight-run', false);
         }
         $this->get('/tax-reports/unknown')->assertNotFound();
     }
