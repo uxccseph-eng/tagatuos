@@ -5,16 +5,32 @@ namespace App\Http\Controllers;
 use App\Http\Requests\ImportMastersRequest;
 use App\MasterImport;
 use App\Models\ChartAccount;
+use App\Services\SheetImportWorkbookReader;
 use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use RuntimeException;
 
 class MastersImportController extends Controller
 {
+    public function workbook(Request $request, string $registry, SheetImportWorkbookReader $reader): JsonResponse
+    {
+        abort_unless($request->session()->get('preview_access') && $request->session()->has('company_setup'), 403);
+        $request->validate(['file' => ['required', 'file', 'extensions:xlsx', 'max:2048'], 'worksheet' => ['nullable', 'integer', 'between:0,49']]);
+        try {
+            $result = $reader->read($request->file('file')->getRealPath(), (int) $request->input('worksheet', 0));
+        } catch (RuntimeException $exception) {
+            throw ValidationException::withMessages(['file' => $exception->getMessage()]);
+        }
+
+        return response()->json($result)->header('Cache-Control', 'private, no-store');
+    }
+
     public function preview(ImportMastersRequest $request, string $registry, MasterImport $import): JsonResponse
     {
         $rows = $request->validated('records');
