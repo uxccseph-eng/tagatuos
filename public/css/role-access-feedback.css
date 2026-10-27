@@ -1,0 +1,9 @@
+#role-access-dialog{box-sizing:border-box;width:min(480px,calc(100% - 32px));margin:auto;padding:28px;border:1px solid #344155;border-radius:16px;background:#171f2c;color:#e7edf5;box-shadow:0 24px 80px #0008;font:14px/1.6 system-ui,sans-serif;color-scheme:dark}
+#role-access-dialog::backdrop{background:#030712b3;backdrop-filter:blur(4px)}
+#role-access-dialog h2{margin:4px 0 16px;font-size:22px;color:#f8fafc}
+#role-access-dialog p{margin:10px 0;overflow-wrap:anywhere}
+#role-access-dialog .role-access-label{color:#35d9b1;font-size:11px;font-weight:700;letter-spacing:.12em}
+#role-access-dialog .role-access-help{color:#a7b4c5;font-size:13px}
+#role-access-dialog [data-role-close]{position:absolute;right:16px;top:12px;padding:4px 10px;background:transparent;color:#e7edf5;border:1px solid #344155;border-radius:6px;font-size:20px;cursor:pointer}
+#role-access-dialog [data-role-dismiss]{margin-top:12px;padding:9px 20px;border:0;border-radius:7px;background:#1cd5af;color:#071c19;font:inherit;font-weight:650;cursor:pointer}
+#role-access-dialog button:focus-visible{outline:2px solid #67e8f9;outline-offset:3px}

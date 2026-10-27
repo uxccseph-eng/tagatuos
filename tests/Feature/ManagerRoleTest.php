@@ -54,15 +54,15 @@ class ManagerRoleTest extends TestCase
         $this->assertDatabaseHas('monthly_closing_events', ['actor_id' => $manager->id, 'action' => 'reopened', 'reason' => 'New source documents require review']);
     }
 
-    public function test_managers_cannot_manage_members_company_registration_or_system_approvals(): void
+    public function test_managers_cannot_manage_members_ownership_or_system_approvals_and_settings_still_require_valid_data(): void
     {
         [$owner, $company, $manager] = $this->team();
         $this->actingAs($manager)->get(route('team.index', $company->id))->assertNotFound();
         $this->postJson(route('team.store', $company->id), ['mode' => 'existing', 'email' => $owner->email, 'role' => 'manager', 'tabs' => ['dashboard']])->assertForbidden();
         $this->putJson(route('team.update', ['companyId' => $company->id, 'memberId' => $manager->id]), ['role' => 'owner', 'tabs' => ['dashboard']])->assertForbidden();
         $this->deleteJson(route('team.remove', ['companyId' => $company->id, 'memberId' => $owner->id]), ['confirmation' => 1])->assertForbidden();
-        $this->withSession(['active_company_id' => $company->id])->postJson(route('company.store'), [])->assertForbidden();
-        $this->putJson(route('settings.update', ['section' => 'bir']), [])->assertForbidden();
+        $this->withSession(['active_company_id' => $company->id])->postJson(route('company.store'), [])->assertUnprocessable()->assertJsonValidationErrors('company_name');
+        $this->putJson(route('settings.update', ['section' => 'bir']), [])->assertUnprocessable()->assertJsonValidationErrors('accounting_period');
         $this->getJson(route('system.dashboard'))->assertForbidden();
         $this->postJson(route('account.companies.store'), ['name' => 'Unauthorized Client'])->assertForbidden();
         $this->assertDatabaseHas('company_user', ['company_id' => $company->id, 'user_id' => $manager->id, 'role' => 'manager']);

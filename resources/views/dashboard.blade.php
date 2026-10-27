@@ -2,6 +2,7 @@
 <html class="h-full transition-colors duration-300 dark" lang="en">
 <head>
   <meta charset="utf-8">
+  @include('role-access-assets')
   <meta content="width=device-width, initial-scale=1.0" name="viewport">
   <title>kontadurya.io — Double-Entry Bookkeeping &amp; BIR Compliance</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">

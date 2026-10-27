@@ -45,11 +45,15 @@
         const module = url.pathname.split('/').filter(Boolean)[0];
         if ((modules.includes(module) && !access.tabs.includes(module)) || (module === 'team' && access.role !== 'owner')) { link.hidden = true; link.style.display = 'none'; }
     });
-    if (access.role !== 'owner') {
+    if (!(access.canEditSettings ?? (['owner', 'manager', 'accountant'].includes(access.role) && access.tabs.includes('settings')))) {
         document.querySelectorAll('form[action]').forEach(form => {
             const url = new URL(form.action, location.href);
             if (url.origin === location.origin && url.pathname.startsWith('/settings/')) {
-                form.querySelectorAll('input,select,textarea,button').forEach(control => { control.disabled = true; });
+                form.querySelectorAll('input,select,textarea').forEach(control => { control.disabled = true; });
+                form.addEventListener('submit', event => {
+                    event.preventDefault();
+                    window.RoleAccessFeedback?.show({role: access.role, message: 'Editing book settings requires an owner, manager or accountant role with Settings access.'});
+                });
             }
         });
     }

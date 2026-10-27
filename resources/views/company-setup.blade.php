@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en" class="dark"><head>
+<!DOCTYPE html><html lang="en" class="dark"><head>@include('role-access-assets')
 
   <meta charset="UTF-8">
 
