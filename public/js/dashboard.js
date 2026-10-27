@@ -58,14 +58,16 @@ function openWorkspaceTopic(topic) {
     if (searchDialog.open) searchDialog.close();
     document.getElementById('workspace-dialog-title').textContent = topic;
     let description = `${topic} is a planned workspace module. This module is not connected yet. Your posted records remain available in Sheets and Books.`;
-    if (topic === 'Profile') description = `Demo profile: ${workspaceDialog.dataset.owner}. This is a local session, not a verified account. Exit demo to clear the company details from this session.`;
+    const profileDetails = document.querySelector('[data-dialog-profile]');
+    if (profileDetails) profileDetails.hidden = topic !== 'Profile';
+    if (topic === 'Profile') description = profileDetails ? 'Your signed-in account and access to the current company book.' : `Demo profile: ${workspaceDialog.dataset.owner}. This is a local session, not a verified account. Exit demo to clear the company details from this session.`;
     if (topic === 'Notifications') description = 'No workspace notifications. BIR services and external integrations are not connected.';
     if (topic === 'Create') description = 'Choose a transaction module to preview. Record entries in Sheets and review posted records in Books.';
     if (topic === 'Chart of accounts') description = 'The account structure preview will include assets, liabilities, equity, income, and expenses. No accounts have been seeded or reviewed yet.';
     document.getElementById('workspace-dialog-description').textContent = description;
     document.querySelector('[data-dialog-create]').hidden = topic !== 'Create';
-    document.querySelector('[data-dialog-settings]').hidden = !['Company', 'Profile'].includes(topic);
-    document.querySelector('[data-dialog-exit]').hidden = topic !== 'Profile';
+    document.querySelector('[data-dialog-settings]').hidden = topic !== 'Profile' || Boolean(profileDetails);
+    document.querySelector('[data-dialog-exit]').hidden = topic !== 'Profile' || Boolean(profileDetails);
     if (!workspaceDialog.open) workspaceDialog.showModal();
 }
 document.querySelectorAll('[data-workspace-topic]').forEach((element) => {

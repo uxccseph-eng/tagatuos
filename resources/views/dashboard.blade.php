@@ -78,9 +78,12 @@
     @endauth
 
     <!-- User Profile Avatar (JR) -->
-    <button type="button" aria-label="Profile and demo access" data-workspace-topic="Profile" class="profile-button relative w-8 h-8 rounded-full bg-slate-200 dark:bg-gradient-to-br dark:from-slate-700 dark:to-slate-800 border border-slate-300 dark:border-slate-600 flex items-center justify-center cursor-pointer">
-      <span class="font-mono text-[11px] text-slate-800 dark:text-white font-bold">{{ mb_strtoupper(mb_substr($company['full_name'], 0, 1)) }}</span>
-      <span class="absolute bottom-0 right-0 w-2 h-2 rounded-full bg-emerald-500 dark:bg-[#00f5a0] ring-2 ring-white dark:ring-[#161c28]"></span>
+    <button type="button" aria-label="{{ auth()->check() ? 'Profile for '.auth()->user()->name : 'Preview profile' }}" data-workspace-topic="Profile" class="profile-button flex items-center gap-2 cursor-pointer">
+      @auth<span class="hidden lg:block max-w-[140px] truncate text-xs font-semibold text-slate-800 dark:text-slate-200">{{ auth()->user()->name }}</span>@endauth
+      <span class="relative w-8 h-8 rounded-full bg-slate-200 dark:bg-gradient-to-br dark:from-slate-700 dark:to-slate-800 border border-slate-300 dark:border-slate-600 flex items-center justify-center">
+        <span class="font-mono text-[11px] text-slate-800 dark:text-white font-bold">{{ mb_strtoupper(mb_substr(auth()->user()?->name ?? $company['full_name'], 0, 1)) }}</span>
+        <span class="absolute bottom-0 right-0 w-2 h-2 rounded-full bg-emerald-500 dark:bg-[#00f5a0] ring-2 ring-white dark:ring-[#161c28]"></span>
+      </span>
     </button>
   </div>
 </header>
@@ -413,9 +416,20 @@
 
 <dialog data-sales-url="{{ route('sheets.sales') }}" id="workspace-dialog" aria-labelledby="workspace-dialog-title" aria-describedby="workspace-dialog-description" data-company="{{ $company['company_name'] }}" data-owner="{{ $company['full_name'] }}" data-setup-url="{{ route('settings') }}" class="workspace-dialog rounded-2xl border border-slate-200 bg-white p-7 text-slate-800 shadow-2xl dark:border-slate-700 dark:bg-[#161c28] dark:text-slate-100">
     <form method="dialog" class="flex justify-end"><button type="submit" aria-label="Close dialog" class="rounded-lg border border-slate-300 px-3 py-1 text-lg dark:border-slate-600">×</button></form>
-    <p class="mt-2 font-mono text-[10px] uppercase tracking-widest text-emerald-600 dark:text-emerald-400">Workspace preview</p>
+    <p class="mt-2 font-mono text-[10px] uppercase tracking-widest text-emerald-600 dark:text-emerald-400">{{ auth()->check() ? 'Account workspace' : 'Workspace preview' }}</p>
     <h2 id="workspace-dialog-title" class="mt-3 font-headline text-2xl font-bold"></h2>
     <p id="workspace-dialog-description" class="mt-4 text-sm leading-relaxed text-slate-500 dark:text-slate-400"></p>
+    @auth
+    <div data-dialog-profile hidden class="mt-4 space-y-3 text-sm">
+        <dl class="space-y-2">
+            <div><dt class="text-slate-500 dark:text-slate-400">Signed in as</dt><dd class="font-semibold">{{ auth()->user()->name }}</dd></div>
+            <div><dt class="text-slate-500 dark:text-slate-400">Email</dt><dd class="break-all">{{ auth()->user()->email }}</dd></div>
+            <div><dt class="text-slate-500 dark:text-slate-400">Role in this book</dt><dd>{{ ucfirst(request()->attributes->get('active_company')?->pivot?->role ?? auth()->user()->type) }}</dd></div>
+        </dl>
+        <a href="{{ route('account.password.edit') }}" class="inline-flex rounded-lg bg-orange-500 px-4 py-2.5 font-semibold text-slate-950">Change password</a>
+        <form action="{{ route('logout') }}" method="POST">@csrf<button type="submit" class="font-semibold text-rose-600 dark:text-rose-400">Sign out</button></form>
+    </div>
+    @endauth
     <div data-dialog-create class="mt-5 grid grid-cols-2 gap-3" hidden>
         @foreach(['Sales', 'Purchases', 'Payments', 'Journal'] as $action)
             <button type="button" data-workspace-topic="{{ $action }}" class="rounded-lg border border-slate-300 px-4 py-3 text-sm hover:border-orange-500 dark:border-slate-700">{{ $action }}</button>

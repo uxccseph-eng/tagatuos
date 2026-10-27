@@ -173,6 +173,20 @@ class ActiveCompanyWorkspaceTest extends TestCase
         $this->assertDatabaseHas('company_user', ['company_id' => $book->id, 'user_id' => $user->id, 'role' => 'manager']);
     }
 
+    public function test_dashboard_profile_identifies_the_logged_in_accountant_instead_of_the_company_contact(): void
+    {
+        $user = User::factory()->accountant()->create(['name' => 'Assigned Accountant', 'email' => 'assigned@example.test', 'must_change_password' => false]);
+        $book = Company::factory()->create();
+        $book->users()->attach($user, ['role' => 'accountant']);
+        $this->configure($book);
+
+        $this->actingAs($user)->withSession(['active_company_id' => $book->id])->get(route('dashboard'))
+            ->assertOk()->assertSee('aria-label="Profile for Assigned Accountant"', false)
+            ->assertSee('assigned@example.test')->assertSee('Role in this book')->assertSee('Accountant')
+            ->assertSee(route('account.password.edit'))->assertSee('data-dialog-profile', false);
+        $this->assertSame('Example Owner', CompanySetting::query()->where('workspace_key', $book->workspaceKey())->sole()->profile['full_name']);
+    }
+
     private function configure(Company $book): void
     {
         CompanySetting::factory()->create([
