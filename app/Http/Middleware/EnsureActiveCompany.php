@@ -50,8 +50,9 @@ class EnsureActiveCompany
                 : to_route('account.dashboard')->withErrors(['company' => 'The active company changed. Reopen the intended company book before saving.']);
         }
 
-        if (($request->is('company/setup') || ($request->is('settings', 'settings/*') && ! $request->isMethod('GET'))) && $company->pivot->role !== 'owner') {
-            abort(403, 'Only the company book owner can change its registration details and settings.');
+        $canEditSettings = TeamPermissions::canEditBookSettings($company->pivot->role, $company->pivot->allowed_tabs);
+        if (($request->is('company/setup') || ($request->is('settings', 'settings/*') && ! $request->isMethod('GET'))) && ! $canEditSettings) {
+            abort(403, 'Book details and settings require an owner, manager or accountant role with Settings access.');
         }
 
         $allowed = TeamPermissions::allowed($company->pivot->role, $company->pivot->allowed_tabs);
@@ -85,9 +86,9 @@ class EnsureActiveCompany
             ]);
         } elseif (! $request->is('company/setup')) {
             return $request->expectsJson()
-                ? response()->json(['message' => 'The company owner must complete company setup first.'], 409)
-                : to_route($company->pivot->role === 'owner' ? 'company.setup' : 'account.dashboard')
-                    ->with('status', 'The company owner must complete company setup before opening this book.');
+                ? response()->json(['message' => 'An authorized owner, manager or accountant must complete company setup first.'], 409)
+                : to_route($canEditSettings ? 'company.setup' : 'account.dashboard')
+                    ->with('status', 'An authorized owner, manager or accountant must complete company setup before opening this book.');
         }
 
         return $next($request);

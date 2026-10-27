@@ -125,6 +125,54 @@ class ActiveCompanyWorkspaceTest extends TestCase
         $this->get(route('settings.section', ['section' => 'address']))->assertOk()->assertSee('Quezon City');
     }
 
+    public function test_accountant_with_settings_access_can_edit_only_the_active_assigned_book(): void
+    {
+        $user = User::factory()->accountant()->create(['must_change_password' => false]);
+        $book = Company::factory()->create();
+        $foreign = Company::factory()->create();
+        $book->users()->attach($user, ['role' => 'accountant', 'allowed_tabs' => json_encode(['dashboard', 'settings'])]);
+        $this->configure($book);
+        $this->configure($foreign);
+        $foreignProfile = CompanySetting::query()->where('workspace_key', $foreign->workspaceKey())->sole()->profile;
+
+        $this->actingAs($user)->withSession(['active_company_id' => $book->id])->get(route('company.setup'))->assertOk();
+        $this->post(route('company.store'), [...$this->companyData(), 'company_name' => 'Updated Assigned Book'])->assertRedirect(route('dashboard'))->assertSessionHasNoErrors();
+        $this->put(route('settings.update', ['section' => 'address']), ['city' => 'Quezon City'])->assertSessionHasNoErrors();
+        $this->assertSame('Updated Assigned Book', $book->fresh()->name);
+        $this->assertSame('Quezon City', CompanySetting::query()->where('workspace_key', $book->workspaceKey())->sole()->profile['city']);
+        $this->assertSame($foreignProfile, CompanySetting::query()->where('workspace_key', $foreign->workspaceKey())->sole()->profile);
+        $this->assertDatabaseHas('company_user', ['company_id' => $book->id, 'user_id' => $user->id, 'role' => 'accountant']);
+        $this->get(route('team.index', $book->id))->assertNotFound();
+        $this->withHeader('X-Company-ID', (string) $foreign->id)->putJson(route('settings.update', ['section' => 'address']), ['city' => 'Forged'])->assertConflict();
+        $this->flushHeaders();
+        $this->withSession(['active_company_id' => $foreign->id])->putJson(route('settings.update', ['section' => 'address']), ['city' => 'Forbidden'])->assertForbidden();
+        $this->assertSame($foreignProfile, CompanySetting::query()->where('workspace_key', $foreign->workspaceKey())->sole()->profile);
+    }
+
+    public function test_accountant_without_settings_access_cannot_bypass_it_through_company_setup(): void
+    {
+        $user = User::factory()->accountant()->create(['must_change_password' => false]);
+        $book = Company::factory()->create();
+        $book->users()->attach($user, ['role' => 'accountant', 'allowed_tabs' => json_encode(['dashboard', 'sheets'])]);
+        $this->configure($book);
+        $this->actingAs($user)->withSession(['active_company_id' => $book->id])->get(route('company.setup'))->assertForbidden();
+        $this->post(route('company.store'), $this->companyData())->assertForbidden();
+        $this->get(route('settings'))->assertForbidden();
+        $this->put(route('settings.update', ['section' => 'address']), ['city' => 'Forbidden'])->assertForbidden();
+    }
+
+    public function test_authorized_manager_can_complete_initial_book_registration(): void
+    {
+        $user = User::factory()->accountant()->create(['must_change_password' => false]);
+        $book = Company::factory()->create();
+        $book->users()->attach($user, ['role' => 'manager', 'allowed_tabs' => json_encode(['dashboard', 'settings'])]);
+        $this->actingAs($user)->withSession(['active_company_id' => $book->id])->get(route('dashboard'))->assertRedirect(route('company.setup'));
+        $this->get(route('company.setup'))->assertOk();
+        $this->post(route('company.store'), $this->companyData())->assertRedirect(route('dashboard'))->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('company_settings', ['workspace_key' => $book->workspaceKey()]);
+        $this->assertDatabaseHas('company_user', ['company_id' => $book->id, 'user_id' => $user->id, 'role' => 'manager']);
+    }
+
     private function configure(Company $book): void
     {
         CompanySetting::factory()->create([

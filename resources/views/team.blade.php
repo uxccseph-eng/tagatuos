@@ -30,7 +30,7 @@
             </tbody></table></div>
             <div class="team-table-footer"><span>Showing {{ $members->count() }} of {{ $members->total() }} {{ $members->total() === 1 ? 'member' : 'members' }}</span><div>@if($members->previousPageUrl())<a href="{{ $members->previousPageUrl() }}">← Previous</a>@endif @if($members->nextPageUrl())<a href="{{ $members->nextPageUrl() }}">Next →</a>@endif</div></div>
         </section>
-        @if($section === 'access')<div class="notice team-access-note">Owners manage company registration, settings and members. Managers can assign, approve and reopen monthly closings. Module access follows the selected tabs for managers, accountants and staff. Tab access does not make a module read-only. Every request checks the active membership.</div>@endif
+        @if($section === 'access')<div class="notice team-access-note">Owners manage ownership and members. Accountants and managers with Settings access can edit details and settings of their assigned books. Managers can also assign, approve and reopen monthly closings. Module access follows the selected tabs for managers, accountants and staff. Tab access does not make a module read-only. Every request checks the active membership.</div>@endif
     @elseif($section === 'templates')
         <div class="template-grid">@foreach($templates as $key => $template)<article class="account-card"><span class="eyebrow">ACCESS TEMPLATE</span><h2>{{ $template['label'] }}</h2><p class="muted">{{ $template['description'] }}</p><div class="permission-chips">@foreach($template['tabs'] as $tab)<span>{{ $tabs[$tab] }}</span>@endforeach</div><button type="button" class="button primary full" data-template="{{ $key }}">Use template</button></article>@endforeach</div>
     @else
