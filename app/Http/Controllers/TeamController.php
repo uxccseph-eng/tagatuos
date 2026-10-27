@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\ManageTeamMemberRequest;
+use App\Http\Requests\ResetAccountantPasswordRequest;
 use App\Http\Requests\UpdatePortalRequest;
 use App\Models\Company;
 use App\Models\TeamEvent;
@@ -119,6 +120,15 @@ class TeamController extends Controller
         $url = $access->setupLink($request->user(), $companyId, $memberId);
 
         return to_route('team.index', ['companyId' => $companyId])->with('team_credential', ['company_id' => $companyId, 'url' => $url]);
+    }
+
+    public function resetPassword(ResetAccountantPasswordRequest $request, int $companyId, int $memberId, TeamAccessService $access): RedirectResponse
+    {
+        $url = $access->resetPassword($request->user(), $companyId, $memberId);
+
+        return to_route('team.index', ['companyId' => $companyId])
+            ->with('status', 'Password recovery issued. Previous credentials and setup links are invalid. Share the new link privately with this accountant.')
+            ->with('team_credential', ['company_id' => $companyId, 'url' => $url, 'recovery' => true]);
     }
 
     public function portal(UpdatePortalRequest $request, int $companyId, TeamAccessService $access): RedirectResponse

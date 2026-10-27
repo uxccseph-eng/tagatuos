@@ -119,6 +119,34 @@ class TeamAccessService
         }, attempts: 3);
     }
 
+    public function resetPassword(User $owner, int $companyId, int $userId): string
+    {
+        return DB::transaction(function () use ($owner, $companyId, $userId): string {
+            $company = $this->lockedCompany($owner, $companyId);
+            $membership = $this->editableMember($company, $userId);
+            $member = User::query()->lockForUpdate()->findOrFail($membership->id);
+            if ($membership->pivot->is_suspended || ! $member->hasApprovedAccess() || $member->type !== 'accountant'
+                || $member->is_system_owner || $member->companies()->wherePivot('role', 'owner')->exists()
+                || ! app(OrganizationTeamService::class)->canSetUp($owner, $member)) {
+                throw ValidationException::withMessages(['member' => 'Password recovery is only available for active accountant accounts managed exclusively by your organization.']);
+            }
+
+            $member->forceFill([
+                'password' => Str::password(length: 64, spaces: false),
+                'remember_token' => Str::random(60),
+                'must_change_password' => true,
+            ])->save();
+            TeamLoginToken::query()->where('user_id', $member->id)->whereNull('used_at')->update(['used_at' => now()]);
+            $url = $this->newToken($company, $owner, $member);
+            $this->record($company, $owner, $member, 'Password recovery issued', [
+                'name' => $member->name,
+                'scope' => $this->isOrganizationMember($owner, $company, $member->id) ? 'organization' : 'book',
+            ]);
+
+            return $url;
+        }, attempts: 3);
+    }
+
     public function changePortal(User $owner, int $companyId, string $slug): void
     {
         try {

@@ -109,6 +109,7 @@ Route::middleware('auth')->prefix('account/companies/{companyId}/team')->where([
     Route::put('/members/{memberId}', [TeamController::class, 'update'])->whereNumber('memberId')->name('update');
     Route::delete('/members/{memberId}', [TeamController::class, 'remove'])->whereNumber('memberId')->name('remove');
     Route::post('/members/{memberId}/setup-link', [TeamController::class, 'issueLink'])->whereNumber('memberId')->middleware('throttle:10,1')->name('setup-link');
+    Route::post('/members/{memberId}/password-recovery', [TeamController::class, 'resetPassword'])->whereNumber('memberId')->middleware('throttle:5,1')->name('password-recovery');
     Route::put('/portal', [TeamController::class, 'portal'])->name('portal');
     Route::get('/{section?}', [TeamController::class, 'index'])->where('section', 'members|access|templates|history')->name('index');
 });

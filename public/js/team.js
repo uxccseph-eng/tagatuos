@@ -32,6 +32,15 @@
     document.querySelectorAll('[data-add-mode]').forEach(button => button.addEventListener('click', () => openMember(button.dataset.addMode)));
     document.querySelectorAll('[data-template]').forEach(button => button.addEventListener('click', () => openMember('new', null, button.dataset.template)));
     document.querySelectorAll('[data-edit-member]').forEach(button => button.addEventListener('click', () => openMember('edit', members.find(member => String(member.id) === button.dataset.editMember))));
+    document.querySelectorAll('[data-reset-password]').forEach(button => button.addEventListener('click', () => {
+        const member = members.find(member => String(member.id) === button.dataset.resetPassword);
+        const recovery = document.getElementById('password-recovery-form');
+        recovery.reset();
+        recovery.action = recovery.dataset.recoveryUrl.replace('/0', '/' + member.id);
+        document.getElementById('password-recovery-member').textContent = member.name;
+        document.getElementById('password-recovery-dialog').showModal();
+    }));
+    document.getElementById('password-recovery-dialog')?.addEventListener('close', () => document.getElementById('password-recovery-form').reset());
     document.querySelectorAll('[data-remove-member]').forEach(button => button.addEventListener('click', () => {
         const member = members.find(member => String(member.id) === button.dataset.removeMember);
         const remove = document.getElementById('remove-member-form'); remove.reset();
