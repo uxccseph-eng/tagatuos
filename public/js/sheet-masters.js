@@ -40,6 +40,7 @@
         const matches=parties(sales?'Customer':'Supplier').filter(item=>item.name.trim().toLowerCase()===name);
         if(matches.length!==1)return result;
         const selected=matches[0],digits=value=>String(value || '').replace(/\D/g,'');
+        if(selected.is_petty_cash)return result;
         const rows=window.CompanyLedgerDatabase?(window.CompanyLedgerDatabase.state?.[sales?'sales':'purchases'] || []):(sales?window.KontaduryaLedger?.sales():window.KontaduryaLedger?.purchases()) || [];
         const candidates=rows.map((row,index)=>({row,index,time:Date.parse(row.postedAt || '') || Date.parse(row.date || '') || 0})).filter(({row})=>{
             if(row.status!=='posted' || record.id!==undefined && String(row.id)===String(record.id))return false;

@@ -40,6 +40,7 @@ class SaveMasterRecordRequest extends FormRequest
             $saved = $this->route('record') ? Party::query()->where('workspace_key', ChartAccount::workspaceKey($this->session()->get('company_setup')))->findOrFail($this->route('record')) : null;
             $entityType = $this->input('entity_type') ?: ($saved?->entity_type ?? 'corporation');
             $this->merge(['entity_type' => $entityType]);
+            $this->merge(['is_petty_cash' => $this->input('is_petty_cash', $saved?->is_petty_cash ?? false)]);
             if ($entityType === 'individual') {
                 $names = [];
                 foreach (['last_name', 'first_name', 'middle_name'] as $field) {
@@ -113,6 +114,13 @@ class SaveMasterRecordRequest extends FormRequest
 
         $rules = [...$common, ...($party ? ['classification' => ['required', Rule::in(['Customer', 'Supplier', 'Both'])], 'tin' => ['required', 'regex:/^[0-9]{3}-[0-9]{3}-[0-9]{3}-[0-9]{5}$/D'], 'description' => ['nullable', 'string', 'max:500'], 'email' => ['nullable', 'email', 'max:254'], 'phone' => ['nullable', 'string', 'max:40'], 'address' => ['required', 'string', 'max:500']] : ['kind' => ['required', Rule::in(['VAT', 'Exempt', 'Zero Rated', 'Percentage Tax', 'Withholding'])], 'rate' => ['required', 'numeric', 'between:0,100', 'decimal:0,4'], 'atc' => ['nullable', 'regex:/^[A-Za-z]{2}[0-9]{3}$/']])];
         if ($party) {
+            $pettyCash = $this->boolean('is_petty_cash');
+            $rules['is_petty_cash'] = ['required', 'boolean'];
+            if ($pettyCash) {
+                $rules['classification'] = ['required', Rule::in(['Supplier'])];
+                $rules['tin'] = ['nullable', 'regex:/^[0-9]{3}-[0-9]{3}-[0-9]{3}-[0-9]{5}$/D'];
+                $rules['address'] = ['nullable', 'string', 'max:500'];
+            }
             $rules['entity_type'] = ['required', Rule::in(['individual', 'corporation'])];
             foreach (['last_name', 'first_name', 'middle_name'] as $field) {
                 $rules[$field] = ['nullable', 'string', 'max:30'];
@@ -125,7 +133,7 @@ class SaveMasterRecordRequest extends FormRequest
                 $rules[$field] = ['nullable', 'string', 'max:255'];
             }
             $rules['zip_code'] = ['nullable', 'regex:/^[0-9]{4}$/D'];
-            if ($structured) {
+            if ($structured && ! $pettyCash) {
                 $rules['street'][] = 'required_without:building';
                 $rules['city'][] = 'required';
                 $rules['province'][] = 'required';

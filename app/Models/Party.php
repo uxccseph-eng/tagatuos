@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-#[Fillable(['workspace_key', 'code', 'name', 'classification', 'entity_type', 'last_name', 'first_name', 'middle_name', 'tin', 'description', 'email', 'phone', 'address', 'building', 'street', 'barangay', 'city', 'province', 'zip_code', 'archived'])]
+#[Fillable(['workspace_key', 'code', 'name', 'classification', 'is_petty_cash', 'entity_type', 'last_name', 'first_name', 'middle_name', 'tin', 'description', 'email', 'phone', 'address', 'building', 'street', 'barangay', 'city', 'province', 'zip_code', 'archived'])]
 #[Hidden(['workspace_key'])]
 class Party extends Model
 {
@@ -19,13 +19,17 @@ class Party extends Model
 
     protected function casts(): array
     {
-        return ['archived' => 'boolean'];
+        return ['archived' => 'boolean', 'is_petty_cash' => 'boolean'];
     }
 
     /** @return list<array<string, mixed>> */
     public static function defaults(): array
     {
-        return [['code' => 'VARIOUS-CUST', 'name' => 'VARIOUS CUSTOMERS', 'classification' => 'Customer'], ['code' => 'VARIOUS-SUPP', 'name' => 'VARIOUS SUPPLIERS', 'classification' => 'Supplier']];
+        return [
+            ['code' => 'VARIOUS-CUST', 'name' => 'VARIOUS CUSTOMERS', 'classification' => 'Customer', 'is_petty_cash' => false],
+            ['code' => 'VARIOUS-SUPP', 'name' => 'VARIOUS SUPPLIERS', 'classification' => 'Supplier', 'is_petty_cash' => false],
+            ['code' => 'PETTY-CASH', 'name' => 'PETTY CASH / MISCELLANEOUS PAYEES', 'classification' => 'Supplier', 'is_petty_cash' => true],
+        ];
     }
 
     public static function seedWorkspace(string $workspaceKey): void

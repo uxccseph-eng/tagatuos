@@ -6,4 +6,18 @@ test('new selections autofill party details without rewriting posted historical 
 test('withholding choices accept catalog rates beyond the old hardcoded set',()=>{const {SheetMasters:m}=masters();assert.equal(m.allowedRate(0.5),true);assert.equal(m.allowedRate(12,true),true);assert.equal(m.allowedRate(12),false);assert.equal(m.allowedRate(88,true),false);assert.equal(m.rate('WI156 · 0.5%'),0.5);});
 test('party picker searches names, codes and TINs while excluding archived parties',()=>{const {SheetMasters:m}=masters();assert.equal(m.searchParties('active','Customer').length,1);assert.equal(m.searchParties('CUST-001','Customer')[0].name,'Active Customer');assert.equal(m.searchParties('123-456','Customer')[0].name,'Active Customer');assert.equal(m.searchParties('archived','Supplier').length,0);assert.equal(m.searchParties('Both','Supplier')[0].name,'Both Party');assert.equal(m.searchParties('',null,1).length,1);});
 
+test('petty cash supplier selections keep an unknown TIN blank and do not suggest previous tax settings',()=>{
+    const window=masters(),m=window.SheetMasters;
+    window.WorkspaceMasters.parties.push({id:44,name:'PETTY CASH / MISCELLANEOUS PAYEES',classification:'Supplier',is_petty_cash:true,tin:null});
+    window.CompanyLedgerDatabase={state:{purchases:[{id:'old',partyId:44,supplier:'PETTY CASH / MISCELLANEOUS PAYEES',status:'posted',tax:'VAT (12%)',account:'1020 · Operating Cash'}]}};
+    const record={id:'new',supplier:'PETTY CASH / MISCELLANEOUS PAYEES',status:'draft',tin:'123-456-789-00000',tax:''};
+    const snapshot=m.partySnapshot(record,{supplier:'Old supplier',status:'draft'});
+    assert.equal(snapshot.tin,'');
+    assert.equal(snapshot.supplierTin,'');
+    assert.equal(snapshot.partyId,44);
+    assert.equal(m.searchParties('PETTY CASH','Supplier')[0].id,44);
+    assert.equal(m.searchParties('PETTY CASH','Customer').length,0);
+    assert.deepEqual(JSON.parse(JSON.stringify(m.partyDefaults(snapshot).values)),{});
+});
+
 test('TIN formatting uses a five-digit branch without inventing a number for empty or invalid values',()=>{const {SheetMasters:m}=masters();assert.equal(m.formatTin('000-000-000'),'000-000-000-00000');assert.equal(m.formatTin('000-000-000-00123'),'000-000-000-00123');assert.equal(m.formatTin('00000000001234'),'000-000-000-01234');assert.equal(m.formatTin(''),'');assert.equal(m.formatTin('invalid'),'invalid');assert.equal(m.formatTin('731--214-454'),'731--214-454');});

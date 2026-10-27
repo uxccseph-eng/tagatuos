@@ -23,7 +23,7 @@ class MasterImport
     {
         return match ($registry) {
             'chart-of-accounts' => ['code', 'name', 'type', 'normal_balance', 'statement_section', 'description', 'is_cash_bank', 'is_advance', 'is_control', 'subsidiary', 'allow_subsidiaries', 'ppe_role', 'ppe_category', 'cash_flow_section', 'cash_flow_subclass', 'relief', 'relief_category', 'percentage_tax', 'ewt', 'ewt_atc_code'],
-            'parties' => ['code', 'name', 'entity_type', 'last_name', 'first_name', 'middle_name', 'classification', 'tin', 'description', 'email', 'phone', 'building', 'street', 'barangay', 'city', 'province', 'zip_code', 'address'],
+            'parties' => ['code', 'name', 'entity_type', 'last_name', 'first_name', 'middle_name', 'classification', 'is_petty_cash', 'tin', 'description', 'email', 'phone', 'building', 'street', 'barangay', 'city', 'province', 'zip_code', 'address'],
             'employees' => ['code', 'name', 'classification', 'tin', 'email', 'phone', 'address', 'birth_date', 'hire_date', 'end_date', 'sss_no', 'philhealth_no', 'pagibig_no'],
             'bank-accounts' => ['name', 'bank', 'account_number', 'gl_account', 'currency'],
             'tax-codes' => ['code', 'name', 'kind', 'rate', 'atc'],
@@ -110,6 +110,13 @@ class MasterImport
      */
     private function normalize(string $registry, array $row, string $workspaceKey, array $reserved): array
     {
+        if ($registry === 'parties' && array_key_exists('is_petty_cash', $row)) {
+            $value = strtolower((string) $row['is_petty_cash']);
+            if (! in_array($value, ['', '0', '1', 'true', 'false', 'yes', 'no'], true)) {
+                throw ValidationException::withMessages(['is_petty_cash' => 'Use Yes/No, True/False or 1/0.']);
+            }
+            $row['is_petty_cash'] = in_array($value, ['1', 'true', 'yes'], true);
+        }
         foreach (['code', 'atc', 'currency', 'ewt_atc_code'] as $field) {
             if (isset($row[$field])) {
                 $row[$field] = strtoupper((string) $row[$field]);

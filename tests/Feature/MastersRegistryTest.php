@@ -24,7 +24,7 @@ class MastersRegistryTest extends TestCase
         $this->withSession(['preview_access' => true])->get('/masters/tax-codes')->assertRedirect('/company/setup');
         $this->withSession($this->workspace())->get('/masters/parties')->assertOk()->assertViewIs('masters-registry')->assertSee('New party')->assertSee(route('masters.registry', ['registry' => 'tax-codes']));
         $this->get('/masters/tax-codes')->assertOk()->assertSee('New tax code')->assertSee('VAT-IMPORT');
-        $this->assertDatabaseCount('parties', 2);
+        $this->assertDatabaseCount('parties', 3);
         $this->assertDatabaseCount('tax_codes', 7);
         $party = Party::query()->firstOrFail();
         $party->update(['archived' => true, 'name' => 'Edited name']);

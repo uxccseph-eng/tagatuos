@@ -62,7 +62,7 @@ class MastersImportTest extends TestCase
         $this->withSession(['company_setup' => ['company_name' => 'Other Import QA', 'full_name' => 'Preview']]);
         $token = $this->preview('parties', [$row]);
         $this->postJson('/masters/parties/import', ['records' => [$row], 'preview_token' => $token])->assertCreated();
-        $this->assertDatabaseCount('parties', 3);
+        $this->assertDatabaseCount('parties', 4);
     }
 
     public function test_errors_block_the_entire_batch_and_revalidation_catches_new_duplicates(): void
