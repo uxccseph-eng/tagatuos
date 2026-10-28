@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Services\ClientDatabase;
+use App\Services\TenantContext;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -13,6 +14,7 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->scoped(ClientDatabase::class);
+        $this->app->scoped(TenantContext::class);
     }
 
     /**

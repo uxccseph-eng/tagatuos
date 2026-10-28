@@ -9,43 +9,12 @@ use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
-use Stancl\Tenancy\Contracts\TenantWithDatabase;
-use Stancl\Tenancy\Database\Concerns\CentralConnection;
-use Stancl\Tenancy\Database\Concerns\HasDatabase;
 
 #[Fillable(['name', 'slug'])]
 #[Hidden(['workspace_key', 'tenancy_db_connection', 'tenancy_db_name', 'tenancy_activated_at'])]
-class Company extends Model implements TenantWithDatabase
+class Company extends Model
 {
-    use CentralConnection;
-    use HasDatabase;
-
-    public function getTenantKeyName(): string
-    {
-        return 'id';
-    }
-
-    public function getTenantKey(): int
-    {
-        return (int) $this->getKey();
-    }
-
-    public static function internalPrefix(): string
-    {
-        return 'tenancy_';
-    }
-
-    public function getInternal(string $key): mixed
-    {
-        return $this->getAttribute('tenancy_'.$key);
-    }
-
-    public function setInternal(string $key, mixed $value): static
-    {
-        $this->setAttribute('tenancy_'.$key, $value);
-
-        return $this;
-    }
+    use UsesCentralDatabase;
 
     public function run(callable $callback): mixed
     {

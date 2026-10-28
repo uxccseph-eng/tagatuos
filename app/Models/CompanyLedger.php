@@ -10,6 +10,8 @@ use Illuminate\Database\Eloquent\Model;
 #[Fillable(['company_id', 'revision', 'state', 'payroll'])]
 class CompanyLedger extends Model
 {
+    use BelongsToCompany;
+
     /** @use HasFactory<CompanyLedgerFactory> */
     use HasFactory;
 

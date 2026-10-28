@@ -77,7 +77,7 @@ class CompanyDataIsolationTest extends TestCase
         $this->get(route('masters.accounts'))->assertOk()->assertSee('FIRST Account')->assertDontSee('SECOND Account');
         $this->get(route('masters.ppe'))->assertOk()->assertSee('FIRST Asset')->assertDontSee('SECOND Asset');
         $this->get(route('masters.accounts.catalog'))->assertOk()->assertSee('FIRST JOURNAL')->assertDontSee('SECOND JOURNAL');
-        $this->post(route('account.companies.open', $other->id))->assertRedirect(route('dashboard'));
+        $this->post(route('account.companies.open', $other->id))->assertRedirect(route('dashboard', ['company_id' => $other->id]));
         $this->get(route('masters.accounts.catalog'))->assertOk()->assertSee('SECOND Party')->assertDontSee('FIRST Party')->assertSee('SECOND JOURNAL')->assertDontSee('FIRST JOURNAL');
     }
 
@@ -110,8 +110,8 @@ class CompanyDataIsolationTest extends TestCase
             ->postJson(route('masters.registry.store', 'employees'), [
                 'code' => 'EMP-NEW', 'name' => 'Scoped Employee', 'classification' => 'Regular',
                 'workspace_key' => $foreign->workspaceKey(), 'company_id' => $foreign->id,
-            ])->assertCreated();
-        $this->assertDatabaseHas('employees', ['name' => 'Scoped Employee', 'workspace_key' => $own->workspaceKey()]);
+            ])->assertConflict();
+        $this->assertDatabaseMissing('employees', ['name' => 'Scoped Employee', 'workspace_key' => $own->workspaceKey()]);
         $this->assertDatabaseMissing('employees', ['name' => 'Scoped Employee', 'workspace_key' => $foreign->workspaceKey()]);
     }
 
@@ -138,13 +138,14 @@ class CompanyDataIsolationTest extends TestCase
         $this->get(route('masters.accounts.catalog'))->assertForbidden();
     }
 
-    public function test_stale_tabs_cannot_read_catalogs_or_save_to_the_wrong_active_company(): void
+    public function test_explicit_tabs_keep_their_own_company_when_the_session_preference_changes(): void
     {
         [$user, $first, $second] = $this->books();
         $this->actingAs($user)->withSession(['active_company_id' => $second->id]);
-        $this->withHeader('X-Company-ID', (string) $first->id)->postJson(route('masters.registry.store', 'employees'), ['name' => 'Wrong Book Employee'])->assertConflict();
-        $this->getJson(route('masters.accounts.catalog'))->assertConflict();
-        $this->assertDatabaseCount('employees', 0);
+        $this->withHeader('X-Company-ID', (string) $first->id)->postJson(route('masters.registry.store', 'employees'), ['name' => 'First Book Employee'])->assertCreated();
+        $this->getJson(route('masters.accounts.catalog'))->assertOk();
+        $this->assertDatabaseHas('employees', ['name' => 'First Book Employee', 'company_id' => $first->id]);
+        $this->assertDatabaseMissing('employees', ['name' => 'First Book Employee', 'company_id' => $second->id]);
         $this->withHeader('X-Company-ID', (string) $second->id)->get(route('masters.accounts.catalog'))->assertOk();
     }
 

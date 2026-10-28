@@ -13,6 +13,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 #[Hidden(['workspace_key'])]
 class BankAccount extends Model
 {
+    use BelongsToCompany;
+
     /** @use HasFactory<BankAccountFactory> */
     use HasFactory;
 

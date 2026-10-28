@@ -12,6 +12,8 @@ use Illuminate\Database\Eloquent\Model;
 #[Hidden(['workspace_key'])]
 class Party extends Model
 {
+    use BelongsToCompany;
+
     public const ADDRESS_FIELDS = ['building', 'street', 'barangay', 'city', 'province', 'zip_code'];
 
     /** @use HasFactory<PartyFactory> */
@@ -35,6 +37,6 @@ class Party extends Model
     public static function seedWorkspace(string $workspaceKey): void
     {
         $now = now();
-        self::query()->insertOrIgnore(array_map(fn (array $row): array => [...$row, 'workspace_key' => $workspaceKey, 'created_at' => $now, 'updated_at' => $now], self::defaults()));
+        self::query()->insertOrIgnore(array_map(fn (array $row): array => [...$row, ...self::companyAttributes($workspaceKey), 'workspace_key' => $workspaceKey, 'created_at' => $now, 'updated_at' => $now], self::defaults()));
     }
 }

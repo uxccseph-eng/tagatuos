@@ -3,11 +3,12 @@
 use App\Http\Middleware\EnsureActiveCompany;
 use App\Http\Middleware\EnsureApprovedAccount;
 use App\Http\Middleware\ForcePasswordChange;
-use App\Http\Middleware\UseClientDatabase;
+use App\Http\Middleware\SetTenantContext;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\AuthenticateSession;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
@@ -19,11 +20,14 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        foreach ([EnsureApprovedAccount::class, ForcePasswordChange::class, SetTenantContext::class, EnsureActiveCompany::class] as $companyMiddleware) {
+            $middleware->prependToPriorityList(SubstituteBindings::class, $companyMiddleware);
+        }
         $middleware->web(append: [
             AuthenticateSession::class,
             EnsureApprovedAccount::class,
             ForcePasswordChange::class,
-            UseClientDatabase::class,
+            SetTenantContext::class,
             EnsureActiveCompany::class,
         ]);
     })
@@ -34,7 +38,7 @@ return Application::configure(basePath: dirname(__DIR__))
                 return null;
             }
             $company = $request->user()->companies()
-                ->where('companies.id', $request->route('companyId') ?? $request->session()->get('active_company_id'))
+                ->where('companies.id', $request->attributes->get('tenant_company')?->id ?? $request->route('companyId') ?? $request->session()->get('active_company_id'))
                 ->wherePivot('is_suspended', false)->first();
             $feedback = [
                 'permission_denied' => true,

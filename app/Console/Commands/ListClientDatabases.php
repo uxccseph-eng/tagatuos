@@ -13,7 +13,7 @@ class ListClientDatabases extends Command
 
     public function handle(): int
     {
-        $this->table(['Client ID', 'Client company', 'Firm owner ID', 'Database status'], Company::query()->orderBy('id')->get()->map(fn (Company $company): array => [$company->id, $company->name, $company->organization_owner_id, $company->tenancy_activated_at ? 'Separate database' : 'Shared database'])->all());
+        $this->table(['Client ID', 'Client company', 'Firm owner ID', 'Database status'], Company::query()->orderBy('id')->get()->map(fn (Company $company): array => [$company->id, $company->name, $company->organization_owner_id, $company->tenancy_activated_at ? 'Needs reconciliation' : 'Company-scoped database'])->all());
 
         return self::SUCCESS;
     }

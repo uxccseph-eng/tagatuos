@@ -20,7 +20,7 @@ class ActiveCompanyWorkspaceTest extends TestCase
         $foreign = Company::factory()->create();
         $own->users()->attach($user, ['role' => 'owner']);
         $this->actingAs($user)->post(route('account.companies.open', $foreign->id))->assertNotFound()->assertSessionMissing('active_company_id');
-        $this->post(route('account.companies.open', $own->id))->assertRedirect(route('dashboard'))->assertSessionHas('active_company_id', $own->id);
+        $this->post(route('account.companies.open', $own->id))->assertRedirect(route('dashboard', ['company_id' => $own->id]))->assertSessionHas('active_company_id', $own->id);
         $this->get(route('dashboard'))->assertRedirect(route('company.setup'));
         $this->get(route('company.setup'))->assertOk()->assertSee($own->name)->assertSee('Company registration');
     }
@@ -49,7 +49,7 @@ class ActiveCompanyWorkspaceTest extends TestCase
         $second = Company::factory()->create();
         foreach ([$first, $second] as $book) {
             $book->users()->attach($firm, ['role' => 'owner']);
-            $this->actingAs($firm)->post(route('account.companies.open', $book->id))->assertRedirect(route('dashboard'));
+            $this->actingAs($firm)->post(route('account.companies.open', $book->id))->assertRedirect(route('dashboard', ['company_id' => $book->id]));
             $this->post(route('company.store'), $this->companyData())->assertRedirect(route('dashboard'))->assertSessionHasNoErrors();
             $this->get(route('dashboard'))->assertOk();
         }
@@ -94,7 +94,7 @@ class ActiveCompanyWorkspaceTest extends TestCase
         $book = Company::factory()->create();
         $book->users()->attach($user, ['role' => 'staff']);
         $this->configure($book);
-        $this->actingAs($user)->post(route('account.companies.open', $book->id))->assertRedirect(route('dashboard'));
+        $this->actingAs($user)->post(route('account.companies.open', $book->id))->assertRedirect(route('dashboard', ['company_id' => $book->id]));
         $this->get(route('dashboard'))->assertOk();
         $this->get(route('company.setup'))->assertForbidden();
         $this->post(route('company.store'), $this->companyData())->assertForbidden();

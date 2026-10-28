@@ -13,6 +13,8 @@ use Illuminate\Database\Eloquent\Model;
 #[Hidden(['workspace_key'])]
 class ChartAccount extends Model
 {
+    use BelongsToCompany;
+
     public const RELIEF_CATEGORIES = [
         'vatable_sales' => 'Vatable Sales',
         'services' => 'Services',
@@ -71,7 +73,7 @@ class ChartAccount extends Model
     public static function seedWorkspace(string $workspaceKey): void
     {
         $now = now();
-        $records = array_map(fn (array $account): array => [...$account, 'workspace_key' => $workspaceKey, 'created_at' => $now, 'updated_at' => $now], self::defaults());
+        $records = array_map(fn (array $account): array => [...$account, ...self::companyAttributes($workspaceKey), 'workspace_key' => $workspaceKey, 'created_at' => $now, 'updated_at' => $now], self::defaults());
         self::query()->insertOrIgnore($records);
     }
 }

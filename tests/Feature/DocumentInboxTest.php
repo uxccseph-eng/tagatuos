@@ -90,7 +90,7 @@ class DocumentInboxTest extends TestCase
         $this->assertDatabaseCount('journal_entries', 0);
         $this->assertDatabaseCount('company_ledger_changes', 1);
         $this->get(route('documents.show', ['companyId' => $company->id, 'documentId' => $document->id]))->assertOk()->assertSee('Draft')->assertDontSee('BILL-000001')->assertDontSee('id="document-entry-form"', false);
-        $this->post(route('documents.open-entry', ['companyId' => $company->id, 'documentId' => $document->id]))->assertRedirect(route('sheets.purchases', ['entry' => $record['id'], 'period' => '2026-10']))->assertSessionHas('active_company_id', $company->id);
+        $this->post(route('documents.open-entry', ['companyId' => $company->id, 'documentId' => $document->id]))->assertRedirect(route('sheets.purchases', ['company_id' => $company->id, 'entry' => $record['id'], 'period' => '2026-10']))->assertSessionHas('active_company_id', $company->id);
     }
 
     public function test_sales_uses_customer_and_income_masters_and_rejects_foreign_ids(): void

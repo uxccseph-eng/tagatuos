@@ -36,7 +36,7 @@ class ClientFollowUpTest extends TestCase
         $this->assertSame($state, $ledger->fresh()->state);
         $this->assertDatabaseCount('journal_entries', 0);
         $id = DB::table('client_follow_ups')->value('id');
-        $this->post(route('follow-ups.open-entry', [$company->id, $id]))->assertRedirect(route('sheets.purchases', ['entry' => 'own-entry', 'period' => '2026-10']))->assertSessionHas('active_company_id', $company->id);
+        $this->post(route('follow-ups.open-entry', [$company->id, $id]))->assertRedirect(route('sheets.purchases', ['company_id' => $company->id, 'entry' => 'own-entry', 'period' => '2026-10']))->assertSessionHas('active_company_id', $company->id);
     }
 
     public function test_only_active_assigned_members_with_sheets_access_can_read_write_or_export(): void

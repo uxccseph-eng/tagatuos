@@ -13,6 +13,8 @@ use Illuminate\Support\Facades\DB;
 #[Hidden(['workspace_key'])]
 class TaxCode extends Model
 {
+    use BelongsToCompany;
+
     /** @use HasFactory<TaxCodeFactory> */
     use HasFactory;
 
@@ -41,7 +43,7 @@ class TaxCode extends Model
                 }
             }
             $now = now();
-            self::query()->insertOrIgnore(array_map(fn (array $row): array => [...$row, 'workspace_key' => $workspaceKey, 'created_at' => $now, 'updated_at' => $now], self::defaults()));
+            self::query()->insertOrIgnore(array_map(fn (array $row): array => [...$row, ...self::companyAttributes($workspaceKey), 'workspace_key' => $workspaceKey, 'created_at' => $now, 'updated_at' => $now], self::defaults()));
         });
     }
 

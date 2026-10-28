@@ -27,7 +27,7 @@ class CompanyBookController extends Controller
             $request->session()->put('active_company_id', $company->getKey());
             $request->session()->forget(['company_setup', 'preview_access']);
 
-            return to_route('company.setup')->with('status', 'Company book created. Complete its registration details below.');
+            return to_route('company.setup', ['company_id' => $company->id])->with('status', 'Company book created. Complete its registration details below.');
         }
 
         return response()->json(['data' => $this->bookData($company)], 201)
@@ -45,11 +45,10 @@ class CompanyBookController extends Controller
     public function open(Request $request, int $companyId, CompanyBookService $books): RedirectResponse
     {
         $company = $books->findAccessibleBook($request->user(), $companyId);
-        $request->session()->regenerate();
         $request->session()->put('active_company_id', $company->getKey());
         $request->session()->forget(['company_setup', 'preview_access']);
 
-        return to_route('dashboard');
+        return to_route('dashboard', ['company_id' => $company->id]);
     }
 
     /** @return array{id: int, name: string, slug: ?string, role: string} */

@@ -95,7 +95,7 @@ class CompanySetupController extends Controller
         }
 
         if (Schema::hasTable('company_settings')) {
-            $settings = CompanySetting::query()->where('lookup_key', ChartAccount::workspaceKey($data))->first();
+            $settings = CompanySetting::withoutGlobalScope('company')->whereNull('company_id')->where('lookup_key', ChartAccount::workspaceKey($data))->first();
             if ($settings) {
                 $data = array_replace($data, $settings->profile, ['full_name' => $data['full_name'], 'sheet_settings' => $settings->preferences, 'workspace_key' => $settings->workspace_key]);
             }

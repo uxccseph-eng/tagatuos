@@ -31,7 +31,7 @@ class OrganizationTeamAccessTest extends TestCase
         $third = $this->book($owner, 'Future Client');
         $this->actingAs($member)->getJson(route('account.companies.index'))->assertOk()->assertJsonCount(3, 'data')->assertDontSee('Other Firm Client');
         foreach ([$first, $second, $third] as $index => $book) {
-            $this->post(route('account.companies.open', $book->id))->assertRedirect(route('dashboard'));
+            $this->post(route('account.companies.open', $book->id))->assertRedirect(route('dashboard', ['company_id' => $book->id]));
             $state = CompanyLedgerService::emptyState();
             $state['journalEntries'] = [['id' => 'entry-'.$index, 'number' => 'GJ-000001', 'date' => '2026-10-01', 'status' => 'posted', 'type' => 'General', 'lines' => [['account' => '1010 · Cash on Hand', 'debit' => 1000, 'credit' => 0], ['account' => '3010 · Owner Capital', 'debit' => 0, 'credit' => 1000]]]];
             $this->withHeader('X-Company-ID', (string) $book->id)->postJson(route('sheets.database.save'), ['state' => $state, 'payroll' => [], 'revision' => 0, 'request_id' => (string) Str::uuid()])->assertOk();

@@ -6,14 +6,13 @@ use Database\Factories\MonthlyClosingFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Stancl\Tenancy\Database\Concerns\CentralConnection;
 
 class MonthlyClosing extends Model
 {
-    use CentralConnection;
-
     /** @use HasFactory<MonthlyClosingFactory> */
     use HasFactory;
+
+    use UsesCentralDatabase;
 
     public const STATUSES = ['not_started' => 'Not started', 'in_progress' => 'In progress', 'for_review' => 'For review', 'completed' => 'Completed'];
 

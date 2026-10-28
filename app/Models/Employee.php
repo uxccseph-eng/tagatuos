@@ -13,6 +13,8 @@ use Illuminate\Support\Str;
 #[Hidden(['workspace_key', 'name_key', 'tin_key'])]
 class Employee extends Model
 {
+    use BelongsToCompany;
+
     /** @use HasFactory<EmployeeFactory> */
     use HasFactory;
 

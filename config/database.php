@@ -30,7 +30,7 @@ return [
     |
     */
 
-    'connections' => array_merge(json_decode(env('CLIENT_DATABASE_CONNECTIONS', '{}'), true, 512, JSON_THROW_ON_ERROR), [
+    'connections' => [
 
         'sqlite' => [
             'driver' => 'sqlite',
@@ -114,7 +114,7 @@ return [
             // 'trust_server_certificate' => env('DB_TRUST_SERVER_CERTIFICATE', 'false'),
         ],
 
-    ]),
+    ],
 
     /*
     |--------------------------------------------------------------------------

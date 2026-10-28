@@ -117,11 +117,10 @@ class ClientFollowUpController extends Controller
         $sheet = match ($item->linked_sheet) {
             'cwtCertificates' => 'cwt', 'wtpCertificates' => 'wtp', 'journalEntries' => 'journal', default => $item->linked_sheet
         };
-        $request->session()->regenerate();
         $request->session()->put('active_company_id', $companyId);
         $request->session()->forget(['company_setup', 'preview_access']);
 
-        return to_route('sheets.'.$sheet, ['entry' => $item->linked_record_id, 'period' => substr($record['date'] ?? now()->toDateString(), 0, 7)]);
+        return to_route('sheets.'.$sheet, ['company_id' => $companyId, 'entry' => $item->linked_record_id, 'period' => substr($record['date'] ?? now()->toDateString(), 0, 7)]);
     }
 
     /** @return array<string, mixed> */

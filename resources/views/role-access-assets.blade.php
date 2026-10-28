@@ -1,4 +1,8 @@
 @once
+@if(auth()->check() && (request()->attributes->get('active_company') || request()->attributes->get('tenant_company')))
+<meta name="tenant-company" content="{{ (request()->attributes->get('active_company') ?? request()->attributes->get('tenant_company'))->id }}">
+<script src="{{ asset('js/tenant-context.js') }}?v={{ filemtime(public_path('js/tenant-context.js')) }}" defer></script>
+@endif
 <meta name="role-access-home" data-role-home="{{ route('account.dashboard') }}">
 <link rel="stylesheet" href="{{ asset('css/role-access-feedback.css') }}?v={{ filemtime(public_path('css/role-access-feedback.css')) }}">
 <script src="{{ asset('js/role-access-feedback.js') }}?v={{ filemtime(public_path('js/role-access-feedback.js')) }}" defer></script>

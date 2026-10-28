@@ -10,6 +10,8 @@ use Illuminate\Database\Eloquent\Model;
 #[Fillable(['workspace_key', 'lookup_key', 'profile', 'preferences'])]
 class CompanySetting extends Model
 {
+    use BelongsToCompany;
+
     /** @use HasFactory<CompanySettingFactory> */
     use HasFactory;
 

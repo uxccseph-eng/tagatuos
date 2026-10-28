@@ -130,10 +130,9 @@ class DocumentInboxController extends Controller
         $ledger = CompanyLedger::query()->where('company_id', $companyId)->first();
         $record = collect($document->linked_sheet === 'payroll' ? ($ledger?->payroll ?? []) : ($ledger?->state[$document->linked_sheet] ?? []))->first(fn (array $record): bool => (string) $record['id'] === $document->linked_record_id);
         abort_unless($record, 404, 'The linked transaction is no longer available.');
-        $request->session()->regenerate();
         $request->session()->put('active_company_id', $companyId);
         $request->session()->forget(['company_setup', 'preview_access']);
 
-        return to_route('sheets.'.$sheet, ['entry' => $document->linked_record_id, 'period' => substr($record['date'], 0, 7)]);
+        return to_route('sheets.'.$sheet, ['company_id' => $companyId, 'entry' => $document->linked_record_id, 'period' => substr($record['date'], 0, 7)]);
     }
 }

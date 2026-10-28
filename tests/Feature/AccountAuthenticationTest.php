@@ -143,7 +143,7 @@ class AccountAuthenticationTest extends TestCase
         $this->actingAs($user)->get(route('account.dashboard'))->assertOk()->assertSee('Visible Client Book')
             ->assertSee('Open book')->assertSee('Create a company book')->assertDontSee('Hidden Foreign Company');
         $this->post(route('account.companies.store'), ['name' => 'New Client Book'])
-            ->assertRedirect(route('company.setup'))->assertSessionHas('active_company_id');
+            ->assertRedirect(route('company.setup', ['company_id' => Company::query()->where('name', 'New Client Book')->value('id')]))->assertSessionHas('active_company_id');
         $this->get(route('company.setup'))->assertOk()->assertSee('New Client Book');
     }
 

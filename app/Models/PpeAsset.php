@@ -12,6 +12,8 @@ use Illuminate\Database\Eloquent\Model;
 #[Hidden(['workspace_key'])]
 class PpeAsset extends Model
 {
+    use BelongsToCompany;
+
     /** @use HasFactory<PpeAssetFactory> */
     use HasFactory;
 

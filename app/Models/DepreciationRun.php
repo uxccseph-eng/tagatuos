@@ -12,6 +12,8 @@ use Illuminate\Database\Eloquent\Model;
 #[Hidden(['workspace_key'])]
 class DepreciationRun extends Model
 {
+    use BelongsToCompany;
+
     /** @use HasFactory<DepreciationRunFactory> */
     use HasFactory;
 
