@@ -29,7 +29,7 @@ class TeamAccessService
     public function add(User $owner, int $companyId, array $data): array
     {
         try {
-            return DB::transaction(function () use ($owner, $companyId, $data): array {
+            return DB::connection(config('tenancy.database.central_connection'))->transaction(function () use ($owner, $companyId, $data): array {
                 $company = $this->lockedCompany($owner, $companyId);
                 $password = null;
                 if ($data['mode'] === 'new') {
@@ -71,7 +71,7 @@ class TeamAccessService
     /** @param array{role: string, tabs: list<string>, is_suspended?: bool} $data */
     public function update(User $owner, int $companyId, int $userId, array $data): void
     {
-        DB::transaction(function () use ($owner, $companyId, $userId, $data): void {
+        DB::connection(config('tenancy.database.central_connection'))->transaction(function () use ($owner, $companyId, $userId, $data): void {
             $company = $this->lockedCompany($owner, $companyId);
             $member = $this->editableMember($company, $userId);
             $tabs = TeamPermissions::allowed($data['role'], $data['tabs']);
@@ -90,7 +90,7 @@ class TeamAccessService
 
     public function remove(User $owner, int $companyId, int $userId): void
     {
-        DB::transaction(function () use ($owner, $companyId, $userId): void {
+        DB::connection(config('tenancy.database.central_connection'))->transaction(function () use ($owner, $companyId, $userId): void {
             $company = $this->lockedCompany($owner, $companyId);
             $member = $this->editableMember($company, $userId);
             $this->revokeTokens($company, $userId);
@@ -106,7 +106,7 @@ class TeamAccessService
 
     public function setupLink(User $owner, int $companyId, int $userId): string
     {
-        return DB::transaction(function () use ($owner, $companyId, $userId): string {
+        return DB::connection(config('tenancy.database.central_connection'))->transaction(function () use ($owner, $companyId, $userId): string {
             $company = $this->lockedCompany($owner, $companyId);
             $member = $this->editableMember($company, $userId);
             if ($member->pivot->is_suspended || ! $member->must_change_password || $member->type !== 'accountant' || ! app(OrganizationTeamService::class)->canSetUp($owner, $member)) {
@@ -121,7 +121,7 @@ class TeamAccessService
 
     public function resetPassword(User $owner, int $companyId, int $userId): string
     {
-        return DB::transaction(function () use ($owner, $companyId, $userId): string {
+        return DB::connection(config('tenancy.database.central_connection'))->transaction(function () use ($owner, $companyId, $userId): string {
             $company = $this->lockedCompany($owner, $companyId);
             $membership = $this->editableMember($company, $userId);
             $member = User::query()->lockForUpdate()->findOrFail($membership->id);
@@ -150,7 +150,7 @@ class TeamAccessService
     public function changePortal(User $owner, int $companyId, string $slug): void
     {
         try {
-            DB::transaction(function () use ($owner, $companyId, $slug): void {
+            DB::connection(config('tenancy.database.central_connection'))->transaction(function () use ($owner, $companyId, $slug): void {
                 $company = $this->lockedCompany($owner, $companyId);
                 $old = $company->slug;
                 $company->update(['slug' => $slug]);

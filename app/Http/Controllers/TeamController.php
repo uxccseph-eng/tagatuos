@@ -77,7 +77,7 @@ class TeamController extends Controller
         }
         $portalUrl = $company->slug ? route('portal.show', ['firmSlug' => $company->slug]) : null;
         $organizationAccess = (int) $company->organization_owner_id === (int) $request->user()->id;
-        $organizationMemberIds = $organizationAccess ? DB::table('organization_members')->where('owner_id', $request->user()->id)->pluck('user_id')->all() : [];
+        $organizationMemberIds = $organizationAccess ? DB::connection(config('tenancy.database.central_connection'))->table('organization_members')->where('owner_id', $request->user()->id)->pluck('user_id')->all() : [];
 
         return view('team', [
             'teamCompany' => $company, 'section' => $section, 'members' => $members, 'organizationAccess' => $organizationAccess, 'organizationMemberIds' => $organizationMemberIds,

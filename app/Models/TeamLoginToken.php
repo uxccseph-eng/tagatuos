@@ -7,10 +7,13 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Stancl\Tenancy\Database\Concerns\CentralConnection;
 
 #[Fillable(['company_id', 'user_id', 'issued_by', 'expires_at', 'used_at'])]
 class TeamLoginToken extends Model
 {
+    use CentralConnection;
+
     /** @use HasFactory<TeamLoginTokenFactory> */
     use HasFactory, HasUuids;
 

@@ -28,7 +28,7 @@ class AccountAuthController extends Controller
 
     public function register(RegisterAccountRequest $request): RedirectResponse
     {
-        $user = DB::transaction(function () use ($request): User {
+        $user = DB::connection(config('tenancy.database.central_connection'))->transaction(function () use ($request): User {
             $user = new User($request->safe()->only(['name', 'email', 'password']));
             $user->type = $request->validated('type');
             $user->must_change_password = false;
@@ -50,7 +50,7 @@ class AccountAuthController extends Controller
     public function login(LoginAccountRequest $request): RedirectResponse
     {
         $request->authenticate();
-        DB::transaction(fn (): bool => $request->user()->forceFill(['last_login_at' => now()])->save());
+        DB::connection(config('tenancy.database.central_connection'))->transaction(fn (): bool => $request->user()->forceFill(['last_login_at' => now()])->save());
         $request->session()->forget(['preview_access', 'company_setup', 'active_company_id', 'url.intended', 'onboarding_user_id']);
         $request->session()->regenerate();
 
@@ -73,7 +73,7 @@ class AccountAuthController extends Controller
 
     public function updatePassword(ChangeAccountPasswordRequest $request): RedirectResponse
     {
-        $user = DB::transaction(function () use ($request): User {
+        $user = DB::connection(config('tenancy.database.central_connection'))->transaction(function () use ($request): User {
             $user = User::query()->lockForUpdate()->findOrFail($request->user()->getKey());
             if (! ($request->hasOnboardingProof() && $user->must_change_password) && ! Hash::check($request->validated('current_password') ?? '', $user->password)) {
                 throw ValidationException::withMessages(['current_password' => 'Your current password has changed. Sign in again.']);

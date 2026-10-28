@@ -35,7 +35,7 @@ class PortalController extends Controller
         $request->session()->forget(['company_setup', 'preview_access', 'url.intended']);
         $request->session()->regenerate();
         $request->session()->put('active_company_id', $company->id);
-        DB::transaction(fn (): bool => $request->user()->forceFill(['last_login_at' => now()])->save());
+        DB::connection(config('tenancy.database.central_connection'))->transaction(fn (): bool => $request->user()->forceFill(['last_login_at' => now()])->save());
 
         return to_route($request->user()->hasApprovedAccess() && ! $request->user()->must_change_password ? 'dashboard' : $request->user()->accountHomeRoute());
     }
@@ -55,7 +55,7 @@ class PortalController extends Controller
         if ($request->user()) {
             throw ValidationException::withMessages(['account' => 'Sign out before using an accountant setup link.']);
         }
-        $token = DB::transaction(function () use ($firmSlug, $tokenId): TeamLoginToken {
+        $token = DB::connection(config('tenancy.database.central_connection'))->transaction(function () use ($firmSlug, $tokenId): TeamLoginToken {
             $token = $this->validToken($firmSlug, $tokenId, true);
             $token->update(['used_at' => now()]);
 
@@ -67,7 +67,7 @@ class PortalController extends Controller
         Auth::login($user);
         $request->session()->regenerate();
         $request->session()->put(['active_company_id' => $token->company_id, 'onboarding_user_id' => $user->id]);
-        DB::transaction(fn (): bool => $user->forceFill(['last_login_at' => now()])->save());
+        DB::connection(config('tenancy.database.central_connection'))->transaction(fn (): bool => $user->forceFill(['last_login_at' => now()])->save());
 
         return to_route('account.password.edit');
     }

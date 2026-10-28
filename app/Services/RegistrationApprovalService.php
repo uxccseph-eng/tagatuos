@@ -31,7 +31,7 @@ class RegistrationApprovalService
     public function reject(User $actor, int $applicantId, string $reason): void
     {
         Validator::make(['reason' => trim($reason)], ['reason' => ['required', 'string', 'max:1000']])->validate();
-        DB::transaction(function () use ($actor, $applicantId, $reason): void {
+        DB::connection(config('tenancy.database.central_connection'))->transaction(function () use ($actor, $applicantId, $reason): void {
             $this->ensureSystemOwner($actor);
             $applicant = $this->applicant($applicantId);
             if ($applicant->registration_status !== 'pending') {
@@ -58,7 +58,7 @@ class RegistrationApprovalService
 
     public function appointOwner(string $email, ?string $username = null): User
     {
-        return DB::transaction(function () use ($email, $username): User {
+        return DB::connection(config('tenancy.database.central_connection'))->transaction(function () use ($email, $username): User {
             $user = User::query()->where('email', mb_strtolower(trim($email)))->lockForUpdate()->first();
             if (! $user || ! in_array($user->type, ['individual', 'firm'], true)) {
                 throw ValidationException::withMessages(['email' => 'Use the exact email of an existing individual or firm account.']);
@@ -109,7 +109,7 @@ class RegistrationApprovalService
     private function withUniqueUsername(\Closure $change): void
     {
         try {
-            DB::transaction($change, attempts: 3);
+            DB::connection(config('tenancy.database.central_connection'))->transaction($change, attempts: 3);
         } catch (UniqueConstraintViolationException) {
             throw ValidationException::withMessages(['username' => 'This username is already assigned. Choose another one.']);
         }

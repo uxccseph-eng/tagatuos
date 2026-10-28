@@ -66,7 +66,7 @@
         activeRecord=record;memoEditing=false;element('cwt-entry-message').textContent='';
         entryDialog.classList.toggle('is-void',record.status==='void');
         const draft=record.status==='draft',voided=record.status==='void';
-        const badge=element('cwt-entry-badge');badge.className=draft?'draft-status-badge':voided?'void-status-badge':'posted-status-badge';badge.textContent=`${draft?'New entry':voided?'Voided certificate':'Posted certificate'} · ${record.number}`;
+        const badge=element('cwt-entry-badge');badge.className=draft?'draft-status-badge':voided?'void-status-badge':'posted-status-badge';badge.textContent=`${draft?'New entry':voided?'Voided certificate':'Posted certificate'} · ${record.number}`;window.CompanyLedger?.decorateBadge?.(badge,'cwtCertificates',record);
         element('cwt-entry-title').textContent=voided?'BIR Form 2307 Certificate (Cancelled)':'BIR Form 2307 Certificate';
         for(const [key,field] of Object.entries(entryFields)){field.value=record[key] || '';field.readOnly=!draft||['customer','atc'].includes(key);}
         const invoice=element('cwt-entry-invoice');invoice.replaceChildren(new Option('Select posted sales invoice',''));
@@ -143,7 +143,7 @@
             const row=document.createElement('tr');row.id=`cwt-row-${record.id}`;row.dataset.status=record.status;
             const cells=Array.from({length:16},()=>{const cell=document.createElement('td');row.append(cell);return cell;});
             const checkbox=document.createElement('input');checkbox.type='checkbox';checkbox.checked=selected.has(record.id);checkbox.setAttribute('aria-label',`Select ${record.number}`);checkbox.addEventListener('change',()=>{checkbox.checked?selected.add(record.id):selected.delete(record.id);refresh();});cells[0].append(checkbox);
-            const badge=document.createElement('span');badge.className=record.status==='draft'?'draft-status-badge':record.status==='posted'?'posted-status-badge':'void-status-badge';badge.textContent=record.status==='draft'?'Drafting':record.status==='posted'?'Posted':'Voided';cells[1].append(badge);
+            const badge=document.createElement('span');badge.className=record.status==='draft'?'draft-status-badge':record.status==='posted'?'posted-status-badge':'void-status-badge';badge.textContent=record.status==='draft'?'Drafting':record.status==='posted'?'Posted':'Voided';window.CompanyLedger?.decorateBadge?.(badge,'cwtCertificates',record);cells[1].append(badge);
             const transaction=button(record.number,()=>inspect(record));transaction.setAttribute('aria-label',`View ${record.number}`);transaction.className='cwt-transaction-link';cells[3].append(transaction);
             if(record.status==='draft'){
                 cells[2].append(control(record,'date','date'));

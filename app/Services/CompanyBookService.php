@@ -28,7 +28,7 @@ class CompanyBookService
     public function createBook(User $user, string $name, ?string $slug = null): Company
     {
         try {
-            return DB::transaction(function () use ($user, $name, $slug): Company {
+            return DB::connection(config('tenancy.database.central_connection'))->transaction(function () use ($user, $name, $slug): Company {
                 $owner = User::query()->lockForUpdate()->findOrFail($user->getKey());
                 $this->ensureAccountIsReady($owner);
 

@@ -34,7 +34,7 @@ class LarkDocumentBackupService
     /** @return array<string, mixed> */
     public function configuration(int $companyId): array
     {
-        $row = DB::table('company_document_backups')->where('company_id', $companyId)->first();
+        $row = DB::connection(config('tenancy.database.central_connection'))->table('company_document_backups')->where('company_id', $companyId)->first();
 
         return ['app_id' => $row?->app_id, 'folder_token' => $row?->folder_token, 'has_secret' => $row !== null, 'enabled' => (bool) $row?->enabled, 'verified_at' => $row?->verified_at, 'version' => $row?->version ?? 0, 'locked' => InboxDocument::query()->where('company_id', $companyId)->whereNotNull('lark_status')->exists()];
     }
@@ -43,10 +43,10 @@ class LarkDocumentBackupService
     public function saveConfiguration(User $actor, int $companyId, array $data): void
     {
         try {
-            DB::transaction(function () use ($actor, $companyId, $data): void {
+            DB::connection(config('tenancy.database.central_connection'))->transaction(function () use ($actor, $companyId, $data): void {
                 Company::query()->lockForUpdate()->findOrFail($companyId);
                 $this->owner($actor, $companyId);
-                $row = DB::table('company_document_backups')->where('company_id', $companyId)->lockForUpdate()->first();
+                $row = DB::connection(config('tenancy.database.central_connection'))->table('company_document_backups')->where('company_id', $companyId)->lockForUpdate()->first();
                 abort_unless((int) ($row?->version ?? 0) === (int) $data['version'], 409, 'The connection changed. Reload before saving.');
                 $secret = $data['app_secret'] ?? null;
                 if (! $row && ! $secret) {
@@ -67,9 +67,9 @@ class LarkDocumentBackupService
                 }
                 $values = ['app_id' => $data['app_id'], 'app_secret' => $secret ? Crypt::encryptString($secret) : $row->app_secret, 'folder_token' => $data['folder_token'], 'enabled' => $enabled, 'verified_at' => $credentialsChanged ? null : $row?->verified_at, 'version' => (int) ($row?->version ?? 0) + 1, 'updated_by' => $actor->id, 'updated_at' => now()];
                 if ($row) {
-                    DB::table('company_document_backups')->where('id', $row->id)->update($values);
+                    DB::connection(config('tenancy.database.central_connection'))->table('company_document_backups')->where('id', $row->id)->update($values);
                 } else {
-                    DB::table('company_document_backups')->insert([...$values, 'company_id' => $companyId, 'created_at' => now()]);
+                    DB::connection(config('tenancy.database.central_connection'))->table('company_document_backups')->insert([...$values, 'company_id' => $companyId, 'created_at' => now()]);
                 }
                 $this->event($companyId, $enabled ? 'backups_enabled' : 'backups_paused', $actor->id, details: ['connection_version' => $values['version']]);
             });
@@ -81,7 +81,7 @@ class LarkDocumentBackupService
     public function verify(User $actor, int $companyId, int $version): void
     {
         $this->owner($actor, $companyId);
-        $row = DB::table('company_document_backups')->where('company_id', $companyId)->first();
+        $row = DB::connection(config('tenancy.database.central_connection'))->table('company_document_backups')->where('company_id', $companyId)->first();
         abort_unless($row && (int) $row->version === $version, 409, 'Save the connection, then reload before testing.');
         try {
             $token = $this->accessToken($row);
@@ -90,8 +90,8 @@ class LarkDocumentBackupService
             throw ValidationException::withMessages(['connection' => 'Lark access failed. Check the App ID, App Secret, published app permissions, and folder access. No documents were uploaded.']);
         }
         $this->owner($actor, $companyId);
-        DB::transaction(function () use ($row, $version, $actor, $companyId): void {
-            $updated = DB::table('company_document_backups')->where('id', $row->id)->where('version', $version)->update(['verified_at' => now(), 'version' => $version + 1, 'updated_by' => $actor->id, 'updated_at' => now()]);
+        DB::connection(config('tenancy.database.central_connection'))->transaction(function () use ($row, $version, $actor, $companyId): void {
+            $updated = DB::connection(config('tenancy.database.central_connection'))->table('company_document_backups')->where('id', $row->id)->where('version', $version)->update(['verified_at' => now(), 'version' => $version + 1, 'updated_by' => $actor->id, 'updated_at' => now()]);
             abort_unless($updated === 1, 409, 'The connection changed during the test. Reload and test again.');
             $this->event($companyId, 'folder_access_verified', $actor->id);
         });
@@ -99,10 +99,10 @@ class LarkDocumentBackupService
 
     public function queueExisting(User $actor, int $companyId): int
     {
-        return DB::transaction(function () use ($actor, $companyId): int {
+        return DB::connection(config('tenancy.database.central_connection'))->transaction(function () use ($actor, $companyId): int {
             Company::query()->lockForUpdate()->findOrFail($companyId);
             $this->owner($actor, $companyId);
-            $row = DB::table('company_document_backups')->where('company_id', $companyId)->first();
+            $row = DB::connection(config('tenancy.database.central_connection'))->table('company_document_backups')->where('company_id', $companyId)->first();
             abort_unless($row?->enabled && $row->verified_at, 422, 'Enable a verified Lark connection first.');
 
             $count = InboxDocument::query()->where('company_id', $companyId)->where(fn ($query) => $query->whereNull('lark_status')->orWhere('lark_status', 'failed'))->update(['lark_status' => 'pending', 'lark_attempts' => 0, 'lark_next_attempt_at' => now(), 'lark_error' => null]);
@@ -114,7 +114,7 @@ class LarkDocumentBackupService
 
     public function backUp(int $documentId): bool
     {
-        $document = DB::transaction(function () use ($documentId): ?InboxDocument {
+        $document = DB::connection(config('tenancy.database.central_connection'))->transaction(function () use ($documentId): ?InboxDocument {
             $document = InboxDocument::query()->lockForUpdate()->find($documentId);
             if (! $document || $document->lark_status === null || $document->lark_status === 'backed_up') {
                 return null;
@@ -130,7 +130,7 @@ class LarkDocumentBackupService
 
                 return null;
             }
-            $connection = DB::table('company_document_backups')->where('company_id', $document->company_id)->first();
+            $connection = DB::connection(config('tenancy.database.central_connection'))->table('company_document_backups')->where('company_id', $document->company_id)->first();
             if (! $connection?->enabled || ! $connection->verified_at) {
                 return null;
             }
@@ -142,7 +142,7 @@ class LarkDocumentBackupService
             return false;
         }
         try {
-            $connection = DB::table('company_document_backups')->where('company_id', $document->company_id)->first();
+            $connection = DB::connection(config('tenancy.database.central_connection'))->table('company_document_backups')->where('company_id', $document->company_id)->first();
             if (! $connection?->enabled || ! $connection->verified_at) {
                 throw new RuntimeException('Backups were paused.');
             }
@@ -160,7 +160,7 @@ class LarkDocumentBackupService
                     throw new RuntimeException('Lark did not acknowledge the file.');
                 }
             }
-            DB::transaction(function () use ($document, $fileToken): void {
+            DB::connection(config('tenancy.database.central_connection'))->transaction(function () use ($document, $fileToken): void {
                 $changed = InboxDocument::query()->whereKey($document->id)->where('lark_attempt_id', $document->lark_attempt_id)->update(['lark_status' => 'backed_up', 'lark_file_token' => $fileToken, 'lark_backed_up_at' => now(), 'lark_error' => null, 'lark_next_attempt_at' => null]);
                 if ($changed) {
                     $this->event($document->company_id, 'backup_confirmed', documentId: $document->id);
@@ -169,7 +169,7 @@ class LarkDocumentBackupService
 
             return true;
         } catch (Throwable) {
-            DB::transaction(function () use ($document): void {
+            DB::connection(config('tenancy.database.central_connection'))->transaction(function () use ($document): void {
                 $changed = InboxDocument::query()->whereKey($document->id)->where('lark_attempt_id', $document->lark_attempt_id)->update(['lark_status' => 'failed', 'lark_error' => 'Backup not confirmed. Check Lark access, storage quota and the original file, then retry. The local original is retained.', 'lark_next_attempt_at' => now()->addMinutes(min(60, 2 ** $document->lark_attempts))]);
                 if ($changed) {
                     $this->event($document->company_id, 'backup_failed', documentId: $document->id);
@@ -194,7 +194,7 @@ class LarkDocumentBackupService
 
     public function verifiedDownload(InboxDocument $document): string
     {
-        $connection = DB::table('company_document_backups')->where('company_id', $document->company_id)->first();
+        $connection = DB::connection(config('tenancy.database.central_connection'))->table('company_document_backups')->where('company_id', $document->company_id)->first();
         if (! $connection || $document->lark_status !== 'backed_up' || ! preg_match('/^[a-zA-Z0-9]{1,100}$/D', $document->lark_file_token ?? '') || $document->size < 1 || $document->size > 2097152) {
             throw new RuntimeException('A verified Lark copy is unavailable.');
         }
@@ -219,7 +219,7 @@ class LarkDocumentBackupService
     /** @param array<string, mixed> $details */
     private function event(int $companyId, string $action, ?int $actorId = null, ?int $documentId = null, array $details = []): void
     {
-        DB::table('document_backup_events')->insert(['company_id' => $companyId, 'actor_id' => $actorId, 'inbox_document_id' => $documentId, 'action' => $action, 'details' => json_encode($details, JSON_THROW_ON_ERROR), 'created_at' => now()]);
+        DB::connection(config('tenancy.database.central_connection'))->table('document_backup_events')->insert(['company_id' => $companyId, 'actor_id' => $actorId, 'inbox_document_id' => $documentId, 'action' => $action, 'details' => json_encode($details, JSON_THROW_ON_ERROR), 'created_at' => now()]);
     }
 
     private function request(?string $token = null): PendingRequest

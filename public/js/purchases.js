@@ -57,7 +57,7 @@
         for(const record of shown){
             const row=document.createElement('tr');row.dataset.status=record.status;row.id=`purchase-row-${record.id}`;const cells=Array.from({length:16},()=>{const td=document.createElement('td');row.append(td);return td;});
             const checkbox=document.createElement('input');checkbox.type='checkbox';checkbox.checked=selected.has(record.id);checkbox.setAttribute('aria-label',`Select ${record.number}`);checkbox.addEventListener('change',()=>{checkbox.checked?selected.add(record.id):selected.delete(record.id);refresh();});cells[0].append(checkbox);
-            const badge=document.createElement('span');badge.className=record.status==='draft'?'draft-status-badge':record.status==='posted'?'posted-status-badge':'void-status-badge';badge.textContent=record.status==='draft'?'Drafting':record.status==='posted'?'Posted':'Voided';cells[1].append(badge);
+            const badge=document.createElement('span');badge.className=record.status==='draft'?'draft-status-badge':record.status==='posted'?'posted-status-badge':'void-status-badge';badge.textContent=record.status==='draft'?'Drafting':record.status==='posted'?'Posted':'Voided';window.CompanyLedger?.decorateBadge?.(badge,'purchases',record);cells[1].append(badge);
             const txn=actionButton(`View ${record.number}`,()=>open(record));txn.textContent=record.number;txn.className='purchase-txn';cells[3].append(txn);
             const mapping={2:'date',4:'supplier',5:'gross',6:'tax',7:'account',8:'ewt',9:'wvat',10:'terms',11:'reference',12:'bank',13:'description'};
             for(const [index,key] of Object.entries(mapping)){
@@ -87,7 +87,7 @@
     function open(record,edit=false){
         original=clone(record);working=clone(record);working.attachments ||= [];editing=record.status==='draft'||edit;
         drawer.classList.toggle('purchase-is-void',record.status==='void');element('purchase-entry-message').textContent='';
-        const badge=element('purchase-entry-badge');badge.className=record.status==='draft'?'draft-status-badge':record.status==='posted'?'posted-status-badge':'void-status-badge';badge.textContent=`${record.status==='draft'?'New entry':record.status==='void'?'Voided':'Posted'} · ${record.number}`;
+        const badge=element('purchase-entry-badge');badge.className=record.status==='draft'?'draft-status-badge':record.status==='posted'?'posted-status-badge':'void-status-badge';badge.textContent=`${record.status==='draft'?'New entry':record.status==='void'?'Voided':'Posted'} · ${record.number}`;window.CompanyLedger?.decorateBadge?.(badge,'purchases',record);
         element('purchase-entry-title').textContent=record.status==='draft'?'New Bill':record.status==='void'?'Voided Bill':edit?'Edit Bill':'Posted Bill';
         for(const [key,field] of Object.entries(fields)){field.value=key==='gross'?(record.gross/100).toFixed(2):record[key] ?? '';if(field.tagName==='SELECT')window.SheetMasters.selectValue(field,fieldValue(working,key),working[key+'Code']);field.setCustomValidity('');if(field.tagName==='SELECT')field.disabled=!editing;else field.readOnly=!editing;}
         element('purchase-draft-actions').hidden=record.status!=='draft';element('purchase-posted-actions').hidden=record.status!=='posted'||edit;element('purchase-edit-actions').hidden=!edit;element('purchase-void-actions').hidden=record.status!=='void';element('purchase-confirm-actions').hidden=true;element('purchase-void-confirm').hidden=true;

@@ -30,14 +30,14 @@ class MonthlyClosingService
     /** @param array{version: int, action: string, assignee_id?: ?int, status?: string, checklist?: array<string, bool>, notes?: ?string, reason?: ?string} $data */
     public function save(User $actor, int $companyId, string $month, array $data): MonthlyClosing
     {
-        return DB::transaction(function () use ($actor, $companyId, $month, $data): MonthlyClosing {
+        return DB::connection(config('tenancy.database.central_connection'))->transaction(function () use ($actor, $companyId, $month, $data): MonthlyClosing {
             Company::query()->lockForUpdate()->findOrFail($companyId);
             $actor = User::query()->findOrFail($actor->id);
             $company = $this->company($actor, $companyId);
             $closing = MonthlyClosing::query()->where('company_id', $companyId)->where('month', $month)->lockForUpdate()->first();
             abort_unless($this->canEdit($company, $actor, $closing), 403, 'Only the assigned accountant, manager or book owner can update this closing.');
             abort_unless((int) $data['version'] === ($closing?->version ?? 0), 409, 'This closing changed in another session. Reload the closing before saving again.');
-            if (! CompanySetting::query()->where('workspace_key', $company->workspaceKey())->exists()) {
+            if (! $company->run(fn (): bool => CompanySetting::query()->where('workspace_key', $company->workspaceKey())->exists())) {
                 throw ValidationException::withMessages(['status' => 'Complete company setup before starting monthly closing.']);
             }
             $closing ??= (new MonthlyClosing)->forceFill(['company_id' => $companyId, 'month' => $month, 'status' => 'not_started', 'checklist' => MonthlyClosing::emptyChecklist(), 'version' => 0]);
@@ -86,7 +86,7 @@ class MonthlyClosingService
             }
             $closing->version++;
             $closing->save();
-            DB::table('monthly_closing_events')->insert(['monthly_closing_id' => $closing->id, 'company_id' => $companyId, 'actor_id' => $actor->id, 'action' => $data['action'] === 'reopen' ? 'reopened' : $closing->status, 'before' => json_encode($before, JSON_THROW_ON_ERROR), 'after' => json_encode($this->snapshot($closing), JSON_THROW_ON_ERROR), 'reason' => $data['action'] === 'reopen' ? $data['reason'] : null, 'created_at' => now()]);
+            DB::connection(config('tenancy.database.central_connection'))->table('monthly_closing_events')->insert(['monthly_closing_id' => $closing->id, 'company_id' => $companyId, 'actor_id' => $actor->id, 'action' => $data['action'] === 'reopen' ? 'reopened' : $closing->status, 'before' => json_encode($before, JSON_THROW_ON_ERROR), 'after' => json_encode($this->snapshot($closing), JSON_THROW_ON_ERROR), 'reason' => $data['action'] === 'reopen' ? $data['reason'] : null, 'created_at' => now()]);
 
             return $closing;
         }, attempts: 3);

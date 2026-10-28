@@ -28,7 +28,7 @@ class ClientFollowUpService
     /** @param array<string, mixed> $filters */
     public function query(int $companyId, array $filters): Builder
     {
-        $query = DB::table('client_follow_ups')->select('client_follow_ups.*')->selectRaw('CAST(amount AS CHAR) AS amount')->where('company_id', $companyId);
+        $query = DB::connection(config('tenancy.database.central_connection'))->table('client_follow_ups')->select('client_follow_ups.*')->selectRaw('CAST(amount AS CHAR) AS amount')->where('company_id', $companyId);
         if (($filters['status'] ?? 'open') !== 'all') {
             $query->where('status', $filters['status'] ?? 'open');
         }
@@ -61,6 +61,11 @@ class ClientFollowUpService
     /** @return list<array{key: string, label: string, date: string}> */
     public function transactions(int $companyId, string $search = ''): array
     {
+        return app(ClientDatabase::class)->run($companyId, fn (): array => $this->transactionsCurrent($companyId, $search));
+    }
+
+    private function transactionsCurrent(int $companyId, string $search = ''): array
+    {
         $ledger = CompanyLedger::query()->where('company_id', $companyId)->first();
         $transactions = [];
         foreach ([...CompanyLedgerService::SHEETS, 'payroll'] as $sheet) {
@@ -77,14 +82,19 @@ class ClientFollowUpService
     /** @param array<string, mixed> $data */
     public function save(User $actor, int $companyId, array $data, ?int $itemId = null): int
     {
-        return DB::transaction(function () use ($actor, $companyId, $data, $itemId): int {
+        return $this->company($actor, $companyId)->run(fn (): int => $this->saveCurrent($actor, $companyId, $data, $itemId));
+    }
+
+    private function saveCurrent(User $actor, int $companyId, array $data, ?int $itemId = null): int
+    {
+        return DB::connection(config('tenancy.database.central_connection'))->transaction(function () use ($actor, $companyId, $data, $itemId): int {
             Company::query()->lockForUpdate()->findOrFail($companyId);
             $this->company($actor, $companyId);
             $now = now();
             if ($itemId === null) {
                 abort_unless($data['action'] === 'create', 422);
                 $hash = hash('sha256', json_encode($data, JSON_THROW_ON_ERROR));
-                $retry = DB::table('client_follow_ups')->where('company_id', $companyId)->where('request_id', $data['request_id'])->first();
+                $retry = DB::connection(config('tenancy.database.central_connection'))->table('client_follow_ups')->where('company_id', $companyId)->where('request_id', $data['request_id'])->first();
                 if ($retry) {
                     abort_unless(hash_equals($retry->creation_hash, $hash), 409, 'This request identifier was already used. Reload the checklist.');
 
@@ -94,7 +104,7 @@ class ClientFollowUpService
                 $values = [...$snapshot, 'company_id' => $companyId, 'request_id' => $data['request_id'], 'creation_hash' => $hash, 'category' => $data['category'], 'request_text' => $data['request_text'], 'due_date' => $data['due_date'] ?? null, 'status' => 'open', 'created_by' => $actor->id, 'created_at' => $now, 'updated_at' => $now, 'version' => 1];
                 $values['open_key'] = $this->openKey((object) $values);
                 $this->checkDuplicate($companyId, $values['open_key']);
-                $itemId = DB::table('client_follow_ups')->insertGetId($values);
+                $itemId = DB::connection(config('tenancy.database.central_connection'))->table('client_follow_ups')->insertGetId($values);
                 $before = null;
             } else {
                 abort_if($data['action'] === 'create', 422);
@@ -115,9 +125,9 @@ class ClientFollowUpService
                     $this->checkDuplicate($companyId, $key, $itemId);
                     $values += ['status' => 'open', 'open_key' => $key, 'resolved_by' => null, 'resolved_at' => null, 'resolution_note' => null];
                 }
-                DB::table('client_follow_ups')->where('company_id', $companyId)->where('id', $itemId)->update($values);
+                DB::connection(config('tenancy.database.central_connection'))->table('client_follow_ups')->where('company_id', $companyId)->where('id', $itemId)->update($values);
             }
-            DB::table('client_follow_up_events')->insert(['company_id' => $companyId, 'client_follow_up_id' => $itemId, 'actor_id' => $actor->id, 'action' => $data['action'], 'before' => $before ? json_encode($before, JSON_THROW_ON_ERROR) : null, 'after' => json_encode($this->item($companyId, $itemId), JSON_THROW_ON_ERROR), 'note' => $data['note'] ?? null, 'created_at' => $now]);
+            DB::connection(config('tenancy.database.central_connection'))->table('client_follow_up_events')->insert(['company_id' => $companyId, 'client_follow_up_id' => $itemId, 'actor_id' => $actor->id, 'action' => $data['action'], 'before' => $before ? json_encode($before, JSON_THROW_ON_ERROR) : null, 'after' => json_encode($this->item($companyId, $itemId), JSON_THROW_ON_ERROR), 'note' => $data['note'] ?? null, 'created_at' => $now]);
 
             return $itemId;
         });
@@ -173,7 +183,7 @@ class ClientFollowUpService
 
     private function checkDuplicate(int $companyId, string $key, ?int $except = null): void
     {
-        if (DB::table('client_follow_ups')->where('company_id', $companyId)->where('open_key', $key)->when($except, fn (Builder $query): Builder => $query->where('id', '!=', $except))->exists()) {
+        if (DB::connection(config('tenancy.database.central_connection'))->table('client_follow_ups')->where('company_id', $companyId)->where('open_key', $key)->when($except, fn (Builder $query): Builder => $query->where('id', '!=', $except))->exists()) {
             throw ValidationException::withMessages(['request_text' => 'An open request for these details already exists. Update the existing request instead.']);
         }
     }

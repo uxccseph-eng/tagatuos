@@ -41,7 +41,7 @@ class DocumentPurgeService
             $items[] = $this->snapshot($document);
         }
 
-        return DB::transaction(function () use ($actor, $companyId, $items, $destination): string {
+        return DB::connection(config('tenancy.database.central_connection'))->transaction(function () use ($actor, $companyId, $items, $destination): string {
             Company::query()->lockForUpdate()->findOrFail($companyId);
             $this->lark->owner($actor, $companyId);
             abort_unless($destination === $this->destination($companyId), 409, 'The Lark destination changed. Prepare a new batch.');
@@ -52,7 +52,7 @@ class DocumentPurgeService
                 $document->forceFill(['lark_verified_at' => now()])->save();
             }
             $id = (string) Str::uuid();
-            DB::table('document_purge_batches')->insert(['id' => $id, 'company_id' => $companyId, 'created_by' => $actor->id, 'status' => 'ready', 'items' => json_encode($items, JSON_THROW_ON_ERROR), 'destination' => json_encode($destination, JSON_THROW_ON_ERROR), 'expires_at' => now()->addMinutes(15), 'created_at' => now(), 'updated_at' => now()]);
+            DB::connection(config('tenancy.database.central_connection'))->table('document_purge_batches')->insert(['id' => $id, 'company_id' => $companyId, 'created_by' => $actor->id, 'status' => 'ready', 'items' => json_encode($items, JSON_THROW_ON_ERROR), 'destination' => json_encode($destination, JSON_THROW_ON_ERROR), 'expires_at' => now()->addMinutes(15), 'created_at' => now(), 'updated_at' => now()]);
             $this->event($actor, $companyId, 'purge_batch_prepared', ['batch_id' => $id, 'document_ids' => array_column($items, 'id')]);
 
             return $id;
@@ -62,7 +62,7 @@ class DocumentPurgeService
     public function batch(User $actor, int $companyId, string $batchId): object
     {
         $this->lark->owner($actor, $companyId);
-        $batch = DB::table('document_purge_batches')->where('id', $batchId)->where('company_id', $companyId)->where('created_by', $actor->id)->first();
+        $batch = DB::connection(config('tenancy.database.central_connection'))->table('document_purge_batches')->where('id', $batchId)->where('company_id', $companyId)->where('created_by', $actor->id)->first();
         abort_unless($batch, 404);
         $batch->items = json_decode($batch->items, true, flags: JSON_THROW_ON_ERROR);
         $batch->destination = json_decode($batch->destination, true, flags: JSON_THROW_ON_ERROR);
@@ -77,9 +77,9 @@ class DocumentPurgeService
         if ($confirmation !== 'PURGE LOCAL COPIES' || ! $acknowledged) {
             throw ValidationException::withMessages(['confirmation' => 'Type PURGE LOCAL COPIES and confirm that you reviewed this batch.']);
         }
-        $batch = DB::transaction(function () use ($actor, $companyId, $batchId): object {
+        $batch = DB::connection(config('tenancy.database.central_connection'))->transaction(function () use ($actor, $companyId, $batchId): object {
             Company::query()->lockForUpdate()->findOrFail($companyId);
-            DB::table('document_purge_batches')->where('id', $batchId)->lockForUpdate()->first();
+            DB::connection(config('tenancy.database.central_connection'))->table('document_purge_batches')->where('id', $batchId)->lockForUpdate()->first();
             $batch = $this->batch($actor, $companyId, $batchId);
             if ($batch->status === 'completed') {
                 return $batch;
@@ -96,7 +96,7 @@ class DocumentPurgeService
                 abort_unless($item === $this->snapshot($document), 409, 'A selected document changed. Prepare a new batch.');
                 $document->forceFill(['local_purge_batch_id' => $batchId])->save();
             }
-            DB::table('document_purge_batches')->where('id', $batchId)->update(['status' => 'processing', 'approved_at' => now(), 'updated_at' => now()]);
+            DB::connection(config('tenancy.database.central_connection'))->table('document_purge_batches')->where('id', $batchId)->update(['status' => 'processing', 'approved_at' => now(), 'updated_at' => now()]);
             $this->event($actor, $companyId, 'local_purge_approved', ['batch_id' => $batchId, 'document_ids' => array_column($batch->items, 'id'), 'bytes' => array_sum(array_column($batch->items, 'size'))]);
 
             return $batch;
@@ -108,9 +108,9 @@ class DocumentPurgeService
         foreach ($batch->items as $item) {
             $outcomes[] = $this->purgeOne($actor, $companyId, $batchId, $item);
         }
-        DB::transaction(function () use ($companyId, $batchId, $outcomes, $actor): void {
+        DB::connection(config('tenancy.database.central_connection'))->transaction(function () use ($companyId, $batchId, $outcomes, $actor): void {
             $complete = ! in_array(false, array_column($outcomes, 'purged'), true);
-            DB::table('document_purge_batches')->where('id', $batchId)->update(['status' => $complete ? 'completed' : 'partial', 'outcomes' => json_encode($outcomes, JSON_THROW_ON_ERROR), 'completed_at' => $complete ? now() : null, 'updated_at' => now()]);
+            DB::connection(config('tenancy.database.central_connection'))->table('document_purge_batches')->where('id', $batchId)->update(['status' => $complete ? 'completed' : 'partial', 'outcomes' => json_encode($outcomes, JSON_THROW_ON_ERROR), 'completed_at' => $complete ? now() : null, 'updated_at' => now()]);
             $this->event($actor, $companyId, 'purge_batch_finished', ['batch_id' => $batchId, 'purged_count' => count(array_filter($outcomes, fn (array $outcome): bool => $outcome['purged']))]);
         });
     }
@@ -134,7 +134,7 @@ class DocumentPurgeService
             if (Storage::disk('documents')->exists($document->path)) {
                 $this->localBytes($document);
             }
-            DB::transaction(function () use ($actor, $companyId, $batchId, $item, &$deleted): void {
+            DB::connection(config('tenancy.database.central_connection'))->transaction(function () use ($actor, $companyId, $batchId, $item, &$deleted): void {
                 Company::query()->lockForUpdate()->findOrFail($companyId);
                 $this->lark->owner($actor, $companyId);
                 $document = InboxDocument::query()->where('company_id', $companyId)->lockForUpdate()->findOrFail($item['id']);
@@ -188,7 +188,7 @@ class DocumentPurgeService
     /** @return array{app_id: string, folder_token: string} */
     private function destination(int $companyId): array
     {
-        $row = DB::table('company_document_backups')->where('company_id', $companyId)->first();
+        $row = DB::connection(config('tenancy.database.central_connection'))->table('company_document_backups')->where('company_id', $companyId)->first();
         abort_unless($row, 422, 'Configure Lark before preparing a purge.');
 
         return ['app_id' => $row->app_id, 'folder_token' => $row->folder_token];
@@ -215,6 +215,6 @@ class DocumentPurgeService
     /** @param array<string, mixed> $details */
     private function event(User $actor, int $companyId, string $action, array $details, ?int $documentId = null): void
     {
-        DB::table('document_backup_events')->insert(['company_id' => $companyId, 'actor_id' => $actor->id, 'inbox_document_id' => $documentId, 'action' => $action, 'details' => json_encode($details, JSON_THROW_ON_ERROR), 'created_at' => now()]);
+        DB::connection(config('tenancy.database.central_connection'))->table('document_backup_events')->insert(['company_id' => $companyId, 'actor_id' => $actor->id, 'inbox_document_id' => $documentId, 'action' => $action, 'details' => json_encode($details, JSON_THROW_ON_ERROR), 'created_at' => now()]);
     }
 }

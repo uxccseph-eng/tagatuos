@@ -39,13 +39,13 @@ class ClientFollowUpController extends Controller
             throw ValidationException::withMessages(['transaction' => 'The selected entry is no longer available. Search this company’s saved transactions.']);
         }
         $items = $service->query($companyId, $filters)->orderBy('status')->orderByRaw('CASE WHEN due_date IS NULL THEN 1 ELSE 0 END')->orderBy('due_date')->orderByDesc('id')->paginate(20)->withQueryString();
-        $events = DB::table('client_follow_up_events')->leftJoin('users', 'users.id', '=', 'client_follow_up_events.actor_id')->where('company_id', $companyId)->whereIn('client_follow_up_id', $items->pluck('id'))->select(['client_follow_up_events.*', 'users.name AS actor_name'])->latest('client_follow_up_events.id')->limit(100)->get()->groupBy('client_follow_up_id');
+        $events = DB::connection(config('tenancy.database.central_connection'))->table('client_follow_up_events')->leftJoin('users', 'users.id', '=', 'client_follow_up_events.actor_id')->where('company_id', $companyId)->whereIn('client_follow_up_id', $items->pluck('id'))->select(['client_follow_up_events.*', 'users.name AS actor_name'])->latest('client_follow_up_events.id')->limit(100)->get()->groupBy('client_follow_up_id');
 
         return response()->view('client-follow-ups', [
             'company' => $company, 'companyChoices' => $this->companies($request, $books), 'items' => $items, 'events' => $events,
             'filters' => $filters, 'transactions' => $transactions, 'preselectedTransaction' => $preselected, 'editing' => $request->filled('edit') ? $service->item($companyId, (int) $request->input('edit')) : null,
-            'counts' => DB::table('client_follow_ups')->where('company_id', $companyId)->selectRaw('status, COUNT(*) AS total')->groupBy('status')->pluck('total', 'status')->all(),
-            'overdue' => DB::table('client_follow_ups')->where('company_id', $companyId)->where('status', 'open')->where('due_date', '<', now('Asia/Manila')->toDateString())->count(),
+            'counts' => DB::connection(config('tenancy.database.central_connection'))->table('client_follow_ups')->where('company_id', $companyId)->selectRaw('status, COUNT(*) AS total')->groupBy('status')->pluck('total', 'status')->all(),
+            'overdue' => DB::connection(config('tenancy.database.central_connection'))->table('client_follow_ups')->where('company_id', $companyId)->where('status', 'open')->where('due_date', '<', now('Asia/Manila')->toDateString())->count(),
         ])->header('Cache-Control', 'no-store, private');
     }
 
@@ -60,7 +60,7 @@ class ClientFollowUpController extends Controller
     {
         $service->company($request->user(), $companyId);
         $data = $request->validate(['items' => ['required', 'array', 'list', 'min:1', 'max:500'], 'items.*' => ['required', 'array:request_id,request_text,transaction_date,party,reference,amount'], 'items.*.request_id' => ['required', 'uuid', 'distinct'], 'items.*.request_text' => ['required', 'string', 'min:3', 'max:2000'], 'items.*.transaction_date' => ['nullable', 'date_format:Y-m-d'], 'items.*.party' => ['required', 'string', 'max:200'], 'items.*.reference' => ['nullable', 'string', 'max:200'], 'items.*.amount' => ['nullable', 'string', 'regex:/^\d{1,9}(?:\.\d{1,2})?$/D']]);
-        $ids = DB::transaction(function () use ($request, $companyId, $service, $data): array {
+        $ids = DB::connection(config('tenancy.database.central_connection'))->transaction(function () use ($request, $companyId, $service, $data): array {
             $ids = [];
             foreach ($data['items'] as $item) {
                 $ids[] = $service->save($request->user(), $companyId, [...$item, 'action' => 'create', 'category' => 'clarification']);

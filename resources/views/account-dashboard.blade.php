@@ -7,7 +7,7 @@
             @forelse($companies as $companyBook)
                 <article class="account-card book-card">
                     <div class="book-avatar" aria-hidden="true">▤</div>
-                    <div class="book-copy"><h2>{{ $companyBook->name }}</h2><p><span class="role-badge">{{ ucfirst($companyBook->pivot->role) }}</span><span class="muted">{{ in_array($companyBook->workspaceKey(), $configuredWorkspaces, true) ? 'Setup complete' : 'Setup needed' }}</span></p></div>
+                    <div class="book-copy"><h2>{{ $companyBook->name }}</h2><p><span class="role-badge">{{ ucfirst($companyBook->pivot->role) }}</span><span class="muted">{{ in_array($companyBook->workspaceKey(), $configuredWorkspaces, true) ? 'Setup complete' : 'Setup needed' }}</span><span class="role-badge">{{ $companyBook->tenancy_activated_at ? 'Separate database' : 'Shared database' }}</span></p></div>
                     @if($companyBook->pivot->role === 'owner')<a class="team-book-link" href="{{ route('team.index', ['companyId' => $companyBook->id]) }}">Manage team</a>@endif
                     <form method="POST" action="{{ route('account.companies.open', $companyBook->id) }}">@csrf<button class="button secondary" type="submit">Open book <span aria-hidden="true">→</span></button></form>
                 </article>

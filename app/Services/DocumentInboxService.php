@@ -58,13 +58,13 @@ class DocumentInboxService
                 }
             }
 
-            return DB::transaction(function () use ($actor, $companyId, $file, $data, $path, $hash): InboxDocument {
+            return DB::connection(config('tenancy.database.central_connection'))->transaction(function () use ($actor, $companyId, $file, $data, $path, $hash): InboxDocument {
                 Company::query()->lockForUpdate()->findOrFail($companyId);
                 $this->company($actor, $companyId);
                 $this->checkUploadDuplicate($companyId, $hash);
                 $name = basename(str_replace('\\', '/', $file->getClientOriginalName()));
                 $document = (new InboxDocument)->forceFill(['company_id' => $companyId, 'uploaded_by' => $actor->id, 'original_name' => Str::limit(preg_replace('/[\x00-\x1F\x7F]/', '', $name), 240, ''), 'path' => $path, 'mime_type' => $file->getMimeType(), 'size' => $file->getSize(), 'sha256' => $hash, 'category' => $data['category'], 'notes' => $data['notes'] ?? null, 'status' => 'received', 'version' => 1]);
-                if (DB::table('company_document_backups')->where('company_id', $companyId)->where('enabled', true)->whereNotNull('verified_at')->exists()) {
+                if (DB::connection(config('tenancy.database.central_connection'))->table('company_document_backups')->where('company_id', $companyId)->where('enabled', true)->whereNotNull('verified_at')->exists()) {
                     $document->forceFill(['lark_status' => 'pending', 'lark_next_attempt_at' => now()]);
                 }
                 $document->save();
@@ -81,7 +81,12 @@ class DocumentInboxService
     /** @param array<string, mixed> $data */
     public function update(User $actor, int $companyId, int $documentId, array $data): InboxDocument
     {
-        return DB::transaction(function () use ($actor, $companyId, $documentId, $data): InboxDocument {
+        return $this->company($actor, $companyId)->run(fn (): InboxDocument => $this->updateCurrent($actor, $companyId, $documentId, $data));
+    }
+
+    private function updateCurrent(User $actor, int $companyId, int $documentId, array $data): InboxDocument
+    {
+        return DB::connection(config('tenancy.database.central_connection'))->transaction(function () use ($actor, $companyId, $documentId, $data): InboxDocument {
             Company::query()->lockForUpdate()->findOrFail($companyId);
             $company = $this->company($actor, $companyId);
             $document = InboxDocument::query()->where('company_id', $companyId)->lockForUpdate()->findOrFail($documentId);
@@ -229,7 +234,7 @@ class DocumentInboxService
     /** @param array<string, mixed> $details */
     private function event(InboxDocument $document, User $actor, string $action, array $details): void
     {
-        DB::table('inbox_document_events')->insert(['inbox_document_id' => $document->id, 'company_id' => $document->company_id, 'actor_id' => $actor->id, 'action' => $action, 'details' => json_encode($details, JSON_THROW_ON_ERROR), 'created_at' => now()]);
+        DB::connection(config('tenancy.database.central_connection'))->table('inbox_document_events')->insert(['inbox_document_id' => $document->id, 'company_id' => $document->company_id, 'actor_id' => $actor->id, 'action' => $action, 'details' => json_encode($details, JSON_THROW_ON_ERROR), 'created_at' => now()]);
     }
 
     private function fail(string $field, string $message): never

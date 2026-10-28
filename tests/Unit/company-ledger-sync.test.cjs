@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 const source = fs.readFileSync('public/js/company-ledger-sync.js', 'utf8');
 const empty = () => ({sales: [], purchases: [], collections: [], payments: [], cwtCertificates: [], wtpCertificates: [], journalEntries: [], nextCollectionId: 1, nextCollectionNumber: 1});
-function boot({initialized = true, legacy = null, canWrite = true, fetcher = null} = {}) {
+function boot({initialized = true, legacy = null, canWrite = true, fetcher = null, storage = new Map(), snapshot = {}} = {}) {
     class Element {
         constructor() { this.children = []; this.listeners = {}; this.dataset = {}; this.textContent = ''; }
         append(...items) { this.children.push(...items); }
@@ -13,14 +13,13 @@ function boot({initialized = true, legacy = null, canWrite = true, fetcher = nul
         addEventListener(name, fn) { this.listeners[name] = fn; }
         click() { return this.listeners.click?.(); }
     }
-    const storage = new Map();
     if (legacy) storage.set('kontadurya.ledger.v1.company-test', JSON.stringify(legacy));
-    const requests = [], intervals = [], database = {company_id: 1, revision: 0, initialized, state: empty(), payroll: [], journals: [], url: '/sheets/database', csrf: 'csrf', canWrite};
+    const requests = [], intervals = [], database = {company_id: 1, revision: 0, initialized, state: empty(), payroll: [], journals: [], url: '/sheets/database', csrf: 'csrf', canWrite, ...snapshot};
     const body = new Element();
     const document = {body, hidden: false, documentElement: {classList: {toggle() {}}}, getElementById: () => ({dataset: {key: 'company-test'}}), createElement: () => new Element(), addEventListener() {}};
     const sessionStorage = {getItem: key => storage.get(key) || null, setItem: (key, value) => storage.set(key, value), removeItem: key => storage.delete(key)};
     const window = {CompanyLedgerDatabase: database, addEventListener() {}, dispatchEvent() {}};
-    let revision = 0;
+    let revision = database.revision;
     const fetch = async (url, options) => {
         const payload = JSON.parse(options.body);
         requests.push(payload);
@@ -96,4 +95,74 @@ test('read-only members cannot stage changes and storage failure cannot leave a 
     const state = empty(); state.sales.push({id: 'never-staged'});
     assert.throws(() => p.api.saveState(state), /preserve/);
     assert.equal(p.api.state().sales.length, 0);
+});
+
+const recoveryKey = 'kontadurya.ledger.v1.company-test.pending-database-save';
+test('failed save survives reload and requires explicit restore and reviewed save', async () => {
+    const first = boot({fetcher: async () => ({ok:false, status:422, json:async()=>({message:'Select an expense account'})})});
+    const state = empty(); state.purchases.push({id:1,status:'posted'});
+    first.api.saveState(state); await assert.rejects(first.api.flush(), /expense account/);
+    const requestId = first.requests[0].request_id;
+    const locked = boot({storage:first.storage});
+    assert.equal(locked.api.state().purchases.length, 0);
+    assert.equal(locked.requests.length, 0);
+    await assert.rejects(locked.api.flush(), /expense account/);
+    locked.buttons().find(button => button.textContent === 'Restore unsaved work').click();
+    const restored = boot({storage:first.storage});
+    assert.equal(restored.api.state().purchases.length, 1);
+    assert.equal(restored.api.postingLabel('purchases',state.purchases[0]), 'Not saved');
+    await assert.rejects(restored.api.flush(), /Review/);
+    restored.buttons().find(button => button.textContent === 'Save recovered work').click();
+    await restored.api.flush();
+    assert.equal(restored.requests[0].request_id, requestId);
+    assert.equal(restored.api.postingLabel('purchases',state.purchases[0]), 'Posted');
+    assert.equal(first.storage.has(recoveryKey), false);
+});
+test('a recovery never overwrites a different database revision or another company', () => {
+    for (const change of [{revision:2},{company_id:2}]) {
+        const state = empty(); state.sales.push({id:1,status:'posted'});
+        const storage = new Map([[recoveryKey,JSON.stringify({company_id:1,revision:0,state,payroll:[],...change})]]);
+        const p = boot({storage});
+        assert.equal(p.buttons().some(button=>button.textContent==='Restore unsaved work'),false);
+        assert.throws(()=>p.api.saveState(state), /unsaved work|different version/);
+        assert.equal(storage.has(recoveryKey),true);
+    }
+});
+test('an invalid successful HTTP response does not discard unsaved records', async () => {
+    const p = boot({fetcher:async()=>({ok:true,json:async()=>({message:'OK'})})});
+    const state = empty(); state.sales.push({id:1,status:'posted'}); p.api.saveState(state);
+    assert.equal(p.api.postingLabel('sales',state.sales[0]),'Saving\u2026');
+    await assert.rejects(p.api.flush(), /did not confirm/);
+    assert.equal(p.api.postingLabel('sales',state.sales[0]),'Not saved');
+    assert.equal(p.storage.has(recoveryKey),true);
+});
+test('already confirmed recovery is recognized without posting again', () => {
+    const state = empty(); state.sales.push({id:1,status:'posted'});
+    const storage = new Map([[recoveryKey,JSON.stringify({company_id:1,revision:0,state,payroll:[]})]]);
+    const p = boot({storage,snapshot:{revision:1,state}});
+    assert.equal(p.api.pending(),false);
+    assert.equal(storage.has(recoveryKey),false);
+    assert.equal(p.requests.length,0);
+});
+
+test('correcting a rejected entry submits the corrected data with a fresh request identifier', async () => {
+    const p = boot({fetcher:async(payload,count)=>count===1 ? {ok:false,status:422,json:async()=>({message:'Invalid account'})} : {ok:true,json:async()=>({...p.database,state:payload.state,payroll:payload.payroll,revision:1})}});
+    const state=empty(); state.sales.push({id:1,status:'posted',account:'invalid'}); p.api.saveState(state);
+    await assert.rejects(p.api.flush(),/Invalid account/);
+    state.sales[0].account='corrected'; p.api.saveState(state); await p.api.flush();
+    assert.equal(p.requests[1].state.sales[0].account,'corrected');
+    assert.notEqual(p.requests[0].request_id,p.requests[1].request_id);
+});
+test('lost acknowledgements preserve the original request before saving newer edits', async () => {
+    let rejectFirst;
+    const p=boot({fetcher:(payload,count)=> count===1 ? new Promise((resolve,reject)=>{rejectFirst=reject;}) : Promise.resolve({ok:true,json:async()=>({...p.database,state:payload.state,payroll:payload.payroll,revision:count-1})})});
+    const state=empty(); state.sales.push({id:1,status:'posted'}); p.api.saveState(state);
+    const saving=p.api.flush(); state.sales.push({id:2,status:'posted'}); p.api.saveState(state);
+    rejectFirst(Error('Response lost')); await assert.rejects(saving,/Response lost/);
+    p.buttons().find(button=>button.textContent==='Retry save').click(); await p.api.flush();
+    assert.equal(p.requests[0].request_id,p.requests[1].request_id);
+    assert.equal(p.requests[1].state.sales.length,1);
+    assert.equal(p.requests[2].state.sales.length,2);
+    assert.equal(p.requests[2].revision,1);
+    assert.equal(p.api.pending(),false);
 });

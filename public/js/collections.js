@@ -35,6 +35,7 @@
         row.querySelector('input[type="checkbox"]').setAttribute('aria-label',`Select ${record.number}`);
         const cells=row.cells;
         cells[1].replaceChildren(Object.assign(document.createElement('span'),{className:record.status==='draft'?'draft-status-badge':record.status==='posted'?'posted-status-badge':'void-status-badge',textContent:record.status==='draft'?'Drafting':record.status==='posted'?'Posted':'Voided'}));
+    window.CompanyLedger?.decorateBadge?.(cells[1].firstElementChild,'collections',record);
         cells[3].textContent=record.number;
         row.classList.toggle('collection-void',record.status==='void');
         if(record.status==='draft') {

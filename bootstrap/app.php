@@ -3,6 +3,7 @@
 use App\Http\Middleware\EnsureActiveCompany;
 use App\Http\Middleware\EnsureApprovedAccount;
 use App\Http\Middleware\ForcePasswordChange;
+use App\Http\Middleware\UseClientDatabase;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -22,6 +23,7 @@ return Application::configure(basePath: dirname(__DIR__))
             AuthenticateSession::class,
             EnsureApprovedAccount::class,
             ForcePasswordChange::class,
+            UseClientDatabase::class,
             EnsureActiveCompany::class,
         ]);
     })

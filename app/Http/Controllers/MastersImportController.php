@@ -66,7 +66,7 @@ class MastersImportController extends Controller
             throw ValidationException::withMessages(['preview' => 'Preview this batch again before adding it to Masters.']);
         }
         try {
-            $records = Cache::lock('masters-import-'.hash('sha256', $workspaceKey), 120)->block(5, fn (): array => DB::transaction(function () use ($request, $registry, $import, $rows, $preview, $workspaceKey): array {
+            $records = Cache::lock('masters-import-'.hash('sha256', $workspaceKey), 120)->block(5, fn (): array => DB::connection(config('tenancy.database.central_connection'))->transaction(function () use ($request, $registry, $import, $rows, $preview, $workspaceKey): array {
                 ChartAccount::query()->where('workspace_key', $workspaceKey)->orderBy('id')->lockForUpdate()->first();
                 $model = MasterImport::model($registry);
                 $model::query()->where('workspace_key', $workspaceKey)->orderBy('id')->lockForUpdate()->get();

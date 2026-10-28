@@ -17,7 +17,7 @@ class TaxPreflightController extends Controller
     {
         $company = $this->company($request);
         $result = $service->check($company, $this->selection($request));
-        $history = DB::table('tax_preflight_reviews')->join('users', 'users.id', '=', 'tax_preflight_reviews.user_id')
+        $history = DB::connection(config('tenancy.database.central_connection'))->table('tax_preflight_reviews')->join('users', 'users.id', '=', 'tax_preflight_reviews.user_id')
             ->where('company_id', $company->id)->where('schedule', $result['schedule'])->where('period_from', $result['from'])->where('period_to', $result['to'])->where('form', $result['form'])
             ->orderByDesc('tax_preflight_reviews.id')->limit(20)->get(['tax_preflight_reviews.id', 'users.name as actor', 'action', 'snapshot_hash', 'filename', 'file_hash', 'note', 'tax_preflight_reviews.created_at']);
 
@@ -29,13 +29,13 @@ class TaxPreflightController extends Controller
         $company = $this->company($request);
         $selection = $this->selection($request);
         $data = $request->validate(['snapshot_hash' => ['required', 'string', 'regex:/^[a-f0-9]{64}$/D'], 'note' => ['required', 'string', 'min:3', 'max:2000']]);
-        $id = DB::transaction(function () use ($request, $company, $selection, $data, $service): int {
+        $id = DB::connection(config('tenancy.database.central_connection'))->transaction(function () use ($request, $company, $selection, $data, $service): int {
             Company::query()->lockForUpdate()->findOrFail($company->id);
             $this->company($request);
             $result = $service->check($company, $selection);
             abort_unless(hash_equals($result['snapshot_hash'], $data['snapshot_hash']), 409, 'Company records or Masters changed. Run the checks again before recording your review.');
 
-            return DB::table('tax_preflight_reviews')->insertGetId([
+            return DB::connection(config('tenancy.database.central_connection'))->table('tax_preflight_reviews')->insertGetId([
                 'company_id' => $company->id, 'user_id' => $request->user()->id, 'schedule' => $result['schedule'], 'period_from' => $result['from'], 'period_to' => $result['to'], 'form' => $result['form'],
                 'snapshot_hash' => $result['snapshot_hash'], 'rules_version' => TaxPreflightService::VERSION, 'action' => 'review', 'note' => $data['note'], 'summary' => json_encode($result, JSON_THROW_ON_ERROR), 'created_at' => now(),
             ]);

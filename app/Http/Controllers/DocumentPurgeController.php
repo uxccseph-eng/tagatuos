@@ -16,7 +16,7 @@ class DocumentPurgeController extends Controller
     {
         $company = $lark->owner($request->user(), $companyId);
         $candidates = InboxDocument::query()->where('company_id', $companyId)->whereNull('local_purged_at')->whereNull('local_purge_batch_id')->where('lark_status', 'backed_up')->whereNotNull('lark_file_token')->where('lark_backed_up_at', '<=', now()->subDays(DocumentPurgeService::GRACE_DAYS))->latest('id')->paginate(25);
-        $recentBatches = DB::table('document_purge_batches')->where('company_id', $companyId)->where('created_by', $request->user()->id)->latest('created_at')->limit(10)->get();
+        $recentBatches = DB::connection(config('tenancy.database.central_connection'))->table('document_purge_batches')->where('company_id', $companyId)->where('created_by', $request->user()->id)->latest('created_at')->limit(10)->get();
 
         return response()->view('document-purge', ['company' => $company, 'candidates' => $candidates, 'recentBatches' => $recentBatches, 'batch' => null])->header('Cache-Control', 'no-store, private');
     }

@@ -85,6 +85,10 @@
                 ${disabled ? '' : button('employee', 'Add employee', 'person_add')}<div class="payroll-totals" data-totals>${totalsMarkup(run)}</div>
             </section></td></tr>`;
         }).join('') : '<tr><td colspan="12" class="payroll-empty">No payroll runs in this working period. Select Add run to begin.</td></tr>';
+        for (const run of runs) {
+            const row = [...body.children].find(node => node.dataset.run === String(run.id) && !node.classList.contains('payroll-detail'));
+            window.CompanyLedger?.decorateBadge?.(row?.querySelector('.payroll-badge'), 'payroll', run);
+        }
         for(const run of runs.filter(item=>item.status==='draft')){
             const row=[...body.children].find(node=>node.dataset.run===run.id&&!node.classList.contains('payroll-detail'));
             window.SheetPosting.draftActions(row.querySelector('.payroll-actions'),run,{

@@ -24,6 +24,11 @@ class CompanyLedgerService
 
     public function read(Company $company): array
     {
+        return $company->run(fn (): array => $this->readCurrent($company));
+    }
+
+    private function readCurrent(Company $company): array
+    {
         $ledger = CompanyLedger::query()->where('company_id', $company->id)->first();
         $headers = DB::table('journal_entries')->where('company_id', $company->id)->where('status', 'posted')->orderBy('transaction_date')->orderBy('id')->get();
         $lines = DB::table('journal_entry_lines')->where('company_id', $company->id)->whereIn('journal_entry_id', $headers->pluck('id'))->orderBy('id')->get()->groupBy('journal_entry_id');
@@ -76,6 +81,15 @@ class CompanyLedgerService
     }
 
     public function save(Company $company, User $actor, array $data): array
+    {
+        return app(ClientDatabase::class)->central()->transaction(function () use ($company, $actor, $data): array {
+            Company::query()->whereKey($company->id)->lockForUpdate()->firstOrFail();
+
+            return $company->run(fn (): array => $this->saveCurrent($company, $actor, $data));
+        });
+    }
+
+    private function saveCurrent(Company $company, User $actor, array $data): array
     {
         return DB::transaction(function () use ($company, $actor, $data): array {
             $locked = Company::query()->whereKey($company->id)->lockForUpdate()->firstOrFail();

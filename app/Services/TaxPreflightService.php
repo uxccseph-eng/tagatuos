@@ -22,6 +22,11 @@ class TaxPreflightService
      */
     public function check(Company $company, array $selection): array
     {
+        return $company->run(fn (): array => $this->checkCurrent($company, $selection));
+    }
+
+    private function checkCurrent(Company $company, array $selection): array
+    {
         $snapshot = app(CompanyLedgerService::class)->read($company);
         $profile = CompanySetting::query()->where('workspace_key', $company->workspaceKey())->first()?->profile ?? [];
         $parties = Party::query()->where('workspace_key', $company->workspaceKey())->orderBy('id')->get()->toArray();
@@ -248,13 +253,13 @@ class TaxPreflightService
             hash_update($digest, $chunk);
         }
         $fileHash = hash_final($digest);
-        DB::transaction(function () use ($company, $selection, $request, $filename, $fileHash): void {
+        DB::connection(config('tenancy.database.central_connection'))->transaction(function () use ($company, $selection, $request, $filename, $fileHash): void {
             Company::query()->lockForUpdate()->findOrFail($company->id);
             $member = $company->users()->where('users.id', $request->user()->id)->where('registration_status', 'approved')->wherePivot('is_suspended', false)->first();
             abort_unless($member && in_array('tax-reports', TeamPermissions::allowed($member->pivot->role, $member->pivot->allowed_tabs), true), 403);
             abort_unless($request->header('X-Ledger-Revision') === (string) (CompanyLedger::query()->where('company_id', $company->id)->value('revision') ?? 0), 409, 'Company records changed during export. Reload before generating another file.');
             $result = $this->check($company, ['form' => '', 'tax_kind' => 'income', ...$selection]);
-            DB::table('tax_preflight_reviews')->insert([
+            DB::connection(config('tenancy.database.central_connection'))->table('tax_preflight_reviews')->insert([
                 'company_id' => $company->id, 'user_id' => $request->user()->id, 'schedule' => $result['schedule'], 'period_from' => $result['from'], 'period_to' => $result['to'], 'form' => $result['form'],
                 'snapshot_hash' => $result['snapshot_hash'], 'rules_version' => self::VERSION, 'action' => 'export_generated', 'filename' => $filename, 'file_hash' => $fileHash,
                 'summary' => json_encode($result, JSON_THROW_ON_ERROR), 'created_at' => now(),

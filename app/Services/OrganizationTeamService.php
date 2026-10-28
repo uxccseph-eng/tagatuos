@@ -35,7 +35,7 @@ class OrganizationTeamService
 
     public function contains(User $owner, int $userId): bool
     {
-        return DB::table('organization_members')->where('owner_id', $owner->id)->where('user_id', $userId)->exists();
+        return DB::connection(config('tenancy.database.central_connection'))->table('organization_members')->where('owner_id', $owner->id)->where('user_id', $userId)->exists();
     }
 
     /** Preserve the most restrictive existing module access when upgrading legacy teams. */
@@ -43,7 +43,7 @@ class OrganizationTeamService
     {
         $this->claimBooks($owner);
         $books = $this->books($owner);
-        $memberships = DB::table('company_user')->join('users', 'users.id', '=', 'company_user.user_id')
+        $memberships = DB::connection(config('tenancy.database.central_connection'))->table('company_user')->join('users', 'users.id', '=', 'company_user.user_id')
             ->whereIn('company_id', $books->modelKeys())->where('users.type', 'accountant')
             ->whereIn('role', TeamPermissions::MEMBER_ROLES)->select('company_user.*')->get()->groupBy('user_id');
         foreach ($memberships as $userId => $membershipsForUser) {
@@ -75,9 +75,9 @@ class OrganizationTeamService
     {
         $attributes = ['role' => $data['role'], 'allowed_tabs' => json_encode(TeamPermissions::allowed($data['role'], $data['tabs']), JSON_THROW_ON_ERROR), 'is_suspended' => (bool) ($data['is_suspended'] ?? false), 'updated_at' => now()];
         if ($this->contains($owner, $member->id)) {
-            DB::table('organization_members')->where('owner_id', $owner->id)->where('user_id', $member->id)->update($attributes);
+            DB::connection(config('tenancy.database.central_connection'))->table('organization_members')->where('owner_id', $owner->id)->where('user_id', $member->id)->update($attributes);
         } else {
-            DB::table('organization_members')->insert(['owner_id' => $owner->id, 'user_id' => $member->id, 'created_at' => now(), ...$attributes]);
+            DB::connection(config('tenancy.database.central_connection'))->table('organization_members')->insert(['owner_id' => $owner->id, 'user_id' => $member->id, 'created_at' => now(), ...$attributes]);
         }
         foreach ($this->books($owner) as $book) {
             $this->attach($book, $member->id, $attributes);
@@ -86,7 +86,7 @@ class OrganizationTeamService
 
     public function inherit(Company $company, User $owner): void
     {
-        foreach (DB::table('organization_members')->where('owner_id', $owner->id)->get() as $membership) {
+        foreach (DB::connection(config('tenancy.database.central_connection'))->table('organization_members')->where('owner_id', $owner->id)->get() as $membership) {
             $this->attach($company, $membership->user_id, ['role' => $membership->role, 'allowed_tabs' => $membership->allowed_tabs, 'is_suspended' => (bool) $membership->is_suspended, 'updated_at' => now()]);
         }
     }
@@ -98,7 +98,7 @@ class OrganizationTeamService
             $book->users()->detach($member->id);
             $this->revoke($book, $member->id);
         }
-        DB::table('organization_members')->where('owner_id', $owner->id)->where('user_id', $member->id)->delete();
+        DB::connection(config('tenancy.database.central_connection'))->table('organization_members')->where('owner_id', $owner->id)->where('user_id', $member->id)->delete();
     }
 
     public function canSetUp(User $owner, User $member): bool
