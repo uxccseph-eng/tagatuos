@@ -11,6 +11,43 @@ class SettingsTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_sales_defaults_and_visibility_are_saved_and_exposed_only_for_the_current_workspace(): void
+    {
+        $company = $this->company();
+        $workspace = ChartAccount::workspaceKey($company);
+        ChartAccount::seedWorkspace($workspace);
+        $settings = ['payroll' => '0', 'cwt' => '1', 'wtp' => '1', 'ppe' => '1', 'sales_hide_cwt' => '1', 'sales_hide_vat_cwt' => '1', 'sales_default_terms' => 'On Account', 'sales_default_classification' => 'Government', 'sales_default_bank_code' => '1020', 'sales_default_cwt_code' => 'WC160', 'sales_default_vat_cwt_code' => 'WB030'];
+        $this->withSession(['preview_access' => true, 'company_setup' => $company])->put('/settings/sheets', $settings)
+            ->assertSessionHasNoErrors()->assertSessionHas('company_setup.sheet_settings.sales_hide_cwt', true);
+        $saved = CompanySetting::query()->where('workspace_key', $workspace)->sole();
+        $this->assertSame('1020', $saved->preferences['sales_default_bank_code']);
+        $this->assertSame('On Account', $saved->preferences['sales_default_terms']);
+        $this->get('/settings/sheets')->assertOk()->assertSee('Sales columns and defaults')->assertSee('Hide VAT withholding column');
+        $this->get('/masters/chart-of-accounts/catalog.js')->assertOk()->assertSee('hideCwt', false)->assertSee('Government', false)->assertSee('WC160', false);
+        $this->withSession(['preview_access' => true, 'company_setup' => [...$company, 'company_name' => 'Another Demo Client']]);
+        $this->get('/masters/chart-of-accounts/catalog.js')->assertOk()->assertDontSee('"hideCwt":true', false)->assertDontSee('"terms":"On Account"', false);
+        $this->assertDatabaseCount('company_settings', 1);
+    }
+
+    public function test_sales_defaults_reject_invalid_accounts_categories_and_choices(): void
+    {
+        $company = $this->company();
+        ChartAccount::seedWorkspace(ChartAccount::workspaceKey($company));
+        $this->withSession(['preview_access' => true, 'company_setup' => $company]);
+        $this->putJson('/settings/sheets', ['payroll' => 1, 'cwt' => 1, 'wtp' => 1, 'ppe' => 1, 'sales_default_terms' => 'Invalid', 'sales_default_classification' => 'Invalid', 'sales_default_bank_code' => '4020', 'sales_default_cwt_code' => 'WB030', 'sales_default_vat_cwt_code' => 'WC160'])
+            ->assertUnprocessable()->assertJsonValidationErrors(['sales_default_terms', 'sales_default_classification', 'sales_default_bank_code', 'sales_default_cwt_code', 'sales_default_vat_cwt_code']);
+        $this->assertDatabaseCount('company_settings', 0);
+    }
+
+    public function test_older_sheet_settings_requests_preserve_saved_sales_defaults(): void
+    {
+        $company = $this->company();
+        $company['sheet_settings'] = ['sales_hide_cwt' => true, 'sales_default_terms' => 'On Account', 'sales_default_bank_code' => '1020'];
+        $this->withSession(['preview_access' => true, 'company_setup' => $company])
+            ->put('/settings/sheets', ['payroll' => 1, 'cwt' => 1, 'wtp' => 1, 'ppe' => 1])
+            ->assertSessionHasNoErrors()->assertSessionHas('company_setup.sheet_settings.sales_default_terms', 'On Account')->assertSessionHas('company_setup.sheet_settings.sales_hide_cwt', true);
+    }
+
     /** @return array<string, mixed> */
     private function company(): array
     {

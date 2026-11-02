@@ -87,6 +87,15 @@ class MastersController extends Controller
         $settings = $request->session()->get('company_setup.sheet_settings', []);
         $defaultBank = collect($accounts)->first(fn (array $account): bool => $account['code'] === ($settings['default_bank_code'] ?? null) && ($account['is_cash_bank'] ?? false) && ! ($account['archived'] ?? false));
         $masters['preferences'] = ['defaultBank' => $defaultBank ? $defaultBank['code'].' · '.$defaultBank['name'] : null];
+        $masters['preferences']['sales'] = [
+            'hideCwt' => (bool) ($settings['sales_hide_cwt'] ?? false),
+            'hideVatCwt' => (bool) ($settings['sales_hide_vat_cwt'] ?? false),
+            'terms' => $settings['sales_default_terms'] ?? 'Cash',
+            'classification' => $settings['sales_default_classification'] ?? 'Regular',
+            'bankCode' => $settings['sales_default_bank_code'] ?? null,
+            'cwtCode' => $settings['sales_default_cwt_code'] ?? '',
+            'vatCwtCode' => $settings['sales_default_vat_cwt_code'] ?? '',
+        ];
         $masters['endpoints'] = ['accounts' => route('masters.accounts.store'), 'parties' => route('masters.registry.store', ['registry' => 'parties']), 'tax' => route('masters.registry.store', ['registry' => 'tax-codes']), 'banks' => route('masters.registry.store', ['registry' => 'bank-accounts'])];
 
         $canReadJournals = ! $request->user() || array_intersect($request->attributes->get('company_allowed_tabs', []), ['books', 'reports', 'lapsing']) !== [];

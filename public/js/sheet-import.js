@@ -79,14 +79,15 @@
         const record={date:date(get('Date')),notes:get('Notes'),_row:raw._row};
         if(sheet==='sales'||sheet==='purchases'){
             const sales=sheet==='sales',person=party(get(sales?'Customer':'Supplier'),sales?'Customer':'Supplier');
+            const salesSettings=sales?masters.salesDefaults?.():null;
             const draft={status:'draft',[sales?'customer':'supplier']:person.name,account:get(sales?'Revenue Account':'Account'),tax:get('Tax Type'),...(sales?{cwt:get('Income Withholding ATC'),vatCwt:get('VAT Withholding ATC')}:{ewt:'',wvat:get('VAT Withholding ATC')?'':0,ewtCode:get('Income Withholding ATC'),wvatCode:get('VAT Withholding ATC')})};
             const suggestion=masters.partyDefaults?.(draft,sales) || {values:{},sourceNumber:''},defaults=suggestion.values;
             const suggestedAtc=vat=>sales?String(defaults[vat?'vatCwt':'cwt'] || '').match(/^W[ICVB][0-9]{3}/)?.[0] || '':defaults[vat?'wvatCode':'ewtCode'] || '';
-            const it=atc(get('Income Withholding ATC') || suggestedAtc(false)),vt=atc(get('VAT Withholding ATC') || suggestedAtc(true),true);
+            const it=atc(get('Income Withholding ATC') || (salesSettings?salesSettings.cwtCode:suggestedAtc(false))),vt=atc(get('VAT Withholding ATC') || (salesSettings?salesSettings.vatCwtCode:suggestedAtc(true)),true);
             const taxValue=get('Tax Type') || defaults.tax;
             if(context.guided&&!taxValue)throw Error('Choose a Tax Type from Masters, or apply one to the selected rows.');
             if(suggestion.sourceNumber)record._suggestion={source:suggestion.sourceNumber,fields:Object.keys(defaults)};
-            Object.assign(record,{[sales?'customer':'supplier']:person.name,tin:masters.formatTin(get('Supplier TIN') || person.tin || ''),partyId:person.id,gross:amount(get('Gross Amount'),'Gross amount'),tax:tax(taxValue,sales),account:account(get(sales?'Revenue Account':'Account') || defaults.account,sales?['Income']:['Asset','Expense']),terms:choice(get('Terms'),['Cash','On Account'],'Cash'),reference:get('Invoice Reference'),classification:choice(get('Classification'),['Regular','Top Withholding Agent','Government','ZeroRated','PEZA'],'Regular'),bank:bank(get(sales?'Deposit Account':'Bank'))});
+            Object.assign(record,{[sales?'customer':'supplier']:person.name,tin:masters.formatTin(get('Supplier TIN') || person.tin || ''),partyId:person.id,gross:amount(get('Gross Amount'),'Gross amount'),tax:tax(taxValue,sales),account:account(get(sales?'Revenue Account':'Account') || defaults.account,sales?['Income']:['Asset','Expense']),terms:choice(get('Terms'),['Cash','On Account'],salesSettings?.terms || 'Cash'),reference:get('Invoice Reference'),classification:choice(get('Classification'),['Regular','Top Withholding Agent','Government','ZeroRated','PEZA'],salesSettings?.classification || 'Regular'),bank:bank(get(sales?'Deposit Account':'Bank') || (sales?salesSettings?.bank:''))});
             if(sales)Object.assign(record,{cwt:it.label,vatCwt:vt.label,memo:get('Description'),notes:get('Particulars')});else Object.assign(record,{ewt:it.rate,wvat:vt.rate,ewtCode:it.code,wvatCode:vt.code,description:get('Description')});
         }else if(sheet==='collections'){
             const invoice=get('Source Invoice')?find(ledger.invoices(),get('Source Invoice'),'Source invoice'):null;

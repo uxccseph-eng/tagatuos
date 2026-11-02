@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Models\ChartAccount;
+use App\Models\TaxCode;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -55,9 +56,23 @@ class SaveSettingsRequest extends FormRequest
                 'wtp' => ['required', 'boolean'], 'ppe' => ['required', 'boolean'],
                 'payroll_automation' => ['sometimes', 'boolean'],
                 'payroll_frequency' => ['sometimes', Rule::in(['monthly', 'semi_monthly', 'weekly'])],
+                'sales_hide_cwt' => ['sometimes', 'boolean'],
+                'sales_hide_vat_cwt' => ['sometimes', 'boolean'],
+                'sales_default_terms' => ['sometimes', Rule::in(['Cash', 'On Account'])],
+                'sales_default_classification' => ['sometimes', Rule::in(['Regular', 'Top Withholding Agent', 'Government', 'ZeroRated', 'PEZA'])],
+                'sales_default_bank_code' => ['nullable', 'string', Rule::exists('chart_accounts', 'code')->where(fn ($query) => $query->where('workspace_key', ChartAccount::workspaceKey($this->session()->get('company_setup')))->where('archived', false)->where('is_cash_bank', true))],
+                'sales_default_cwt_code' => ['nullable', Rule::in($this->withholdingCodes('Income-tax CWT'))],
+                'sales_default_vat_cwt_code' => ['nullable', Rule::in($this->withholdingCodes('VAT Withholding'))],
                 'default_bank_code' => ['nullable', 'string', Rule::exists('chart_accounts', 'code')->where(fn ($query) => $query->where('workspace_key', ChartAccount::workspaceKey($this->session()->get('company_setup')))->where('archived', false)->where('is_cash_bank', true))],
             ],
             default => [],
         };
+    }
+
+    /** @return list<string> */
+    private function withholdingCodes(string $category): array
+    {
+        return collect(TaxCode::atcCatalog(ChartAccount::workspaceKey($this->session()->get('company_setup', []))))
+            ->filter(fn (array $code): bool => $code['category'] === $category && ! ($code['archived'] ?? false))->pluck('code')->all();
     }
 }

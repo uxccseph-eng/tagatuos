@@ -81,7 +81,7 @@
                 fields.forEach((field,index)=>{
                     const td=el('td'),input=el('input');input.value=row.values[field]||'';input.dataset.mastersIgnore='true';input.setAttribute('aria-label',field+', source row '+row._row);input.disabled=row.skip;
                     if(field==='Date')input.placeholder='YYYY-MM-DD';
-                    const suggested=record&&({'Revenue Account':record.account,Account:record.account,'Tax Type':record.tax,'Income Withholding ATC':sales?record.cwt:record.ewtCode,'VAT Withholding ATC':sales?record.vatCwt:record.wvatCode})[field];
+                    const suggested=record&&({'Revenue Account':record.account,Account:record.account,'Tax Type':record.tax,'Income Withholding ATC':sales?record.cwt:record.ewtCode,'VAT Withholding ATC':sales?record.vatCwt:record.wvatCode,Terms:record.terms,Classification:record.classification,'Deposit Account':record.bank,Bank:record.bank})[field];
                     if(suggested&&!input.value)input.placeholder=suggested;
                     const options=choices(field);if(options.length)input.setAttribute('list','guided-field-'+index);
                     let dirty=false;

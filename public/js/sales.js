@@ -13,6 +13,7 @@ let sortAscending = true;
 let grouped = false;
 let activeRow = null;
 const entries = new Map();
+const salesDefaults = window.SheetMasters.salesDefaults();
 const currency = (cents) => new Intl.NumberFormat('en-PH', {style:'currency',currency:'PHP'}).format(cents / 100);
 const announce = (message) => { statusMessage.textContent = message; };
 function amountToCents(text) {
@@ -26,6 +27,19 @@ function amounts(entry) {
     const rate = Number(String(entry.cwt || '').match(/(\d+(?:\.\d+)?)%/)?.[1] || 0);
     return {net, vat:entry.gross-net, cwt:Math.round(net * rate / 100)};
 }
+
+function applySalesColumnSettings(reveal=false) {
+    grid.classList.toggle('sales-hide-cwt',salesDefaults.hideCwt&&!reveal);
+    grid.classList.toggle('sales-hide-vat-cwt',salesDefaults.hideVatCwt&&!reveal);
+    grid.querySelectorAll('[colspan]').forEach(cell=>{const original=Number(cell.dataset.originalColspan || cell.colSpan);if(original<15)return;cell.dataset.originalColspan=String(original);cell.colSpan=original-Number(salesDefaults.hideCwt&&!reveal)-Number(salesDefaults.hideVatCwt&&!reveal);});
+}
+applySalesColumnSettings();
+if(salesDefaults.hideCwt||salesDefaults.hideVatCwt){
+    const button=document.createElement('button');button.type='button';button.className='sales-columns-toggle';button.textContent='Show withholding columns';button.setAttribute('aria-pressed','false');
+    button.addEventListener('click',()=>{const reveal=button.getAttribute('aria-pressed')!=='true';button.setAttribute('aria-pressed',String(reveal));button.textContent=reveal?'Use saved column settings':'Show withholding columns';applySalesColumnSettings(reveal);});
+    grid.parentElement.before(button);
+}
+
 const rowTemplate = tbody.querySelector('tr').cloneNode(true);
 const editorFields = [...draft.querySelectorAll('input:not([type="checkbox"]), select')];
 const fieldNames = ['Date', 'Customer', 'Gross amount', 'Tax type', 'Revenue account', 'Income withholding', 'VAT withholding', 'Terms', 'Invoice reference', 'Classification', 'Deposit account', 'Description'];
@@ -163,7 +177,7 @@ function openDraft(copy=null,confirmed=false) {
     const pending=window.DraftLeaveGuard.continueDraft(entries.values(),entry=>{window.WorkingPeriod.revealDate(entry.date);workingPeriod=window.WorkingPeriod.current().from.slice(0,7);statusFilter.value='all';filterInput.value='';globalSearch.value='';updatePeriod();entry.row.scrollIntoView({block:'nearest'});entry.row.querySelector('[aria-label="'+entry.number+' Customer"]')?.focus();announce('Continue '+entry.number+'. Only one draft is allowed on this page.');});if(pending)return pending;
     if(!draft.hidden){editorFields[1].focus();announce('Continue the current draft. Only one draft is allowed on this page.');return;}
     const date = copy?.date || window.WorkingPeriod.entryDate();
-    const values = [date,copy?.customer || '',copy ? (copy.gross/100).toFixed(2) : '',copy?.tax || '',copy?.account || '',copy?.cwt || '',copy?.vatCwt || '',copy?.terms || 'Cash',copy?.reference || '',copy?.classification || 'Regular',copy?.bank || '1010 · Cash on Hand',copy?.memo || ''];
+    const values = [date,copy?.customer || '',copy ? (copy.gross/100).toFixed(2) : '',copy?.tax || '',copy?.account || '',copy?.cwt || salesDefaults.cwt,copy?.vatCwt || salesDefaults.vatCwt,copy?.terms || salesDefaults.terms,copy?.reference || '',copy?.classification || salesDefaults.classification,copy?.bank || salesDefaults.bank,copy?.memo || ''];
     editorFields.forEach((field,index)=>{if(field.tagName==='SELECT')window.SheetMasters.selectValue(field,values[index]);else field.value=values[index];field.setCustomValidity('');});
     inlineBaseline=JSON.stringify(editorFields.map(field=>field.value));
     inlineDraftStarted=true;
@@ -196,7 +210,7 @@ function saveDraft() {
 editorFields.forEach((field,index)=>{
     field.addEventListener('input',()=>{field.setCustomValidity('');autoSaveSalesForm(false);});
     field.addEventListener('change',()=>{if(index===1)suggestSalesFields(false);autoSaveSalesForm(false);});
-    field.addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();if(index<editorFields.length-1)editorFields[index+1].focus();else saveDraft();}});
+    field.addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();let next=index+1;while(next<editorFields.length&&((next===5&&grid.classList.contains('sales-hide-cwt'))||(next===6&&grid.classList.contains('sales-hide-vat-cwt'))))next++;if(next<editorFields.length)editorFields[next].focus();else saveDraft();}});
 });
 draft.addEventListener('click',event=>{
     if(event.target.closest('button,input,select,textarea,label'))return;
@@ -310,7 +324,7 @@ const popupSelectMappings = {'Tax type':3,'Revenue account':4,'Income withholdin
 Object.entries(popupSelectMappings).forEach(([name,index]) => {
     entryFields[name].replaceChildren(...[...editorFields[index].options].map(option => option.cloneNode(true)));
 });
-['Government','PEZA / Ecozone'].forEach(label => entryFields.Classification.add(new Option(label,label)));
+for(const select of [editorFields[9],entryFields.Classification])for(const [value,label] of [['Government','Government'],['ZeroRated','Zero Rated'],['PEZA','PEZA / Ecozone']])if(!Array.from(select.options).some(option=>option.value===value))select.add(new Option(label,value));
 entryFields.Date.required = true;
 entryFields['Gross amount'].required = true;
 entryFields['Gross amount'].min = '0.01';
@@ -370,7 +384,7 @@ function openEntryDrawer(entry=null,asNew=false,enableEdit=false) {
     window.CompanyLedger?.decorateBadge?.(statusBadge,'sales',editingEntry || {status:'draft'});
     document.getElementById('drawer-subtitle').textContent = editingEntry ? `${editingEntry.status === 'void' ? 'Voided' : editingEntry.status === 'posted' ? 'Posted (demo)' : 'Draft'} · ${locked ? 'View entry' : 'Editing entry'} · Tab only` : 'Single-line demo entry · Saved only in this tab';
     const defaultDate = window.WorkingPeriod.matches(editorFields[0].value) ? editorFields[0].value : window.WorkingPeriod.entryDate();
-    const values = {'Date':entry?.date || defaultDate,'Customer':entry?.customer || '', 'Gross amount':entry ? (entry.gross/100).toFixed(2) : '', 'Tax type':entry?.tax ?? '','Revenue account':entry?.account ?? '','Income withholding':entry?.cwt ?? '','VAT withholding':entry?.vatCwt ?? '','Terms':entry?.terms || 'Cash','Classification':entry?.classification || 'Regular','Invoice reference':entry?.reference || '', 'Deposit account':entry?.bank || '1010 · Cash on Hand','Description':entry?.memo || '', 'Particulars':entry?.notes || ''};
+    const values = {'Date':entry?.date || defaultDate,'Customer':entry?.customer || '', 'Gross amount':entry ? (entry.gross/100).toFixed(2) : '', 'Tax type':entry?.tax ?? '','Revenue account':entry?.account ?? '','Income withholding':entry?.cwt ?? salesDefaults.cwt,'VAT withholding':entry?.vatCwt ?? salesDefaults.vatCwt,'Terms':entry?.terms ?? salesDefaults.terms,'Classification':entry?.classification ?? salesDefaults.classification,'Invoice reference':entry?.reference || '', 'Deposit account':entry?.bank ?? salesDefaults.bank,'Description':entry?.memo || '', 'Particulars':entry?.notes || ''};
     Object.entries(values).forEach(([name,value]) => {
         setEntryValue(name,value);
         const field = entryFields[name];

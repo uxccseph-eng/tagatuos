@@ -5,7 +5,7 @@ function workspace(storage=new Map()){
     const window={addEventListener(){},WorkspaceAccounts:accounts,WorkspaceMasters:{parties:[{id:1,code:'CUS001',name:'Import Customer',classification:'Customer',tin:'000-000-000-00000'},{id:2,code:'SUP001',name:'Import Supplier',classification:'Supplier',tin:'000-000-000-00000'},{id:3,code:'OLD',name:'Old Party',classification:'Both',archived:true}],taxCodes:[{code:'VAT',name:'VAT',kind:'VAT',rate:12},{code:'NONVAT',name:'Non-VAT',kind:'Exempt',rate:0}],banks:[],atcCodes:[{code:'WC160',name:'Services',rate:2,category:'Income-tax CWT'},{code:'WC100',name:'Goods',rate:1,category:'Income-tax CWT'},{code:'WC120',name:'Rent',rate:5,category:'Income-tax CWT'}]}};
     const context={window,document:{getElementById:()=>({textContent:'{"period":"2026-10"}',dataset:{key:'import-qa'}}),querySelectorAll:()=>[],addEventListener(){}},sessionStorage:{getItem:key=>storage.get(key)||null,setItem:(key,value)=>storage.set(key,value)},location:{reload(){}}};
     vm.createContext(context);for(const file of ['sheet-masters.js','workspace-ledger.js'])vm.runInContext(fs.readFileSync(path.join(__dirname,'../../public/js',file),'utf8'),context);
-    return {ledger:window.KontaduryaLedger,masters:window.SheetMasters,accounts,storage};
+    return {ledger:window.KontaduryaLedger,masters:window.SheetMasters,accounts,storage,catalog:window.WorkspaceMasters};
 }
 function csv(sheet,rows){return engine.template(sheet)+rows.map(row=>engine.columns[sheet].map(header=>'"'+String(row[header] ?? '').replace(/"/g,'""')+'"').join(',')).join('\r\n');}
 function sale(overrides={}){return {Date:'2026-10-19',Customer:'CUS001','Gross Amount':'112.00','Revenue Account':'4000',Terms:'On Account','Invoice Reference':'IMPORT-SI-001',...overrides};}
@@ -176,4 +176,43 @@ test('fill down follows source order, preserves existing values and excludes ski
     fillDown(rows,'Date');assert.equal(rows[0].values.Date,'2026-10-04');assert.equal(rows[2].values.Date,'2026-10-02');assert.equal(rows[2].duplicateReviewed,false);assert.equal(rows[3].values.Date,'2026-10-01');assert.equal(rows[4].values.Date,'');
     fillDown(rows,'Date',true);assert.equal(rows[0].values.Date,'2026-10-02');
     assert.throws(()=>fillDown([rows[0]],'Date'),/at least two/);assert.throws(()=>fillDown(rows,'Account'),/first selected source row/);
+});
+
+
+test('blank Sales CSV cells inherit client settings and explicit values override them',()=>{
+    const ws=workspace();
+    ws.catalog.atcCodes.push({code:'WB030',name:'VAT withholding',rate:3,category:'VAT Withholding'});
+    ws.catalog.preferences={sales:{terms:'On Account',classification:'Government',bankCode:'1030',cwtCode:'WC160',vatCwtCode:'WB030',hideCwt:true}};
+    const blank=sale({Terms:'',Classification:'','Deposit Account':'','Income Withholding ATC':'','VAT Withholding ATC':''});
+    const result=engine.preview('sales',csv('sales',[blank]),ws);
+    assert.deepEqual(result.errors,[]);
+    assert.equal(result.records[0].terms,'On Account');assert.equal(result.records[0].classification,'Government');
+    assert.equal(result.records[0].bank,'1030 \u00b7 BDO Checking');assert.equal(result.records[0].cwt,'WC160 \u00b7 2%');assert.equal(result.records[0].vatCwt,'WB030 \u00b7 3%');
+    const explicit=engine.preview('sales',csv('sales',[{...blank,Terms:'Cash',Classification:'Regular','Deposit Account':'1010','Income Withholding ATC':'None','VAT Withholding ATC':'0%'}]),ws);
+    assert.deepEqual(explicit.errors,[]);assert.equal(explicit.records[0].terms,'Cash');assert.equal(explicit.records[0].classification,'Regular');assert.equal(explicit.records[0].bank,'1010 \u00b7 Cash on Hand');assert.equal(explicit.records[0].cwt,'None');assert.equal(explicit.records[0].vatCwt,'None');
+});
+
+test('guided Sales imports apply the same defaults for unmapped cells without changing source values',()=>{
+    const ws=workspace();ws.catalog.preferences={sales:{terms:'On Account',classification:'Government',bankCode:'1030'}};
+    const row={_row:2,skip:false,values:sale({Terms:'','Tax Type':'VAT'})};
+    const result=engine.previewMapped('sales',[row],ws);
+    assert.deepEqual(result.errors,[]);assert.equal(result.records[0].terms,'On Account');assert.equal(result.records[0].classification,'Government');assert.equal(result.records[0].bank,'1030 \u00b7 BDO Checking');assert.equal(row.values.Terms,'');
+});
+
+test('Sales starts with Cash, Regular and Cash in Bank while Purchases keeps its existing defaults',()=>{
+    const ws=workspace();ws.accounts.push({id:100,code:'1020',name:'Cash in Bank',type:'Asset',is_cash_bank:true});
+    const sales=engine.preview('sales',csv('sales',[sale({Terms:''})]),ws);
+    assert.deepEqual(sales.errors,[]);assert.equal(sales.records[0].terms,'Cash');assert.equal(sales.records[0].classification,'Regular');assert.equal(sales.records[0].bank,'1020 \u00b7 Cash in Bank');
+    const purchases=engine.preview('purchases',csv('purchases',[purchase({Terms:''})]),ws);
+    assert.deepEqual(purchases.errors,[]);assert.equal(purchases.records[0].bank,'1010 \u00b7 Cash on Hand');
+});
+
+test('invalid explicit and archived configured deposit accounts are rejected instead of silently substituted',()=>{
+    const ws=workspace();ws.catalog.preferences={sales:{bankCode:'1030'}};
+    const invalid=engine.preview('sales',csv('sales',[sale({'Deposit Account':'NOT-AN-ACCOUNT'})]),ws);
+    assert.equal(invalid.errors.length,1);
+    ws.accounts.find(a=>a.code==='1030').archived=true;
+    const archived=engine.preview('sales',csv('sales',[sale({'Deposit Account':''})]),ws);
+    assert.equal(archived.errors.length,1);
+    const other=workspace();assert.equal(other.masters.salesDefaults().terms,'Cash');assert.equal(other.masters.salesDefaults().hideCwt,false);
 });

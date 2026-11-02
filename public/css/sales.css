@@ -249,3 +249,7 @@ html:not(.dark) .text-emerald-600 { color: #047857; }
     .sales-entry-drawer[open] { animation: sales-entry-in .18s ease-out; }
     @keyframes sales-entry-in { from { transform: translateX(100%); } to { transform: translateX(0); } }
 }
+
+#sales-table.sales-hide-cwt tr > :nth-child(9),
+#sales-table.sales-hide-vat-cwt tr > :nth-child(10) { display: none !important; }
+.sales-columns-toggle { margin: 8px 16px; padding: 6px 10px; border: 1px solid #64748b; border-radius: 6px; font-size: 12px; }

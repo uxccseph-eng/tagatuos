@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\SaveSettingsRequest;
 use App\Models\ChartAccount;
 use App\Models\CompanySetting;
+use App\Models\TaxCode;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -30,6 +31,7 @@ class SettingsController extends Controller
             'company' => $company,
             'section' => $section,
             'accounts' => ChartAccount::query()->where('workspace_key', $workspace)->where('archived', false)->where('is_cash_bank', true)->orderBy('code')->get(),
+            'withholdingCodes' => collect(TaxCode::atcCatalog($workspace))->filter(fn (array $code): bool => ! ($code['archived'] ?? false)),
         ]);
     }
 
@@ -50,7 +52,12 @@ class SettingsController extends Controller
             }
             $values['payroll_automation'] = (bool) ($values['payroll_automation'] ?? false);
             $values['payroll_frequency'] = $values['payroll_frequency'] ?? 'monthly';
-            $company['sheet_settings'] = $values;
+            foreach (['sales_hide_cwt', 'sales_hide_vat_cwt'] as $key) {
+                if (array_key_exists($key, $values)) {
+                    $values[$key] = (bool) $values[$key];
+                }
+            }
+            $company['sheet_settings'] = array_replace($company['sheet_settings'] ?? [], $values);
         } else {
             $company = array_replace($company, $values);
         }
