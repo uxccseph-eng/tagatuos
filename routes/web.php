@@ -133,8 +133,8 @@ Route::get('/company/setup', [CompanySetupController::class, 'create'])->name('c
 Route::post('/company/setup', [CompanySetupController::class, 'store'])->name('company.store');
 Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 Route::get('/settings', [SettingsController::class, 'index'])->name('settings');
-Route::get('/settings/{section}', [SettingsController::class, 'index'])->where('section', 'company|address|bir|sheets')->name('settings.section');
-Route::put('/settings/{section}', [SettingsController::class, 'update'])->where('section', 'company|address|bir|sheets')->name('settings.update');
+Route::get('/settings/{section}', [SettingsController::class, 'index'])->where('section', 'company|address|bir|sec|sheets')->name('settings.section');
+Route::put('/settings/{section}', [SettingsController::class, 'update'])->where('section', 'company|address|bir|sec|sheets')->name('settings.update');
 Route::redirect('/sheets', '/sheets/sales');
 Route::get('/sheets/database', [CompanyLedgerController::class, 'show'])->middleware('auth')->name('sheets.database.show');
 Route::post('/sheets/database', [CompanyLedgerController::class, 'save'])->middleware(['auth', 'throttle:120,1'])->name('sheets.database.save');

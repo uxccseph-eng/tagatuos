@@ -5,6 +5,8 @@
         <select id="setting-{{ $name }}" name="{{ $name }}" @required($required) {{ $attributes }} @error($name) aria-invalid="true" aria-describedby="error-{{ $name }}" @enderror>
             @foreach($options as $key => $caption)<option value="{{ $key }}" @selected((string) old($name, $value) === (string) $key)>{{ $caption }}</option>@endforeach
         </select>
+    @elseif($type === 'textarea')
+        <textarea id="setting-{{ $name }}" name="{{ $name }}" @required($required) {{ $attributes }} @error($name) aria-invalid="true" aria-describedby="error-{{ $name }}" @enderror>{{ old($name, $value) }}</textarea>
     @else
         <input id="setting-{{ $name }}" name="{{ $name }}" type="{{ $type }}" value="{{ old($name, $value) }}" @required($required) {{ $attributes }} @error($name) aria-invalid="true" aria-describedby="error-{{ $name }}" @enderror>
     @endif
