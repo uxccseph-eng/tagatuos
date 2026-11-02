@@ -32,7 +32,7 @@ class SetTenantContext
 
                 return $next($request);
             }
-            if (! $bookRoute && $request->route('companyId') === null) {
+            if (! $bookRoute && ($request->route('companyId') === null || $request->routeIs('account.companies.*', 'team.*'))) {
                 return $next($request);
             }
             $ids = array_filter([$request->route('companyId'), $request->query('company_id'), $bookRoute ? $request->header('X-Company-ID') : null, $request->input('_company_id'), $request->request->get('company_id')], fn (mixed $id): bool => $id !== null);

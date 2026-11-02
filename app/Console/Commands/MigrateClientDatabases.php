@@ -4,7 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\Company;
 use App\Services\ClientDatabase;
-use App\Services\ClientDatabaseTransfer;
+use App\Services\ClientProvisioner;
 use Illuminate\Console\Command;
 
 class MigrateClientDatabases extends Command
@@ -13,23 +13,26 @@ class MigrateClientDatabases extends Command
 
     protected $description = 'Apply accounting schema migrations to activated client databases';
 
-    public function handle(ClientDatabaseTransfer $transfer, ClientDatabase $databases): int
+    public function handle(ClientProvisioner $provisioner, ClientDatabase $databases): int
     {
-        foreach (Company::query()->whereNotNull('tenancy_activated_at')->when($this->option('company'), fn ($query) => $query->whereKey($this->option('company')))->orderBy('id')->get() as $company) {
+        $failed = false;
+        foreach (Company::query()->where('provisioning_status', 'ready')->whereNotNull('tenancy_activated_at')->when($this->option('company'), fn ($query) => $query->whereKey($this->option('company')))->orderBy('id')->cursor() as $company) {
             try {
-                $databases->central()->transaction(function () use ($company, $transfer): void {
+                $databases->central()->transaction(function () use ($company, $provisioner): void {
                     Company::query()->whereKey($company->id)->lockForUpdate()->firstOrFail();
-                    $company->run(fn () => $transfer->migrate($company->tenancy_db_connection));
+                    $company->run(fn () => $provisioner->migrate());
                 });
             } catch (\Throwable $exception) {
                 report($exception);
                 $this->error('Client '.$company->id.' migration failed: '.$exception->getMessage());
 
-                return self::FAILURE;
+                $failed = true;
+
+                continue;
             }
             $this->info('Client '.$company->id.' schema is current.');
         }
 
-        return self::SUCCESS;
+        return $failed ? self::FAILURE : self::SUCCESS;
     }
 }

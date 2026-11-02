@@ -32,6 +32,33 @@ return [
 
     'connections' => [
 
+        'client_template' => [
+            'driver' => env('CLIENT_DB_DRIVER', 'mysql'),
+            'host' => env('CLIENT_DB_HOST', '127.0.0.1'),
+            'port' => env('CLIENT_DB_PORT', '3306'),
+            'database' => null,
+            'username' => env('CLIENT_DB_USERNAME'),
+            'password' => env('CLIENT_DB_PASSWORD'),
+            'charset' => 'utf8mb4',
+            'collation' => 'utf8mb4_unicode_ci',
+            'prefix' => '',
+            'strict' => true,
+            'foreign_key_constraints' => true,
+        ],
+
+        'client_provisioner' => [
+            'driver' => env('CLIENT_DB_DRIVER', 'mysql'),
+            'host' => env('CLIENT_DB_HOST', '127.0.0.1'),
+            'port' => env('CLIENT_DB_PORT', '3306'),
+            'database' => null,
+            'username' => env('CLIENT_DB_PROVISIONER_USERNAME'),
+            'password' => env('CLIENT_DB_PROVISIONER_PASSWORD'),
+            'charset' => 'utf8mb4',
+            'collation' => 'utf8mb4_unicode_ci',
+            'prefix' => '',
+            'strict' => true,
+        ],
+
         'sqlite' => [
             'driver' => 'sqlite',
             'url' => env('DB_URL'),

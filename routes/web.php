@@ -122,6 +122,7 @@ Route::post('/portal/{firmSlug}/access/{tokenId}', [PortalController::class, 'co
 Route::middleware('auth')->prefix('account/companies')->name('account.companies.')->group(function (): void {
     Route::get('/', [CompanyBookController::class, 'index'])->name('index');
     Route::post('/', [CompanyBookController::class, 'store'])->middleware('throttle:20,1')->name('store');
+    Route::post('/{companyId}/provision', [CompanyBookController::class, 'retry'])->whereNumber('companyId')->middleware('throttle:3,1')->name('provision');
     Route::get('/{companyId}', [CompanyBookController::class, 'show'])->whereNumber('companyId')->name('show');
     Route::post('/{companyId}/open', [CompanyBookController::class, 'open'])->whereNumber('companyId')->name('open');
 });

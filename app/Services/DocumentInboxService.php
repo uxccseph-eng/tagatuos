@@ -44,7 +44,9 @@ class DocumentInboxService
         $extension = match ($file->getMimeType()) {
             'application/pdf' => 'pdf', 'image/jpeg' => 'jpg', 'image/png' => 'png', default => abort(422, 'Upload a PDF, JPG or PNG document.')
         };
-        $path = $companyId.'/'.Str::uuid().'.'.$extension;
+        $path = config('tenancy.enabled')
+            ? 'clients/'.Company::query()->findOrFail($companyId)->workspaceKey().'/documents/'.Str::uuid().'.'.$extension
+            : $companyId.'/'.Str::uuid().'.'.$extension;
         $disk = Storage::disk('documents');
         try {
             $stream = fopen($file->getRealPath(), 'rb');

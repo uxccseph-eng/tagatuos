@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreCompanyBookRequest;
+use App\Jobs\ProvisionClientDatabase;
 use App\Models\Company;
 use App\Services\CompanyBookService;
 use Illuminate\Http\JsonResponse;
@@ -23,6 +24,9 @@ class CompanyBookController extends Controller
     {
         $company = $books->createBook($request->user(), $request->validated('name'), $request->validated('slug'));
 
+        if (config('tenancy.enabled') && ! $request->expectsJson()) {
+            return to_route('account.dashboard')->with('status', 'Client created. Its database and private folder are being prepared. Refresh this page to check setup status.');
+        }
         if (! $request->expectsJson()) {
             $request->session()->put('active_company_id', $company->getKey());
             $request->session()->forget(['company_setup', 'preview_access']);
@@ -45,13 +49,14 @@ class CompanyBookController extends Controller
     public function open(Request $request, int $companyId, CompanyBookService $books): RedirectResponse
     {
         $company = $books->findAccessibleBook($request->user(), $companyId);
+        abort_if(config('tenancy.enabled') && ! $company->databaseReady(), 409, 'The client database is not ready. Check Company books for setup status.');
         $request->session()->put('active_company_id', $company->getKey());
         $request->session()->forget(['company_setup', 'preview_access']);
 
         return to_route('dashboard', ['company_id' => $company->id]);
     }
 
-    /** @return array{id: int, name: string, slug: ?string, role: string} */
+    /** @return array{id: int, name: string, slug: ?string, role: string, setup_status: string} */
     private function bookData(Company $company): array
     {
         return [
@@ -59,6 +64,18 @@ class CompanyBookController extends Controller
             'name' => $company->name,
             'slug' => $company->slug,
             'role' => $company->pivot->role,
+            'setup_status' => $company->provisioning_status,
         ];
+    }
+
+    public function retry(Request $request, int $companyId, CompanyBookService $books): RedirectResponse
+    {
+        $company = $books->findAccessibleBook($request->user(), $companyId);
+        abort_unless(config('tenancy.enabled') && $company->pivot->role === 'owner', 403, 'Only the book owner can retry client setup.');
+        if (! $company->databaseReady()) {
+            ProvisionClientDatabase::dispatch($company->id)->afterCommit();
+        }
+
+        return to_route('account.dashboard')->with('status', 'Client setup queued. Refresh this page to check its status.');
     }
 }

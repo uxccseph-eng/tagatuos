@@ -29,10 +29,17 @@ return [
     */
 
     'disks' => [
+        'client_files' => [
+            'driver' => 'local',
+            'root' => storage_path('app/private'),
+            'serve' => false,
+            'visibility' => 'private',
+            'throw' => true,
+        ],
 
         'documents' => [
             'driver' => 'local',
-            'root' => storage_path('app/private/documents'),
+            'root' => env('CLIENT_DATABASES_ENABLED', true) ? storage_path('app/private') : storage_path('app/private/documents'),
             'serve' => false,
             'throw' => true,
         ],

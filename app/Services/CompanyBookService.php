@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Jobs\ProvisionClientDatabase;
 use App\Models\Company;
 use App\Models\User;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -46,6 +47,9 @@ class CompanyBookService
                 $company->forceFill(['organization_owner_id' => $owner->id])->save();
                 $company->users()->attach($owner->getKey(), ['role' => 'owner']);
                 app(OrganizationTeamService::class)->inherit($company, $owner);
+                if (config('tenancy.enabled')) {
+                    ProvisionClientDatabase::dispatch($company->id)->afterCommit();
+                }
 
                 return $this->findAccessibleBook($owner, $company->getKey());
             }, attempts: 3);

@@ -7,9 +7,16 @@
             @forelse($companies as $companyBook)
                 <article class="account-card book-card">
                     <div class="book-avatar" aria-hidden="true">▤</div>
-                    <div class="book-copy"><h2>{{ $companyBook->name }}</h2><p><span class="role-badge">{{ ucfirst($companyBook->pivot->role) }}</span><span class="muted">{{ in_array($companyBook->workspaceKey(), $configuredWorkspaces, true) ? 'Setup complete' : 'Setup needed' }}</span><span class="role-badge">Shared database</span></p></div>
+                    <div class="book-copy"><h2>{{ $companyBook->name }}</h2><p><span class="role-badge">{{ ucfirst($companyBook->pivot->role) }}</span><span class="muted">{{ in_array($companyBook->workspaceKey(), $configuredWorkspaces, true) ? 'Setup complete' : 'Setup needed' }}</span><span class="role-badge">{{ config('tenancy.enabled') ? ucfirst($companyBook->provisioning_status).' database' : 'Shared database' }}</span></p></div>
                     @if($companyBook->pivot->role === 'owner')<a class="team-book-link" href="{{ route('team.index', ['companyId' => $companyBook->id]) }}">Manage team</a>@endif
+                    @if(config('tenancy.enabled') && ! $companyBook->databaseReady())
+                        <span class="muted">{{ $companyBook->provisioning_error ?: 'Preparing the client database and private folder. Refresh to check progress.' }}</span>
+                        @if($companyBook->pivot->role === 'owner' && in_array($companyBook->provisioning_status, ['pending', 'failed'], true))
+                            <form method="POST" action="{{ route('account.companies.provision', $companyBook->id) }}">@csrf<button class="button secondary" type="submit">Retry setup</button></form>
+                        @endif
+                    @else
                     <form method="POST" action="{{ route('account.companies.open', $companyBook->id) }}">@csrf<button class="button secondary" type="submit">Open book <span aria-hidden="true">→</span></button></form>
+                    @endif
                 </article>
             @empty
                 <div class="account-card empty-books"><span class="empty-icon" aria-hidden="true">▤</span><h2>{{ auth()->user()->type === 'accountant' ? 'No books assigned yet' : 'Your first book starts here' }}</h2><p class="muted">{{ auth()->user()->type === 'accountant' ? 'Your company owner will assign the books you can work on.' : 'Create a company book, then complete its registration details.' }}</p></div>

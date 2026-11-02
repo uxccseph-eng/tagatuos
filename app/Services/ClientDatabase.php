@@ -23,6 +23,10 @@ class ClientDatabase
 
     public function configured(Company $company): bool
     {
+        if (config('tenancy.enabled') && ! $company->databaseReady()) {
+            return false;
+        }
+
         return $this->run($company, fn (): bool => CompanySetting::query()->exists());
     }
 }
