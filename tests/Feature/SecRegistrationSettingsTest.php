@@ -3,7 +3,9 @@
 namespace Tests\Feature;
 
 use App\Models\ChartAccount;
+use App\Models\Company;
 use App\Models\CompanySetting;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -21,6 +23,36 @@ class SecRegistrationSettingsTest extends TestCase
     private function registration(): array
     {
         return ['registration_date' => '2023-10-20', 'sec_registration_number' => '2023100122011-00', 'authorized_shares' => '3000000', 'par_value_per_share' => '100.0000', 'issued_outstanding_shares' => '30000', 'going_concern_statement' => 'Management assessment for the reporting period.', 'deficiency_tax_assessments' => 'No assessments as of the reporting date.', 'tax_cases' => 'No pending cases as of the reporting date.'];
+    }
+
+    public function test_new_client_setup_saves_sec_details_and_restores_them_in_settings_and_setup(): void
+    {
+        $firm = User::factory()->firm()->create();
+        $book = Company::factory()->create();
+        $book->users()->attach($firm, ['role' => 'owner']);
+        $this->actingAs($firm)->withSession(['active_company_id' => $book->id]);
+        $this->get(route('company.setup'))->assertOk()->assertSee('SEC Registration')->assertSee('name="sec_registration_number"', false);
+        $payload = [...$this->company(), ...$this->registration(), 'contact_number' => '09170000000', 'preview_ack' => '1', 'payroll' => 'no', 'supplier_tax' => 'none', 'customer_tax' => 'no', 'ppe' => 'no'];
+        $this->post(route('company.store'), $payload)->assertSessionHasNoErrors()->assertRedirect(route('dashboard'));
+        $saved = CompanySetting::query()->where('workspace_key', $book->workspaceKey())->sole();
+        foreach ($this->registration() as $key => $value) {
+            $this->assertSame($value, $saved->profile[$key]);
+        }
+        $this->withSession(['company_setup' => null])->get(route('settings.section', ['section' => 'sec', 'company_id' => $book->id]))
+            ->assertOk()->assertSee('value="2023100122011-00"', false)->assertSee('Management assessment for the reporting period.');
+        $this->get(route('company.setup', ['company_id' => $book->id]))->assertOk()->assertSee('value="3000000"', false)->assertSee('value="100.0000"', false);
+        $legacy = array_diff_key($payload, $this->registration());
+        $this->post(route('company.store'), $legacy)->assertSessionHasNoErrors();
+        $this->assertSame('2023100122011-00', $saved->fresh()->profile['sec_registration_number']);
+    }
+
+    public function test_setup_rejects_invalid_corporate_values_and_ignores_them_for_individuals(): void
+    {
+        $payload = [...$this->company(), 'contact_number' => '09170000000', 'preview_ack' => '1', 'payroll' => 'no', 'supplier_tax' => 'none', 'customer_tax' => 'no', 'ppe' => 'no', 'registration_date' => 'bad', 'authorized_shares' => '100', 'issued_outstanding_shares' => '101', 'par_value_per_share' => '-1'];
+        $this->withSession(['preview_access' => true])->post('/company/setup', $payload)
+            ->assertSessionHasErrors(['registration_date', 'issued_outstanding_shares', 'par_value_per_share'])->assertSessionMissing('company_setup');
+        $this->post('/company/setup', [...$payload, 'entity_type' => 'individual', 'tax_cases' => 'Reviewed disclosure'])
+            ->assertSessionHasNoErrors()->assertSessionHas('company_setup.tax_cases', 'Reviewed disclosure')->assertSessionMissing('company_setup.authorized_shares');
     }
 
     public function test_sec_page_requires_a_workspace_and_renders_blank_disclosures(): void

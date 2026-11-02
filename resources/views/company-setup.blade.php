@@ -762,6 +762,11 @@
 
 
 
+      <section class="setup-sec space-y-6" aria-labelledby="setup-sec-title">
+        <div><h2 id="setup-sec-title" class="text-lg font-bold text-white">SEC Registration</h2><p class="mt-1 text-sm text-slate-400">Optional registration details and disclosures. You can update these later in Settings.</p></div>
+        @include('sec-registration-settings', ['company' => array_replace($company, ['entity_type' => old('entity_type', $company['entity_type'] ?? 'corporation')]), 'setup' => true])
+      </section>
+
       <!-- CARD 6: YOUR SHEETS CONFIGURATION -->
 
       <div class="glass-card rounded-2xl p-6 sm:p-7 space-y-6">

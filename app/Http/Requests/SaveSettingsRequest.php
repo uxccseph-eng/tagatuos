@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use App\Models\ChartAccount;
 use App\Models\TaxCode;
+use App\SecRegistrationRules;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -51,16 +52,7 @@ class SaveSettingsRequest extends FormRequest
                 'accreditation_issued' => ['nullable', 'date_format:Y-m-d'],
                 'accreditation_expiry' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:accreditation_issued'],
             ],
-            'sec' => [
-                'going_concern_statement' => ['nullable', 'string', 'max:5000'],
-                'deficiency_tax_assessments' => ['nullable', 'string', 'max:5000'],
-                'tax_cases' => ['nullable', 'string', 'max:5000'],
-                'registration_date' => [Rule::excludeIf($this->session()->get('company_setup.entity_type') === 'individual'), 'nullable', 'date_format:Y-m-d'],
-                'sec_registration_number' => [Rule::excludeIf($this->session()->get('company_setup.entity_type') === 'individual'), ...$text],
-                'authorized_shares' => [Rule::excludeIf($this->session()->get('company_setup.entity_type') === 'individual'), 'nullable', 'integer', 'min:0', 'max:999999999999'],
-                'par_value_per_share' => [Rule::excludeIf($this->session()->get('company_setup.entity_type') === 'individual'), 'nullable', 'string', 'regex:/^\d{1,12}(?:\.\d{1,4})?$/D'],
-                'issued_outstanding_shares' => [Rule::excludeIf($this->session()->get('company_setup.entity_type') === 'individual'), 'nullable', 'integer', 'min:0', 'max:999999999999', ...($this->filled('authorized_shares') ? ['lte:authorized_shares'] : [])],
-            ],
+            'sec' => SecRegistrationRules::forCompany($this->session()->get('company_setup.entity_type') === 'individual', $this->filled('authorized_shares')),
             'sheets' => [
                 'payroll' => ['required', 'boolean'], 'cwt' => ['required', 'boolean'],
                 'wtp' => ['required', 'boolean'], 'ppe' => ['required', 'boolean'],

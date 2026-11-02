@@ -112,3 +112,13 @@ if (rdoSearch && rdoSelect && rdoTrigger && rdoPicker) {
         if (!rdoPicker.parentElement.contains(event.relatedTarget)) closePicker();
     });
 }
+
+function updateSecRegistrationFields() {
+    const isIndividual = document.querySelector('[name="entity_type"]:checked')?.value === 'individual';
+    const fields = document.querySelector('[data-sec-corporate-fields]');
+    const notice = document.querySelector('[data-sec-individual-note]');
+    if (fields) { fields.disabled = isIndividual; }
+    if (notice) { notice.hidden = !isIndividual; }
+}
+document.querySelectorAll('[name="entity_type"]').forEach(input => input.addEventListener('change', updateSecRegistrationFields));
+updateSecRegistrationFields();

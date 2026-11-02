@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\ChartAccount;
 use App\Models\CompanySetting;
 use App\RevenueDistrictOffices;
+use App\SecRegistrationRules;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -44,6 +45,7 @@ class CompanySetupController extends Controller
         }
 
         $data = $request->validate([
+            ...SecRegistrationRules::forCompany($request->input('entity_type') === 'individual', $request->filled('authorized_shares')),
             'full_name' => ['required', 'string', 'max:255'],
             'preview_ack' => ['accepted'],
             'vat_type' => ['required', Rule::in(['vat', 'non_vat'])],

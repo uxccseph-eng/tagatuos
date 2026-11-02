@@ -72,3 +72,20 @@ body {
 /* Search is contained inside the RDO selector. */
 .rdo-trigger{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;padding:10px 16px;border:1px solid #334155cc;border-radius:12px;background:#020617cc;color:#fff;text-align:left;font-size:14px}.rdo-trigger:focus-visible{outline:2px solid #34d399}.rdo-trigger[hidden],.rdo-picker[hidden],#rdo-select[hidden]{display:none}.rdo-picker{position:absolute;left:0;right:0;top:calc(100% + 6px);z-index:40;padding:8px;background:#0f172a;border:1px solid #334155;border-radius:12px;box-shadow:0 16px 35px #0007}.rdo-picker input{width:100%;padding:10px 12px;background:#020617;color:#fff;border:1px solid #334155;border-radius:8px;font-size:13px;outline:none}.rdo-picker input:focus{border-color:#34d399}#rdo-options{max-height:240px;overflow-y:auto;margin-top:6px}#rdo-options [role=option]{padding:9px 12px;border-radius:6px;color:#cbd5e1;font-size:13px;cursor:pointer}#rdo-options [role=option]:hover,#rdo-options .rdo-active{background:#1e293b;color:#fff}#rdo-options [aria-selected=true]{color:#34d399}#rdo-result-count{padding:8px 12px 2px;font-size:11px;color:#94a3b8}
 .glass-card:has(.rdo-picker:not([hidden])){position:relative;z-index:45}
+
+.setup-sec .settings-card{background:rgba(13,20,36,.72);border:1px solid #3341558c;border-radius:16px;padding:28px}
+.setup-sec .settings-card-title{padding-bottom:16px;margin-bottom:20px;border-bottom:1px solid #1e293bb3}
+.setup-sec h3{font-size:16px;font-weight:700;color:#fff}
+.setup-sec .settings-card-title p,.setup-sec .settings-footnote{font-size:12px;color:#94a3b8;line-height:1.7;margin-top:6px}
+.setup-sec .settings-disclosures{display:grid;gap:22px}
+.setup-sec .settings-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:22px}
+.setup-sec .settings-field{display:flex;flex-direction:column;gap:8px;font-size:13px;min-width:0}
+.setup-sec .settings-field>span{font-weight:600;color:#cbd5e1}
+.setup-sec .settings-field input,.setup-sec .settings-field textarea{width:100%;min-width:0;border:1px solid #334155cc;border-radius:10px;background:#020617cc;padding:11px 14px;color:#fff;font:inherit}
+.setup-sec .settings-field textarea{resize:vertical;line-height:1.7;min-height:110px}
+.setup-sec .settings-field small{font-size:11px;line-height:1.6;color:#94a3b8}
+.setup-sec .settings-field .settings-error{color:#fca5a5}
+.setup-sec .settings-field [aria-invalid=true]{border-color:#fca5a5}
+.setup-sec .settings-registration-fields{min-width:0;border:0;padding:0;margin:20px 0 0}
+.setup-sec .settings-registration-fields:disabled{opacity:.5}
+@media(max-width:639px){.setup-sec .settings-card{padding:22px}.setup-sec .settings-grid{grid-template-columns:1fr}}
