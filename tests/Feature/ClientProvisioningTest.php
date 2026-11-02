@@ -138,6 +138,29 @@ class ClientProvisioningTest extends TestCase
         $this->assertSame('sqlite', DB::getDefaultConnection());
     }
 
+    public function test_setup_ignores_tables_visible_in_another_client_schema(): void
+    {
+        $existing = $this->readyClient();
+        $new = $this->newClient();
+        $manager = app(DatabaseManager::class);
+        $this->partialMock(DatabaseManager::class, function ($mock) use ($manager, $existing): void {
+            $mock->shouldReceive('createTenantConnection')->andReturnUsing(function (Company $company) use ($manager, $existing): void {
+                $manager->createTenantConnection($company);
+                DB::connection('tenant')->statement('ATTACH DATABASE ? AS other_client', [database_path($existing->tenancy_db_name)]);
+            });
+        });
+
+        app(ClientProvisioner::class)->provision($new->id);
+
+        $this->assertTrue($new->fresh()->databaseReady());
+        $this->assertTrue($existing->fresh()->databaseReady());
+        $new->fresh()->run(function () use ($new): void {
+            $this->assertSame($new->id, DB::table('client_database_identity')->value('company_id'));
+            $this->assertSame(0, CompanySetting::query()->count());
+            $this->assertGreaterThan(0, ChartAccount::query()->count());
+        });
+    }
+
     public function test_two_tabs_save_to_their_own_database_after_switching_session_preference(): void
     {
         $owner = User::factory()->firm()->create();

@@ -58,7 +58,8 @@ class ClientProvisioner
                 $manager->createTenantConnection($company);
                 try {
                     $connection = DB::connection('tenant');
-                    $tables = array_column($connection->getSchemaBuilder()->getTables(), 'name');
+                    $schema = $connection->getSchemaBuilder();
+                    $tables = array_column($schema->getTables($schema->getCurrentSchemaListing()), 'name');
                     if ($tables !== []) {
                         if (! in_array('client_database_identity', $tables, true)) {
                             throw new RuntimeException('The destination is not an empty client database.');
