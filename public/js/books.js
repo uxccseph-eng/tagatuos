@@ -82,8 +82,27 @@
     element('books-sort').addEventListener('click',()=>{descending=!descending;element('books-sort').setAttribute('aria-pressed',String(descending));render();});element('books-group').addEventListener('click',()=>{grouped=!grouped;element('books-group').setAttribute('aria-pressed',String(grouped));render();});
     element('books-source').addEventListener('change',render);for(const id of ['books-search','sales-global-search'])element(id).addEventListener('input',render);
     element('books-branch').addEventListener('click',()=>info('Branch: Main','This workspace currently uses one branch. All transactions in this local register are shown under Main.'));
-    element('books-info-close').addEventListener('click',()=>element('books-info').close());element('books-pdf').addEventListener('click',()=>window.print());
-    element('books-excel').addEventListener('click',()=>{const escape=value=>typeof value==='number'?String(value):'"'+String(value ?? '').replace(/^[=+@\-\t\r]/,"'$&").replace(/"/g,'""')+'"';const lines=[report.columns.map(column=>column.title),...report.rows.map(row=>report.columns.map(column=>column.format==='money'?(row[column.key]===undefined?'':Number((row[column.key]/100).toFixed(2))):row[column.key] || ''))];const url=URL.createObjectURL(new Blob(['\uFEFF'+lines.map(row=>row.map(escape).join(',')).join('\r\n')],{type:'text/csv;charset=utf-8'}));const link=document.createElement('a');link.href=url;link.download=book+'-'+period+'.csv';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);element('books-status').textContent='CSV working copy exported for Excel.';});
+    element('books-info-close').addEventListener('click',()=>element('books-info').close());
+    async function exportBook(format) {
+        const buttons=[element('books-excel'),element('books-pdf')];buttons.forEach(button=>button.disabled=true);
+        element('books-status').textContent='Preparing '+format.toUpperCase()+' export...';
+        try {
+            if(window.CompanyLedger){await window.CompanyLedger.flush();if(window.CompanyLedger.pending())throw Error('Save or recover pending records before exporting this book.');}
+            render();
+            const range=window.WorkingPeriod.current(),data=window.BooksExport.payload(report,book,range);
+            const headers={'Content-Type':'application/json','Accept':'application/json','X-CSRF-TOKEN':window.WorkspaceMasters.csrfToken};
+            if(window.CompanyLedgerDatabase)headers['X-Ledger-Revision']=String(window.CompanyLedgerDatabase.revision);
+            const response=await fetch(main.dataset.exportUrl.replace('__format__',format),{method:'POST',credentials:'same-origin',headers,body:JSON.stringify(data)});
+            if(!response.ok){const error=await response.json().catch(()=>({}));throw Error(error.message || 'The export could not be generated. Please try again.');}
+            const url=URL.createObjectURL(await response.blob()),link=document.createElement('a');
+            const code={'general-ledger':'gl','subsidiary-ledger':'sl','subsidiary-sales':'ssj','subsidiary-purchase':'spj','cash-disbursements':'cdj','cash-receipts':'crj'}[book] || book;
+            link.href=url;link.download=code+'-'+range.from+'-to-'+range.to+'.'+format;document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+            element('books-status').textContent=format.toUpperCase()+' exported for the selected period and filters.';
+        } catch(error) {element('books-status').textContent=error.message;info('Export unavailable',error.message);}
+        finally {buttons.forEach(button=>button.disabled=false);}
+    }
+    element('books-pdf').addEventListener('click',()=>exportBook('pdf'));
+    element('books-excel').addEventListener('click',()=>exportBook('xlsx'));
     document.querySelectorAll('[data-sales-info],[data-journal-add]').forEach(button=>button.addEventListener('click',event=>{event.preventDefault();info(button.hasAttribute('data-journal-add')?'Create a transaction':button.textContent.trim(),'Books are read-only reports. Add or edit transactions from their source Sheets page.');}));
     const menu=element('sales-menu-toggle'),backdrop=element('sales-backdrop');const closeMenu=()=>{document.body.classList.remove('sales-menu-open');menu.setAttribute('aria-expanded','false');backdrop.hidden=true;};menu.addEventListener('click',()=>{const open=document.body.classList.toggle('sales-menu-open');menu.setAttribute('aria-expanded',String(open));backdrop.hidden=!open;});backdrop.addEventListener('click',closeMenu);window.matchMedia('(min-width:1024px)').addEventListener('change',closeMenu);
     document.addEventListener('keydown',event=>{if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==='k'){event.preventDefault();element('books-filter-panel').hidden=false;element('books-filter').setAttribute('aria-expanded','true');element('books-search').focus();}});

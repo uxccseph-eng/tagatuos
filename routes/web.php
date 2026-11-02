@@ -160,6 +160,7 @@ Route::get('/sheets/journal', [JournalController::class, 'index'])->name('sheets
 
 Route::redirect('/books', '/books/general-journal')->name('books');
 Route::get('/books/{book}', [BooksController::class, 'index'])->name('books.show');
+Route::post('/books/{book}/export/{format}', [BooksController::class, 'export'])->where('format', 'xlsx|pdf')->middleware('throttle:15,1,books-export:')->name('books.export');
 
 Route::redirect('/masters', '/masters/chart-of-accounts')->name('masters');
 Route::prefix('masters/{registry}')->where(['registry' => 'chart-of-accounts|parties|tax-codes|bank-accounts|atc-codes|employees'])->group(function (): void {

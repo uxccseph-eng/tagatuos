@@ -66,7 +66,7 @@ class EnsureActiveCompany
         };
         abort_if($modules !== [] && array_intersect($modules, $allowed) === [], 403, 'Your company book owner has not enabled this module for your account.');
         $request->attributes->set('company_allowed_tabs', $allowed);
-        if ($request->isMethod('POST') && $request->is('reports/*', 'tax-reports/*')) {
+        if ($request->isMethod('POST') && ($request->is('reports/*', 'tax-reports/*') || $request->routeIs('books.export'))) {
             $revision = (string) (CompanyLedger::query()->where('company_id', $company->id)->value('revision') ?? 0);
             abort_unless($request->header('X-Ledger-Revision') === $revision, 409, 'The company records changed or this page is outdated. Reload the latest records before exporting.');
         }
