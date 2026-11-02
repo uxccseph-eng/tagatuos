@@ -95,3 +95,11 @@ test('import previews a single run atomically and blocks duplicates or incomplet
     assert.throws(() => payroll.importRun([['wrong'], row], []), /template headers/);
     assert.throws(() => payroll.importRun([rows[0], [...row.slice(0, 6), 'oops', ...row.slice(7)]], []), /non-negative amount/);
 });
+
+
+test('deleting a void payroll compacts later numbers and keeps drafts unnumbered',()=>{
+ const previous=[{...draft(),id:'one',status:'void',number:'PYRJ-000001'},{...draft(),id:'two',status:'posted',number:'PYRJ-000002'},{...draft(),id:'three',number:'PYRJ-000099'}];
+ const result=payroll.renumber(previous.map(record=>record.id==='one'?{...record,status:'archived'}:record),true,previous);
+ assert.equal(result[0].status,'archived');assert.equal(result[0].number,'PYRJ-000001');assert.equal(result[1].number,'PYRJ-000001');assert.equal(result[2].number,'');
+ const posted=payroll.post(result,['three']);assert.equal(posted[2].number,'PYRJ-000002');
+});

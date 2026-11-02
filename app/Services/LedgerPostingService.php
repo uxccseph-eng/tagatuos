@@ -21,6 +21,13 @@ class LedgerPostingService
 
     private string $workspace;
 
+    public function purchaseTaxBase(Company $company, array $bill): int
+    {
+        $this->workspace = $company->workspaceKey();
+
+        return $this->taxNet($this->amount($bill['gross'] ?? null), (string) ($bill['tax'] ?? ''));
+    }
+
     /** @return list<array<string, mixed>> */
     public function prepare(Company $company, array $state, array $payroll, array $existing): array
     {
@@ -328,7 +335,7 @@ class LedgerPostingService
             $settled = 0;
             foreach ($receiptsByInvoice[$sale['number']] ?? [] as $receipt) {
                 if ($receipt['status'] === 'posted' && ($receipt['type'] ?? '') !== 'Advance' && ($receipt['invoice'] ?? '') === $sale['number']) {
-                    if ($sale['status'] !== 'posted' || $receipt['customer'] !== $sale['customer']) {
+                    if ($sale['status'] !== 'posted' || $receipt['customer'] !== $sale['customer'] || (isset($receipt['saleId']) && (string) $receipt['saleId'] !== (string) $sale['id'])) {
                         $this->fail('A receipt must match its posted source sale and customer.');
                     }
                     $settled += $this->amount($receipt['amount']);
@@ -336,7 +343,7 @@ class LedgerPostingService
             }
             foreach ($cwtByInvoice[$sale['number']] ?? [] as $certificate) {
                 if ($certificate['status'] === 'posted' && ($certificate['invoice'] ?? '') === $sale['number']) {
-                    if ($sale['status'] !== 'posted' || $certificate['customer'] !== $sale['customer']) {
+                    if ($sale['status'] !== 'posted' || $certificate['customer'] !== $sale['customer'] || (isset($certificate['saleId']) && (string) $certificate['saleId'] !== (string) $sale['id'])) {
                         $this->fail('CWT must match its posted source sale and customer.');
                     }
                     if (($certificate['taxBase'] ?? 0) !== $this->historicalTaxNet($sale['gross'], $sale['tax'])) {

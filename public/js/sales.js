@@ -640,7 +640,7 @@ document.getElementById('delete-voided-entry-btn').addEventListener('click',()=>
     record.status='archived';updateSheet();entryDrawer.close();
     announce(`${record.number} removed from this tab. `);
     const undo=document.createElement('button');undo.type='button';undo.textContent='Undo delete';undo.className='underline';
-    undo.addEventListener('click',()=>{record.status='void';updateSheet();announce(`${record.number} restored as voided.`);openEntryDrawer(record);});
+    undo.addEventListener('click',()=>{if([...entries.values()].some(item=>item.id!==record.id&&!['draft','archived'].includes(item.status)&&item.number===record.number)){announce('That number has been reassigned. Duplicate the archived entry as a new draft instead.');return;}record.status='void';updateSheet();announce(`${record.number} restored as voided.`);openEntryDrawer(record);});
     statusMessage.append(undo);
 });
 

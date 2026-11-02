@@ -5,7 +5,7 @@
     const storageKey = `kontadurya.ledger.v1.${workspace.dataset.key}`;
     const clone = value => JSON.parse(JSON.stringify(value));
     const isCompanyBook = /^company-[a-f0-9]{64}$/.test(workspace.dataset.key);
-    let state, storedState;
+    let state, storedState, numberedState;
     try { storedState = sessionStorage.getItem(storageKey); state = JSON.parse(storedState); }
     catch (error) { if (isCompanyBook) throw new Error('Company book storage could not be read. Existing data has not been replaced.'); state = null; }
     if (window.CompanyLedger) state = window.CompanyLedger.state();
@@ -24,20 +24,29 @@
     }
     function assignPostedNumbers(key,records) {
         const prefix={sales:'SI',purchases:'BILL',collections:'CR',payments:'PV',cwtCertificates:'2307R',wtpCertificates:'2307I',journalEntries:'GJ'}[key];
-        let next=Math.max(0,...[...state[key].filter(record=>record.status!=='draft'),...records.filter(record=>record.status!=='draft'&&!state[key].some(previous=>previous.id===record.id&&previous.status==='draft'))].map(record=>Number(String(record.number||'').match(new RegExp('^'+prefix+'-(\\d+)$'))?.[1])||0));
+        let next=Math.max(0,...[...state[key].filter(record=>!['draft','archived'].includes(record.status)),...records.filter(record=>!['draft','archived'].includes(record.status)&&!state[key].some(previous=>previous.id===record.id&&previous.status==='draft'))].map(record=>Number(String(record.number||'').match(new RegExp('^'+prefix+'-(\\d+)$'))?.[1])||0));
         for(const record of records){
             if(record.status==='draft'){record.number='';continue;}
             const previous=state[key].find(item=>item.id===record.id);
             if(record.status!=='posted'){if(previous?.status==='draft')record.number='';continue;}
-            if(!record.number||previous?.status==='draft')record.number=previous&&previous.status!=='draft'?previous.number:prefix+'-'+String(++next).padStart(6,'0');
+            if(!record.number||previous?.status==='draft')record.number=previous&&previous.status!=='draft'&&previous.number?previous.number:prefix+'-'+String(++next).padStart(6,'0');
+        }
+        const reserved=new Set();
+        for(const record of records.filter(record=>!['draft','archived'].includes(record.status)&&record.number)){
+            if(reserved.has(record.number))throw new Error('That number has been reassigned. Duplicate the archived entry as a new draft instead.');
+            reserved.add(record.number);
         }
         return records;
     }
     function synchronizeNumbers(key,input){for(const record of input){const saved=state[key].find(item=>item.id===record.id);if(saved){record.number=saved.number;if(['cwtCertificates','wtpCertificates'].includes(key))record.certificate=saved.certificate;}}}
+    function rememberNumbers(){return Object.fromEntries(['sales','purchases','collections','payments','cwtCertificates','wtpCertificates','journalEntries'].map(key=>[key,new Map(state[key].map(record=>[String(record.id),record.status]))]));}
     function persist() {
+        if(numberedState)for(const key of ['sales','purchases','collections','payments','cwtCertificates','wtpCertificates','journalEntries']){
+            if(state[key].some(record=>record.status==='archived'&&numberedState[key].get(String(record.id))==='void'))compactTransactions(key);
+        }
         for(const key of ['sales','purchases','collections','payments','cwtCertificates','wtpCertificates','journalEntries'])for(const record of state[key])if(record.status==='draft')record.number='';
-        if (window.CompanyLedger) { window.CompanyLedger.saveState(state); return; }
-        try { sessionStorage.setItem(storageKey,JSON.stringify(state)); }
+        if (window.CompanyLedger) { window.CompanyLedger.saveState(state); numberedState=rememberNumbers(); return; }
+        try { sessionStorage.setItem(storageKey,JSON.stringify(state)); numberedState=rememberNumbers(); }
         catch { throw new Error('Browser session storage is unavailable. Records cannot be shared between these pages.'); }
     }
     function normalizeTerms(sales) {
@@ -180,7 +189,7 @@
     if(!Array.isArray(state.payments))state.payments=[];
     function nextPayment(posted=false) {
         const id=state.payments.reduce((highest,record)=>Math.max(highest,Number(record.id) || 0),0)+1;
-        const number=state.payments.reduce((highest,record)=>Math.max(highest,Number(String(record.number).split('-')[1]) || 0),0)+1;
+        const number=state.payments.filter(record=>!['draft','archived'].includes(record.status)).reduce((highest,record)=>Math.max(highest,Number(String(record.number).split('-')[1]) || 0),0)+1;
         return {id,number:posted?`PV-${String(number).padStart(6,'0')}`:''};
     }
     function syncCashPayments() {
@@ -192,6 +201,40 @@
             if(!payment&&cash&&remaining>0){payment={...nextPayment(true),origin:'cash-purchase',billId:bill.id,attachments:[],history:[],notes:bill.description || ''};state.payments.push(payment);}
             if(payment)Object.assign(payment,{date:bill.date,supplier:bill.supplier,tin:bill.tin || '',billId:bill.id,bill:bill.number,amount:payment.paymentVoided||payment.paymentArchived?payment.amount:remaining,bank:bill.bank,method:'Cash',reference:bill.reference || '',type:'AP Settlement',account:'2010 · Accounts Payable',status:payment.paymentArchived?'archived':cash&&!payment.paymentVoided?'posted':'void'});
         });
+    }
+
+    function syncCashWithholding(previousPurchases=[]) {
+        for(const bill of state.purchases){
+            const id='cash-wtp:'+bill.id;
+            let certificate=state.wtpCertificates.find(record=>String(record.id)===id&&record.origin==='cash-purchase-withholding');
+            const manual=state.wtpCertificates.some(record=>record!==certificate&&record.status==='posted'&&String(record.billId)===String(bill.id));
+            const eligible=bill.status==='posted'&&bill.terms==='Cash'&&Number(bill.ewt)>0;
+            if(!eligible){
+                if(certificate?.status==='posted')Object.assign(certificate,{status:'void',sourceVoided:true,voidReason:'Source purchase is no longer a posted cash purchase with EWT.'});
+                continue;
+            }
+            const before=previousPurchases.find(record=>String(record.id)===String(bill.id));
+            if(!certificate&&before&&JSON.stringify(before)===JSON.stringify(bill))continue;
+            if(manual||certificate&&certificate.status!=='posted'&&!certificate.sourceVoided)continue;
+            if(!certificate){certificate={id,number:'',certificate:'',origin:'cash-purchase-withholding'};state.wtpCertificates.push(certificate);}
+            Object.assign(certificate,{billId:bill.id,bill:bill.number,date:bill.date,supplier:bill.supplier,tin:bill.tin || bill.supplierTin || '',taxBase:purchaseAmounts(bill).net,ewt:bill.ewt,wvat:bill.wvat || 0,ewtCode:bill.ewtCode || '',wvatCode:bill.wvatCode || '',offset:'2010 · Accounts Payable - Trade',status:'posted',sourceVoided:false});
+        }
+        assignPostedNumbers('wtpCertificates',state.wtpCertificates);
+        for(const certificate of state.wtpCertificates.filter(record=>record.status==='posted'&&!record.certificate))certificate.certificate=certificateNumber(certificate,state.wtpCertificates);
+    }
+    function compactTransactions(key){
+        const prefix={sales:'SI',purchases:'BILL',collections:'CR',payments:'PV',cwtCertificates:'2307R',wtpCertificates:'2307I',journalEntries:'GJ'}[key];
+        const oldSales=new Map(state.sales.filter(record=>record.status!=='archived'&&record.number).map(record=>[record.number,record.id]));
+        const active=state[key].filter(record=>['posted','void'].includes(record.status)&&new RegExp('^'+prefix+'-\\d+$').test(record.number)).sort((a,b)=>Number(a.number.split('-').at(-1))-Number(b.number.split('-').at(-1))||String(a.id).localeCompare(String(b.id)));
+        active.forEach((record,index)=>{
+            const previous=record.number;record.number=prefix+'-'+String(index+1).padStart(6,'0');
+            if(['cwtCertificates','wtpCertificates'].includes(key)&&record.certificate===previous)record.certificate=record.number;
+        });
+        const sales=new Map(state.sales.map(record=>[String(record.id),record.number])),bills=new Map(state.purchases.map(record=>[String(record.id),record.number]));
+        for(const record of [...state.collections,...state.cwtCertificates].filter(record=>record.status!=='archived')){
+            const id=record.saleId??oldSales.get(record.invoice);if(id!==undefined&&sales.has(String(id))){record.invoice=sales.get(String(id));record.saleId=id;}
+        }
+        for(const record of [...state.payments,...state.wtpCertificates].filter(record=>record.status!=='archived'))if(record.billId!==undefined&&bills.has(String(record.billId)))record.bill=bills.get(String(record.billId));
     }
     function payableBills() {
         return state.purchases.filter(bill=>bill.status==='posted').map(bill=>{
@@ -217,7 +260,7 @@
         return '';
     }
     function nextCollectionNumber() {
-        return state.collections.reduce((highest,record)=>{
+        return state.collections.filter(record=>!['draft','archived'].includes(record.status)).reduce((highest,record)=>{
             const suffix=String(record.number || '').match(/^CR-(\d+)$/);
             const number=suffix?Number(suffix[1]):0;
             return Number.isSafeInteger(number)?Math.max(highest,number):highest;
@@ -306,7 +349,7 @@
                     if(seen.has(signature))throw new Error('Duplicate entry: already in this file or the current sheet.');
                     record.id=state[key].reduce((highest,item)=>Math.max(highest,Number(item.id) || 0),0)+1;
                     if(sheet==='collections')record.id=state.nextCollectionId++;
-                    const suffix=state[key].reduce((highest,item)=>Math.max(highest,Number(String(item.number).split('-').at(-1)) || 0),0)+1;
+                    const suffix=state[key].filter(item=>!['draft','archived'].includes(item.status)).reduce((highest,item)=>Math.max(highest,Number(String(item.number).split('-').at(-1)) || 0),0)+1;
                     record.number=prefix+'-'+String(suffix).padStart(6,'0');record.status='posted';if(['cwt','wtp'].includes(sheet))record.certificate=certificateNumber(record,state[key]);record.origin='manual';record.attachments=[];record.createdAt=new Date().toISOString();record.postedAt=record.createdAt;record.history=[{label:'Imported and posted',user,time:record.createdAt}];
                     if(!/^\d{4}-\d{2}-\d{2}$/.test(record.date || '')||Number.isNaN(Date.parse(record.date+'T12:00:00Z'))||new Date(record.date+'T12:00:00Z').toISOString().slice(0,10)!==record.date)throw new Error('Enter a valid transaction date.');
                     if(window.SheetMasters){const tin=record.tin;Object.assign(record,window.SheetMasters.partySnapshot(record));if(tin)record.tin=tin;}
@@ -333,12 +376,14 @@
                     state[key].push(record);seen.add(signature);imported.push(record);
                 }catch(problem){errors.push({row:input._row || 0,message:problem.message});}
             }
-            if(commit&&!errors.length){state.nextCollectionNumber=nextCollectionNumber();syncCashCollections();syncCashPayments();persist();return {count:imported.length,records:clone(imported),errors:[]};}
+            if(commit&&!errors.length){if(sheet==='purchases')syncCashWithholding(previous.purchases);state.nextCollectionNumber=nextCollectionNumber();syncCashCollections();syncCashPayments();persist();return {count:imported.length,records:clone(imported),errors:[]};}
             state=previous;
             if(commit)throw new Error(errors.map(error=>'Row '+error.row+': '+error.message).join('\n'));
             return {count:imported.length,records:clone(imported),errors};
         }catch(error){state=previous;throw error;}
     }
+    numberedState=rememberNumbers();
+    window.addEventListener('company-ledger:saved',()=>{if(window.CompanyLedger){state=window.CompanyLedger.state();numberedState=rememberNumbers();}});
     window.KontaduryaLedger = {
         importFingerprint,
         previewImport:(sheet,records)=>processImport(sheet,records,false,'Import preview'),
@@ -349,6 +394,7 @@
             const status={void:'posted','delete-drafts':'draft','delete-voids':'void','undo-delete-voids':'archived'}[action],selected=new Set(ids.map(String));
             const targets=state[key].filter(record=>selected.has(String(record.id))&&record.status===status);
             if(!targets.length)throw new Error('No selected entries match this action.');
+            if(action==='undo-delete-voids'&&targets.some(target=>state[key].some(record=>record.id!==target.id&&!['draft','archived'].includes(record.status)&&record.number===target.number)))throw new Error('That number has been reassigned. Duplicate the archived entry as a new draft instead.');
             if(action==='void'&&!reason.trim())throw new Error('Enter a reason for voiding the selected entries.');
             const previous=state,time=new Date().toISOString();state=clone(state);
             try{
@@ -366,6 +412,7 @@
                     }
                     record.history=[...(record.history || []),{label:action==='void'?'Voided':action==='delete-voids'?'Archived':'Unarchived',user,time}];
                 }
+                if(sheet==='purchases')syncCashWithholding(previous.purchases);
                 state.nextCollectionNumber=nextCollectionNumber();syncCashCollections();syncCashPayments();persist();
             }catch(error){state=previous;throw error;}
             return {count:targets.length,ids:targets.map(record=>record.id)};
@@ -385,8 +432,8 @@
         saveJournalEntries(entries){
             const next=assignPostedNumbers('journalEntries',clone(entries)),ids=new Set(),numbers=new Set(),remittedPayrolls=new Set();
             for(const record of next){
-                if(ids.has(record.id)||(record.number&&numbers.has(record.number)))throw new Error('Duplicate journal transaction.');
-                ids.add(record.id);if(record.number)numbers.add(record.number);
+                if(ids.has(record.id)||(record.status!=='archived'&&record.number&&numbers.has(record.number)))throw new Error('Duplicate journal transaction.');
+                ids.add(record.id);if(record.status!=='archived'&&record.number)numbers.add(record.number);
                 if(record.origin==='payroll-remittance'&&record.status==='posted'){
                     const allocations=record.payrollAllocations || [{runId:record.payrollRunId,amounts:{salary:1,sss:1,phic:1,hdmf:1,withholding:1}}];
                     for(const allocation of allocations){
@@ -449,6 +496,7 @@
             state={...state,purchases:assignPostedNumbers('purchases',clone(purchases)).map(record=>window.SheetMasters?window.SheetMasters.partySnapshot(record,previous.purchases.find(item=>item.id===record.id)):record)};
             try {
                 syncCashPayments();
+                syncCashWithholding(previous.purchases);
                 for(const record of state.payments.filter(record=>record.status==='posted')){const error=paymentError(record);if(error)throw new Error(error);}
                 persist();synchronizeNumbers('purchases',purchases);
             } catch(error){state=previous;throw error;}
@@ -535,6 +583,7 @@
         unarchiveVoidedCollection(id) {
             return updateCollection(id,record=>{
                 if(record.status!=='archived'||!record.collectionArchived)throw new Error('This collection is not in the local archive.');
+                if(state.collections.some(item=>item.id!==record.id&&!['draft','archived'].includes(item.status)&&item.number===record.number))throw new Error('That number has been reassigned. Duplicate the archived entry as a new draft instead.');
                 record.collectionArchived=false;record.collectionVoided=true;record.status='void';
             });
         },

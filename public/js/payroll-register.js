@@ -50,8 +50,14 @@
         if (existing) return existing;
         return {id: root.crypto.randomUUID(), number: '', status: 'draft', draftTouched: false, date: dates.date, periodStart: dates.from, periodEnd: dates.to, name: '', employees: []};
     }
-    function renumber(records) {
-        let next = records.filter(record=>record.status!=='draft').reduce((highest,record)=>Math.max(highest,Number(String(record.number||'').match(/^PYRJ-(\d+)$/)?.[1]||0)),0);
+    function renumber(records, companyBook=false, previous=[]) {
+        const compact=records.some(record=>record.status==='archived'&&previous.some(old=>old.id===record.id&&old.status==='void'));
+        if(compact){
+            const active=records.filter(record=>['posted','void'].includes(record.status)).sort((a,b)=>Number(String(a.number).split('-').at(-1))-Number(String(b.number).split('-').at(-1))||String(a.id).localeCompare(String(b.id)));
+            const numbers=new Map(active.map((record,index)=>[record.id,`PYRJ-${String(index+1).padStart(6,'0')}`]));
+            records=records.map(record=>({...record,number:numbers.get(record.id)||record.number}));
+        }
+        let next = records.filter(record=>!['draft','archived'].includes(record.status)).reduce((highest,record)=>Math.max(highest,Number(String(record.number||'').match(/^PYRJ-(\d+)$/)?.[1]||0)),0);
         return records.map(record=>({...record,number:record.status==='draft'?'':record.number||(record.status==='posted'?`PYRJ-${String(++next).padStart(6,'0')}`:'')}));
     }
     function reopenForEditing(records, id) {
@@ -71,7 +77,7 @@
             const message = error(run);
             if (message) throw new Error(`${run.number}: ${message}`);
         }
-        let next=records.filter(record=>record.status!=='draft').reduce((highest,record)=>Math.max(highest,Number(String(record.number||'').match(/^PYRJ-(\d+)$/)?.[1]||0)),0);
+        let next=records.filter(record=>!['draft','archived'].includes(record.status)).reduce((highest,record)=>Math.max(highest,Number(String(record.number||'').match(/^PYRJ-(\d+)$/)?.[1]||0)),0);
         return records.map(record => runs.includes(record) ? {...record, number:`PYRJ-${String(++next).padStart(6,'0')}`, status: 'posted', postedAt: new Date().toISOString()} : record);
     }
     const importHeaders = ['pay_date', 'run_name', 'period_start', 'period_end', 'employee', 'pay_type', ...amountFields];

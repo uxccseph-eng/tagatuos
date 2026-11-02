@@ -85,7 +85,24 @@ class CompanyLedgerService
         return app(ClientDatabase::class)->central()->transaction(function () use ($company, $actor, $data): array {
             Company::query()->whereKey($company->id)->lockForUpdate()->firstOrFail();
 
-            return $company->run(fn (): array => $this->saveCurrent($company, $actor, $data));
+            $result = $company->run(fn (): array => $this->saveCurrent($company, $actor, $data));
+            $numbers = [];
+            foreach ([...$result['state'], 'payroll' => $result['payroll']] as $sheet => $records) {
+                if (is_array($records)) {
+                    foreach ($records as $record) {
+                        $numbers[$sheet.':'.$record['id']] = $record['number'] ?: null;
+                    }
+                }
+            }
+            $central = app(ClientDatabase::class)->central();
+            foreach ($central->table('client_follow_ups')->where('company_id', $company->id)->whereNotNull('linked_record_id')->select(['id', 'linked_sheet', 'linked_record_id', 'transaction_number'])->orderBy('id')->cursor() as $followUp) {
+                $key = $followUp->linked_sheet.':'.$followUp->linked_record_id;
+                if (array_key_exists($key, $numbers) && $followUp->transaction_number !== $numbers[$key]) {
+                    $central->table('client_follow_ups')->where('company_id', $company->id)->where('id', $followUp->id)->update(['transaction_number' => $numbers[$key], 'updated_at' => now()]);
+                }
+            }
+
+            return $result;
         });
     }
 
@@ -107,11 +124,14 @@ class CompanyLedgerService
             }
             $ledger = CompanyLedger::query()->where('company_id', $locked->id)->lockForUpdate()->first();
             abort_unless(($ledger?->revision ?? 0) === $data['revision'], 409, 'Another accountant saved this company book. Your changes were not applied. Download your unsaved work, then reload the latest records.');
-            $state = $this->validateState($data['state'], $data['payroll']);
-            $payroll = $data['payroll'];
-            $existing = DB::table('journal_entries')->where('company_id', $locked->id)->get()->keyBy('source_key')->all();
             $previousState = $ledger?->state ?? self::emptyState();
             $previousPayroll = $ledger?->payroll ?? [];
+            $payroll = $data['payroll'];
+            $state = $this->validateState($data['state'], $payroll, false);
+            app(CashPurchaseWithholding::class)->synchronize($locked, $state, $previousState);
+            $baseline = app(TransactionNumbering::class)->normalize($state, $payroll, $previousState, $previousPayroll);
+            $state = $this->validateState($state, $payroll);
+            $existing = DB::table('journal_entries')->where('company_id', $locked->id)->get()->keyBy('source_key')->all();
             $changes = [];
             $rebuild = [];
             foreach ([...self::SHEETS, 'payroll'] as $sheet) {
@@ -119,21 +139,23 @@ class CompanyLedgerService
                 $after = $sheet === 'payroll' ? $payroll : $state[$sheet];
                 $old = collect($before)->keyBy(fn (array $record): string => (string) $record['id']);
                 $new = collect($after)->keyBy(fn (array $record): string => (string) $record['id']);
+                $comparisons = collect($sheet === 'payroll' ? $baseline['payroll'] : $baseline['state'][$sheet])->keyBy(fn (array $record): string => (string) $record['id']);
                 foreach ($old as $id => $record) {
                     $replacement = $new->get($id);
+                    $comparison = $comparisons->get($id, $record);
                     if (! $replacement && (isset($existing[$sheet.':'.$id]) || $record['status'] !== 'draft')) {
                         $this->fail('Posted and void transactions cannot be deleted. Void or archive them to preserve their history.');
                     }
                     if ($replacement && (isset($existing[$sheet.':'.$id]) || in_array($record['status'], ['posted', 'void', 'archived'], true))) {
-                        if (($record['number'] ?? '') !== ($replacement['number'] ?? '')) {
+                        if (($comparison['number'] ?? '') !== ($replacement['number'] ?? '')) {
                             $this->fail('A posted transaction keeps its original transaction number.');
                         }
                         if ($record['status'] === 'posted' && $replacement['status'] === 'posted') {
-                            $this->validatePostedEdit($locked, $sheet, $record, $replacement);
-                            if ($this->postingContent($record) !== $this->postingContent($replacement)) {
+                            $this->validatePostedEdit($locked, $sheet, $comparison, $replacement);
+                            if ($this->postingContent($comparison) !== $this->postingContent($replacement)) {
                                 $rebuild[$sheet.':'.$id] = true;
                             }
-                        } elseif ($this->financial($record) !== $this->financial($replacement)) {
+                        } elseif ($this->financial($comparison) !== $this->financial($replacement)) {
                             $this->fail('Void and archived transactions retain their original financial details. Restore the entry before editing it.');
                         }
                         if ($record['status'] === 'posted' && $replacement['status'] === 'draft') {
@@ -152,6 +174,7 @@ class CompanyLedgerService
             }
             ChartAccount::seedWorkspace($locked->workspaceKey());
             $this->recordImportBatches($locked, $actor, $state, $previousState, $payroll, $previousPayroll);
+            DB::table('journal_entries')->where('company_id', $locked->id)->update(['reserved_number' => null]);
             foreach ($this->posting->prepare($locked, $state, $payroll, array_diff_key($existing, $rebuild)) as $voucher) {
                 $lines = $voucher['lines'];
                 unset($voucher['lines']);
@@ -160,13 +183,13 @@ class CompanyLedgerService
                     DB::table('journal_entry_lines')->where('company_id', $locked->id)->where('journal_entry_id', $id)->delete();
                     DB::table('journal_entries')->where('company_id', $locked->id)->where('id', $id)->update([...$voucher, 'updated_at' => now()]);
                 } else {
-                    $id = DB::table('journal_entries')->insertGetId([...$voucher, 'company_id' => $locked->id, 'status' => 'posted', 'posted_by' => $actor->id, 'created_at' => now(), 'updated_at' => now()]);
+                    $id = DB::table('journal_entries')->insertGetId([...$voucher, 'reserved_number' => $voucher['number'], 'company_id' => $locked->id, 'status' => 'posted', 'posted_by' => $actor->id, 'created_at' => now(), 'updated_at' => now()]);
                 }
                 DB::table('journal_entry_lines')->insert(array_map(fn (array $line): array => [...$line, 'company_id' => $locked->id, 'journal_entry_id' => $id], $lines));
             }
             foreach ([...self::SHEETS, 'payroll'] as $sheet) {
                 foreach ($sheet === 'payroll' ? $payroll : $state[$sheet] as $record) {
-                    DB::table('journal_entries')->where('company_id', $locked->id)->where('source_key', $sheet.':'.$record['id'])->update(['status' => $record['status'] === 'posted' ? 'posted' : 'void', 'updated_at' => now()]);
+                    DB::table('journal_entries')->where('company_id', $locked->id)->where('source_key', $sheet.':'.$record['id'])->update(['status' => $record['status'] === 'posted' ? 'posted' : ($record['status'] === 'archived' ? 'archived' : 'void'), 'number' => $record['number'], 'reserved_number' => $record['status'] === 'archived' ? null : $record['number'], 'reference' => mb_substr((string) ($record['reference'] ?? $record['certificate'] ?? ''), 0, 255), 'updated_at' => now()]);
                 }
             }
             $revision = ($ledger?->revision ?? 0) + 1;
@@ -199,7 +222,7 @@ class CompanyLedgerService
         }
     }
 
-    private function validateState(array $state, array &$payroll): array
+    private function validateState(array $state, array &$payroll, bool $requirePostedNumbers = true): array
     {
         $allowed = [...self::SHEETS, 'nextCollectionId', 'nextCollectionNumber'];
         if (array_diff(array_keys($state), $allowed)) {
@@ -224,19 +247,19 @@ class CompanyLedgerService
                 }
                 Validator::make($record, [
                     'id' => ['required', function (string $attribute, mixed $value, \Closure $fail): void {
-                        if ((! is_int($value) && ! is_string($value)) || ! preg_match('/^[A-Za-z0-9_.:-]{1,100}$/D', (string) $value)) {
+                        if ((! is_int($value) && ! is_string($value)) || ! preg_match('/^[A-Za-z0-9_.:-]{1,120}$/D', (string) $value)) {
                             $fail('Use a valid transaction identity.');
                         }
                     }],
-                    'number' => [($record['status'] ?? null) === 'posted' ? 'required' : 'nullable', 'string', 'max:100', 'regex:/^[A-Za-z0-9_-]+$/D'],
+                    'number' => [$requirePostedNumbers && ($record['status'] ?? null) === 'posted' ? 'required' : 'nullable', 'string', 'max:100', 'regex:/^[A-Za-z0-9_-]+$/D'],
                     'date' => ['required', 'date_format:Y-m-d'], 'status' => ['required', 'in:draft,posted,void,archived'],
                     'importBatchKey' => ['nullable', 'string', 'regex:/^[a-f0-9]{64}$/D'],
                 ])->validate();
-                if (isset($ids[(string) $record['id']]) || (! empty($record['number']) && isset($numbers[$record['number']]))) {
+                if (isset($ids[(string) $record['id']]) || ($record['status'] !== 'archived' && ! empty($record['number']) && isset($numbers[$record['number']]))) {
                     $this->fail('Duplicate transaction identities or numbers are not allowed on '.$sheet.'.');
                 }
                 $ids[(string) $record['id']] = true;
-                if (! empty($record['number'])) {
+                if ($record['status'] !== 'archived' && ! empty($record['number'])) {
                     $numbers[$record['number']] = true;
                 }
                 if ($record['status'] === 'draft' && ($record['origin'] ?? '') !== 'cash-sale' && ($record['origin'] ?? '') !== 'cash-purchase') {

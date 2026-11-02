@@ -274,10 +274,10 @@
             const saved=ledger.editCollectionVoidMemo(record.id,reason,company.full_name);saved.row=record.row;render(saved);update();return saved;
         },
         onPurge:record=>{
-            const saved=ledger.archiveVoidedCollection(record.id);saved.row=record.row;render(saved);update();
+            const saved=ledger.archiveVoidedCollection(record.id);saved.row=record.row;render(saved);window.SheetBulk.refresh();
             announce(`${saved.number} hidden from this sheet. Its audit history is retained. `);
             const undo=document.createElement('button');undo.type='button';undo.className='underline';undo.textContent='Undo purge';
-            undo.addEventListener('click',()=>{const restored=ledger.unarchiveVoidedCollection(saved.id);restored.row=saved.row;render(restored);update();announce(`${restored.number} restored to the voided records.`);entryPopup.open(restored);});
+            undo.addEventListener('click',()=>{try{const restored=ledger.unarchiveVoidedCollection(saved.id);restored.row=saved.row;render(restored);window.SheetBulk.refresh();announce(`${restored.number} restored to the voided records.`);entryPopup.open(restored);}catch(error){announce(error.message);}});
             document.getElementById('collection-status').append(undo);
         }
     });

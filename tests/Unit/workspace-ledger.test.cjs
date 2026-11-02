@@ -205,15 +205,15 @@ test('editing a void memo preserves the original reason and financial values',()
     assert.equal(updated.voidAudit.reason,'Corrected explanation');assert.equal(updated.voidAudit.editedBy,'Reviewer');
     assert.equal(updated.memoHistory[0].reason,'Original reason');assert.equal(updated.voidHistory[0].reason,'Original reason');
 });
-test('purge is recoverable and preserves void history through reload and sales synchronization',()=>{
+test('purge preserves history and blocks restoring a number reassigned to a later receipt',()=>{
     const storage=new Map();const ledger=openLedger(storage);const cash=ledger.collections()[0];
     assert.throws(()=>ledger.archiveVoidedCollection(cash.id),/Only a voided/);
     ledger.voidCollection(cash.id,'Duplicate receipt','Demo Owner');ledger.archiveVoidedCollection(cash.id);ledger.saveSales(ledger.sales());
     const reloaded=openLedger(storage);const archived=reloaded.collections()[0];
     assert.equal(archived.status,'archived');assert.equal(archived.voidAudit.reason,'Duplicate receipt');
-    reloaded.unarchiveVoidedCollection(cash.id);reloaded.saveSales(reloaded.sales());
-    assert.equal(reloaded.collections()[0].status,'void');assert.equal(reloaded.invoices()[0].balance,49107);
-    reloaded.restoreCollection(cash.id);assert.equal(reloaded.invoices()[0].balance,0);
+    assert.throws(()=>reloaded.unarchiveVoidedCollection(cash.id),/reassigned/);
+    assert.equal(reloaded.collections()[0].status,'archived');assert.equal(reloaded.invoices()[0].balance,49107);
+    assert.equal(reloaded.collections()[1].number,cash.number);
 });
 
 test('discarding a trailing unnumbered draft never reuses its internal id',()=>{
@@ -244,7 +244,7 @@ test('discarding an older draft preserves posted numbering and record identities
     const archived={...ledger.newCollection(),number:'CR-000005',status:'archived'};
     ledger.saveCollections([...ledger.collections(),draft,posted,voided,archived]);
     ledger.saveCollections(ledger.collections().filter(record=>record.id!==draft.id));
-    assert.deepEqual(Array.from(ledger.collections().slice(-3),record=>record.number),['CR-000006','CR-000004','CR-000005']);
+    assert.deepEqual(Array.from(ledger.collections().slice(-3),record=>record.number),['CR-000005','CR-000004','CR-000005']);
     assert.equal(ledger.newCollection().number,'');
     assert.deepEqual(Array.from(ledger.collections().slice(-3),record=>record.id),[posted.id,voided.id,archived.id]);
 });
@@ -582,9 +582,11 @@ for(const [sheet,read,save,prefix] of [['sales','sales','saveSales','SI'],['coll
   assert.equal(ledger.bulkTransactions(sheet,[target.id,draft.id],'delete-voids').count,1);
   assert.equal(ledger[read]().find(record=>record.id===target.id).status,'archived');
   assert.equal(openLedger(storage)[read]().find(record=>record.id===target.id).status,'archived');
-  ledger.bulkTransactions(sheet,[target.id],'undo-delete-voids');assert.equal(ledger[read]().find(record=>record.id===target.id).status,'void');
+  const reused=ledger[read]().some(record=>record.id!==target.id&&!['draft','archived'].includes(record.status)&&record.number===target.number);
+  if(reused)assert.throws(()=>ledger.bulkTransactions(sheet,[target.id],'undo-delete-voids'),/reassigned/);
+  else {ledger.bulkTransactions(sheet,[target.id],'undo-delete-voids');assert.equal(ledger[read]().find(record=>record.id===target.id).status,'void');}
   assert.equal(ledger.bulkTransactions(sheet,[draft.id,target.id],'delete-drafts').count,1);
-  assert.equal(ledger[read]().some(record=>record.id===draft.id),false);assert.equal(ledger[read]().find(record=>record.id===target.id).status,'void');
+  assert.equal(ledger[read]().some(record=>record.id===draft.id),false);assert.equal(ledger[read]().find(record=>record.id===target.id).status,reused?'archived':'void');
   for(const id of others)assert.ok(ledger[read]().some(record=>record.id===id));
  });
 }
@@ -710,4 +712,44 @@ test('linked WTP drafts also follow the source purchase account ATC from Masters
  const masters={atcCodes:[{code:'WC100',category:'Income-tax CWT',rate:5}],taxCodes:[],parties:[]},catalog=[{code:'7110',name:'Rent',type:'Expense',ewt_atc_code:'WC100',archived:false}],ledger=openLedger(new Map(),'wtp-draft-master',catalog,masters);
  assert.equal(ledger.wtpAtc({billId:2,status:'draft',ewt:5,ewtCode:'WI100'}),'WC100');
  assert.equal(ledger.wtpAtc({billId:2,status:'posted',ewt:5,ewtCode:'WI100'}),'WI100');
+});
+
+
+test('deleting a void sale compacts transaction numbers and updates stable receipt links',()=>{
+ const ledger=openLedger();
+ const before=ledger.sales(),kept=before[2],collection=ledger.collections().find(record=>record.saleId===kept.id);
+ ledger.bulkTransactions('sales',[before[0].id],'void','Duplicate');
+ ledger.bulkTransactions('sales',[before[0].id],'delete-voids');
+ const sales=ledger.sales(),receipt=ledger.collections().find(record=>record.id===collection.id);
+ assert.equal(sales.find(record=>record.id===kept.id).number,'SI-000002');
+ assert.equal(receipt.invoice,'SI-000002');assert.equal(receipt.saleId,kept.id);
+ assert.equal(sales.find(record=>record.id===before[0].id).number,'SI-000001');
+ assert.equal(sales.find(record=>record.id===before[0].id).status,'archived');
+ const draft={...before[1],id:99,number:'',status:'draft'};ledger.saveSales([...ledger.sales(),draft]);
+ const records=ledger.sales();records.find(record=>record.id===99).status='posted';ledger.saveSales(records);
+ assert.equal(records.find(record=>record.id===99).number,'SI-000003');
+});
+
+test('a posted cash purchase with EWT automatically creates one WTP entry and keeps it synchronized',()=>{
+ const storage=new Map(),ledger=openLedger(storage,'company-'+'a'.repeat(64));
+ const bill={id:1,number:'',date:'2026-10-01',status:'draft',supplier:'Supplier',tin:'12345678900000',gross:112000,tax:'VAT (12%)',ewt:2,ewtCode:'WC160',wvat:0,account:'7110',terms:'Cash',bank:'1010'};
+ ledger.savePurchases([bill]);assert.equal(ledger.wtpCertificates().length,0);assert.equal(bill.number,'');
+ bill.status='posted';ledger.savePurchases([bill]);
+ let certificates=ledger.wtpCertificates();assert.equal(certificates.length,1);assert.equal(certificates[0].status,'posted');assert.equal(certificates[0].taxBase,100000);assert.equal(certificates[0].number,'2307I-000001');
+ ledger.savePurchases(ledger.purchases());assert.equal(ledger.wtpCertificates().length,1);
+ bill.gross=224000;ledger.savePurchases([bill]);certificates=ledger.wtpCertificates();assert.equal(certificates[0].taxBase,200000);assert.equal(certificates[0].number,'2307I-000001');
+ bill.status='void';bill.voidReason='Incorrect source';ledger.savePurchases([bill]);assert.equal(ledger.wtpCertificates()[0].status,'void');
+ const reloaded=openLedger(storage,'company-'+'a'.repeat(64));assert.equal(reloaded.wtpCertificates().length,1);assert.equal(reloaded.wtpCertificates()[0].status,'void');
+});
+
+
+test('single-entry archive renumbers journals and allows another save with duplicate archived history numbers',()=>{
+ const ledger=openLedger(new Map(),'company-'+'a'.repeat(64));
+ const one=journalVoucher(ledger,{id:1,number:'',status:'posted'}),two=journalVoucher(ledger,{id:2,number:'',status:'posted'});
+ ledger.saveJournalEntries([one,two]);
+ const records=ledger.journalEntries();records[0].status='void';records[0].voidReason='Duplicate';ledger.saveJournalEntries(records);
+ records[0].status='archived';ledger.saveJournalEntries(records);
+ assert.equal(records[0].number,'GJ-000001');assert.equal(records[1].number,'GJ-000001');
+ const next=[...ledger.journalEntries(),journalVoucher(ledger,{id:3,number:'',status:'posted'})];
+ ledger.saveJournalEntries(next);assert.equal(next[2].number,'GJ-000002');
 });

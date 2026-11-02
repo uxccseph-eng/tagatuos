@@ -73,7 +73,7 @@
         description.textContent=eligible.length?`${eligible.length} selected ${status==='void'?'voided':status} transaction(s) will be affected.${selected.length>eligible.length?' Other selected statuses will be skipped.':''}`:`Select ${status==='void'?'voided':status} entries first.`;
         form.append(title,description);
         if(eligible.length){const list=document.createElement('p');list.className='sheet-bulk-numbers';list.textContent=eligible.slice(0,20).map(record=>record.number).join(', ')+(eligible.length>20?'…':'');form.append(list);}
-        if(action==='delete-voids'&&eligible.length){const note=document.createElement('p');note.textContent='These transactions will be removed from the sheet. Their audit history is retained and Undo will be available.';form.append(note);}
+        if(action==='delete-voids'&&eligible.length){const note=document.createElement('p');note.textContent='These transactions will be removed from the sheet. Their old numbers remain in audit history. Later transaction numbers will be adjusted. Undo requires that the old number is still available.';form.append(note);}
         const reason=document.createElement('textarea');reason.setAttribute('aria-label','Reason for voiding');reason.placeholder='Reason for voiding the selected transactions';reason.required=action==='void'&&eligible.length>0;reason.maxLength=1000;
         if(action==='void'&&eligible.length)form.append(reason);
         const error=document.createElement('p');error.setAttribute('role','alert');error.className='sheet-bulk-error';form.append(error);

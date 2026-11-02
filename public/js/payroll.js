@@ -16,7 +16,7 @@
     const announce = message => { element('payroll-status').textContent = message; };
     try {
         const stored = window.CompanyLedger ? window.CompanyLedger.payroll() : JSON.parse(sessionStorage.getItem(key) || '[]');
-        if (!Array.isArray(stored) || stored.some(run => !run.id || !['draft', 'posted', 'void'].includes(run.status) || !Array.isArray(run.employees))) throw new Error('Invalid payroll data');
+        if (!Array.isArray(stored) || stored.some(run => !run.id || !['draft', 'posted', 'void', 'archived'].includes(run.status) || !Array.isArray(run.employees))) throw new Error('Invalid payroll data');
         records = stored.map(record=>record.status==='draft'?{...record,number:''}:record);
     } catch (exception) {
         storageAvailable = false;
@@ -24,7 +24,7 @@
     }
     function store(next) {
         if (!storageAvailable) { announce('Payroll storage is unavailable. Reload this tab before editing.'); return false; }
-        const numbered = api.renumber(next, Boolean(window.CompanyLedger));
+        const numbered = api.renumber(next, Boolean(window.CompanyLedger), records);
         try {
             const saved = numbered.filter(run => run.status !== 'draft' || run.draftTouched);
             if (window.CompanyLedger) window.CompanyLedger.savePayroll(saved);
@@ -36,7 +36,7 @@
     }
     function visible() {
         const query = `${element('payroll-search').value} ${element('sales-global-search').value}`.trim().toLowerCase();
-        return records.filter(run => window.WorkingPeriod.matches(run.date) && (status === 'all' || run.status === status) && `${run.number} ${run.name} ${run.employees.map(employee => employee.name).join(' ')}`.toLowerCase().includes(query)).sort((a, b) => (descending ? -1 : 1) * a.date.localeCompare(b.date));
+        return records.filter(run => run.status !== 'archived' && window.WorkingPeriod.matches(run.date) && (status === 'all' || run.status === status) && `${run.number} ${run.name} ${run.employees.map(employee => employee.name).join(' ')}`.toLowerCase().includes(query)).sort((a, b) => (descending ? -1 : 1) * a.date.localeCompare(b.date));
     }
     function candidates() { return window.SheetPosting.candidates(visible(), [...selected]); }
     function button(action, label, icon = '') {
@@ -109,7 +109,7 @@
             <td class="payroll-money" data-employee-net>${net}</td><td>${disabled ? '—' : button('remove-employee', 'Remove', 'person_remove')}</td></tr>`;
     }
     function updateToolbar() {
-        const periodRuns = records.filter(run => window.WorkingPeriod.matches(run.date));
+        const periodRuns = records.filter(run => run.status !== 'archived' && window.WorkingPeriod.matches(run.date));
         document.querySelectorAll('[data-count]').forEach(node => { node.textContent = `(${periodRuns.filter(run => node.dataset.count === 'all' || run.status === node.dataset.count).length})`; });
         element('payroll-tab-count').textContent = periodRuns.length;
         element('payroll-post-label').textContent = `Post (${candidates().length})`;
@@ -175,7 +175,8 @@
         const ids = runs.filter(run => run.status !== 'posted').map(run => run.id);
         if (!ids.length) { announce('Select matching drafts or void runs to delete. Posted runs must be voided first.'); return; }
         window.DraftLeaveGuard.confirmDelete(() => {
-            if (!store(records.filter(run => !ids.includes(run.id)))) return false;
+            const next=records.filter(run=>!ids.includes(run.id)||run.status==='void').map(run=>ids.includes(run.id)&&run.status==='void'?{...run,status:'archived',archivedAt:new Date().toISOString()}:run);
+            if (!store(next)) return false;
             ids.forEach(id => selected.delete(id)); render(); announce('Entries deleted; transaction numbers updated.');
         }, runs.map(run => run.number).join(', '), {title: 'Delete payroll entries?', description: 'Delete these selected entries? This cannot be undone.'});
     }
