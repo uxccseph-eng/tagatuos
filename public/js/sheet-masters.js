@@ -71,17 +71,19 @@
         if(Object.keys(result.values).length)result.sourceNumber=String(previous.number || 'last posted entry');
         return result;
     }
-    function salesDefaults(){
-        const saved=catalog?.preferences?.sales || {},accounts=active(window.WorkspaceAccounts).filter(account=>account.is_cash_bank);
+    function sheetDefaults(sheet){
+        const saved=catalog?.preferences?.[sheet] || {},accounts=active(window.WorkspaceAccounts).filter(account=>account.is_cash_bank);
         const fallback=accounts.find(account=>String(account.code)==='1020') || accounts.find(account=>catalog?.preferences?.defaultBank?.startsWith(account.code+' · ')) || accounts[0];
         const bank=saved.bankCode?accounts.find(account=>String(account.code)===String(saved.bankCode)):fallback;
         const withholding=vat=>{const code=saved[vat?'vatCwtCode':'cwtCode'] || '',item=code?atcChoice(code,vat):null;return item?item.code+' · '+Number(item.rate)+'%':code || 'None';};
-        return {terms:saved.terms || 'Cash',classification:saved.classification || 'Regular',bank:bank?bank.code+' · '+bank.name:String(saved.bankCode || ''),cwt:withholding(false),vatCwt:withholding(true),cwtCode:saved.cwtCode || '',vatCwtCode:saved.vatCwtCode || '',hideCwt:Boolean(saved.hideCwt),hideVatCwt:Boolean(saved.hideVatCwt)};
+        return {terms:saved.terms || 'Cash',classification:saved.classification || 'Regular',bank:bank?bank.code+' · '+bank.name:String(saved.bankCode || ''),cwt:withholding(false),vatCwt:withholding(true),cwtCode:saved.cwtCode || '',vatCwtCode:saved.vatCwtCode || '',hideCwt:Boolean(saved.hideCwt),hideVatCwt:Boolean(saved.hideVatCwt ?? (sheet==='purchases'))};
     }
+    function salesDefaults(){return sheetDefaults('sales');}
+    function purchaseDefaults(){const values=sheetDefaults('purchases');return {...values,ewt:values.cwtCode?Number(atcChoice(values.cwtCode,false)?.rate || 0):0,wvat:values.vatCwtCode?Number(atcChoice(values.vatCwtCode,true)?.rate || 0):0,ewtCode:values.cwtCode,wvatCode:values.vatCwtCode};}
     function bankChoices(){const accounts=active(window.WorkspaceAccounts).filter(account=>account.is_cash_bank);return accounts.map(account=>{const banks=active(catalog?.banks).filter(bank=>bank.chart_account_id===account.id);return {value:account.code+' · '+account.name,label:account.code+' · '+account.name+(banks.length?' — '+banks.map(bank=>bank.name+' ('+bank.currency+')').join(', '):'')};});}
     function selectValue(select,value,code){select.querySelectorAll('[data-master-saved]').forEach(option=>option.remove());if(!code&&Number(value)>0&&Array.from(select.options).some(option=>option.dataset.masterCode)){const missing=new Option(Number(value)+'% · ATC not recorded',String(value));missing.dataset.masterSaved='true';select.add(missing);missing.selected=true;return;}let option=Array.from(select.options).find(item=>item.value===String(value)&&(!code||item.dataset.masterCode===code));if(!option&&code){option=new Option(code+' · '+value+'% (saved)',String(value));option.dataset.masterCode=code;option.dataset.masterSaved='true';select.add(option);}if(!option&&value!==undefined&&value!==null&&String(value)!==''){option=new Option(taxLabel(String(value))+' (saved)',String(value));option.dataset.masterSaved='true';select.add(option);}if(option){option.selected=true;}else{select.value=String(value ?? '');}}
     const taxLabel=value=>taxInfo(value).code==='NR'?'NR · No Receipt · 0%':String(value || '').startsWith('TAX|')?taxInfo(value).code+' · '+taxInfo(value).rate+'% '+taxInfo(value).kind:value;
-    window.SheetMasters={formatTin,taxLabel,taxInfo,taxAmounts,taxChoices,parties,party,searchParties,partySnapshot,atcCodes,rate,allowedRate,atcChoice,withholdingError,applyAccountWithholding,partyDefaults,salesDefaults,bankChoices,selectValue,hasCatalog:Boolean(catalog)};
+    window.SheetMasters={formatTin,taxLabel,taxInfo,taxAmounts,taxChoices,parties,party,searchParties,partySnapshot,atcCodes,rate,allowedRate,atcChoice,withholdingError,applyAccountWithholding,partyDefaults,salesDefaults,purchaseDefaults,bankChoices,selectValue,hasCatalog:Boolean(catalog)};
     if(!catalog)return;
     const seen=new WeakSet();
     function options(select,choices){const previous=select.value,previousCode=select.selectedOptions[0]?.dataset.masterCode,placeholder=Array.from(select.options).find(option=>option.value==='') || (['tax','ewt','wvat'].includes(select.dataset.masterKind)?new Option('Choose from Masters…',''):null);select.replaceChildren();if(placeholder)select.add(placeholder);for(const item of choices){const option=new Option(item.label,item.value);if(item.code)option.dataset.masterCode=item.code;select.add(option);}selectValue(select,previous,previousCode);}

@@ -1,5 +1,6 @@
 (() => {
     const ledger=window.KontaduryaLedger;
+    const purchaseDefaults=window.SheetMasters.purchaseDefaults();
     const element=id=>document.getElementById(id);
     const company=JSON.parse(element('purchase-company').textContent);
     const table=element('purchases-table'),rows=element('purchases-rows'),drawer=element('purchase-entry'),infoDialog=element('purchases-info');
@@ -11,6 +12,7 @@
     const fieldValue=(record,key)=>key==='wvat'&&!record.wvatCode&&(record.wvat===''||record.wvat==null)?0:record[key];
     let records=ledger.purchases(),period=window.WorkingPeriod.current().from.slice(0,7),status='all',descending=false,grouped=false,working=null,original=null,editing=false;
     const selected=new Set();
+    if(purchaseDefaults.hideVatCwt){const toggle=document.createElement('button');toggle.type='button';toggle.className='sales-columns-toggle';toggle.textContent='Show WVAT column';toggle.setAttribute('aria-pressed','false');toggle.addEventListener('click',()=>{const reveal=table.dataset.revealWvat!=='true';table.dataset.revealWvat=String(reveal);toggle.textContent=reveal?'Use saved column settings':'Show WVAT column';toggle.setAttribute('aria-pressed',String(reveal));render();});table.parentElement.before(toggle);}
     const announce=message=>{element('purchases-status').textContent=message;if(drawer.open)element('purchase-entry-message').textContent=message;};
     const store=next=>{try{ledger.savePurchases(next);records=next;return true;}catch(error){announce(error.message || 'Could not save in this tab. Remove large receipt attachments and try again.');return false;}};
     const invalid=record=>!/^\d{4}-\d{2}-\d{2}$/.test(record.date)||!record.supplier?.trim()||!Number.isSafeInteger(record.gross)||record.gross<=0||record.gross>99999999999||!record.account||!(window.SheetMasters?.taxChoices(false).some(choice=>choice.value===record.tax)||['VAT (12%)','Non-VAT','Zero-Rated','Exempt'].includes(record.tax)||String(record.tax).startsWith('TAX|'))||!window.SheetMasters.allowedRate(record.ewt)||!window.SheetMasters.allowedRate(record.wvat,true);
@@ -24,7 +26,7 @@
     function deleteDraft(record){window.DraftLeaveGuard.confirmDelete(()=>{if(!store(records.filter(item=>item.id!==record.id)))return false;if(drawer.open&&working?.id===record.id){drawer.close();editing=false;}render();announce('Draft deleted.');},record.number);}
     function history(record,label){record.history=[...(record.history || []),{label,user:company.full_name || 'Demo user',time:new Date().toISOString()}];}
     function add(template){const pending=window.DraftLeaveGuard.continueDraft(records,record=>{window.WorkingPeriod.revealDate(record.date);period=window.WorkingPeriod.current().from.slice(0,7);status='all';element('purchases-search').value='';element('sales-global-search').value='';render();element('purchase-row-'+record.id)?.scrollIntoView({block:'nearest'});announce('Continue '+record.number+'. Only one draft is allowed on this page.');});if(pending)return pending;
-        const record={id:crypto.randomUUID(),number:'',date:window.WorkingPeriod.entryDate(),supplier:'',tin:'',gross:0,tax:'',account:'',ewt:'',wvat:0,wvatCode:'',terms:'Cash',reference:'',bank:'1010 · Cash on Hand',description:'',notes:'',attachments:[],status:'draft',createdAt:new Date().toISOString()};
+        const record={id:crypto.randomUUID(),number:'',date:window.WorkingPeriod.entryDate(),supplier:'',tin:'',gross:0,tax:'',account:'',ewt:purchaseDefaults.ewt,ewtCode:purchaseDefaults.ewtCode,wvat:purchaseDefaults.wvat,wvatCode:purchaseDefaults.wvatCode,terms:purchaseDefaults.terms,reference:'',bank:purchaseDefaults.bank,description:'',notes:'',attachments:[],status:'draft',createdAt:new Date().toISOString()};
         if(template)for(const key of ['supplier','tin','gross','tax','account','ewt','wvat','ewtCode','wvatCode','terms','bank','description','notes'])record[key]=template[key];
         history(record,'Created');if(!store([...records,record]))return;
         status='all';element('purchases-search').value='';element('sales-global-search').value='';render();announce(`${record.number} added. Fill its row or click an inactive cell to open the entry popup.`);element(`purchase-row-${record.id}`)?.scrollIntoView({block:'nearest'});return record;
@@ -53,6 +55,7 @@
         if(!store(next))return false;selected.clear();render();announce(`${candidates.length} bill(s) posted in this local preview.`);return true;
     }
     function render(){
+        table.classList.toggle('purchases-hide-wvat',purchaseDefaults.hideVatCwt && table.dataset.revealWvat!=='true');
         rows.replaceChildren();const shown=current().sort((a,b)=>grouped?a.supplier.localeCompare(b.supplier):(descending?-1:1)*a.date.localeCompare(b.date));
         for(const record of shown){
             const row=document.createElement('tr');row.dataset.status=record.status;row.id=`purchase-row-${record.id}`;const cells=Array.from({length:16},()=>{const td=document.createElement('td');row.append(td);return td;});
@@ -70,7 +73,7 @@
             else cells[15].append(actionButton(`View ${record.number}`,()=>open(record),'visibility'),actionButton(`Duplicate ${record.number}`,()=>{const draft=add(record);if(draft)open(draft);},'content_copy'),actionButton(`Options for ${record.number}`,event=>entryOptions(record,event),'more_vert'));
             row.addEventListener('click',event=>{if(!event.target.closest('button,input,select,textarea,a,label'))open(record);});rows.append(row);
         }
-        if(!shown.length){const tr=document.createElement('tr'),td=document.createElement('td');td.colSpan=16;td.textContent='No purchase bills in this view.';tr.append(td);rows.append(tr);}
+        if(!shown.length){const tr=document.createElement('tr'),td=document.createElement('td');td.colSpan=table.classList.contains('purchases-hide-wvat')?15:16;td.textContent='No purchase bills in this view.';tr.append(td);rows.append(tr);}
         refresh();
     }
     function refresh(){

@@ -48,6 +48,28 @@ class SettingsTest extends TestCase
             ->assertSessionHasNoErrors()->assertSessionHas('company_setup.sheet_settings.sales_default_terms', 'On Account')->assertSessionHas('company_setup.sheet_settings.sales_hide_cwt', true);
     }
 
+    public function test_purchase_defaults_are_saved_validated_and_scoped_to_the_company(): void
+    {
+        $company = $this->company();
+        $workspace = ChartAccount::workspaceKey($company);
+        ChartAccount::seedWorkspace($workspace);
+        $this->withSession(['preview_access' => true, 'company_setup' => $company]);
+        $this->get('/masters/chart-of-accounts/catalog.js')->assertOk()->assertSee('"hideVatCwt":true', false);
+        $base = ['payroll' => 1, 'cwt' => 1, 'wtp' => 1, 'ppe' => 1];
+        $this->put('/settings/sheets', [...$base, 'purchase_hide_wvat' => '0', 'purchase_default_terms' => 'On Account', 'purchase_default_bank_code' => '1020', 'purchase_default_ewt_code' => 'WC160', 'purchase_default_wvat_code' => 'WB030'])
+            ->assertSessionHasNoErrors()->assertSessionHas('company_setup.sheet_settings.purchase_hide_wvat', false);
+        $saved = CompanySetting::query()->where('workspace_key', $workspace)->sole()->preferences;
+        $this->assertSame('1020', $saved['purchase_default_bank_code']);
+        $this->assertSame('On Account', $saved['purchase_default_terms']);
+        $this->get('/settings/sheets')->assertOk()->assertSee('Purchases columns and defaults')->assertSee('Hide WVAT column');
+        $this->get('/masters/chart-of-accounts/catalog.js')->assertOk()->assertSee('"terms":"On Account"', false);
+        $this->put('/settings/sheets', $base)->assertSessionHasNoErrors()->assertSessionHas('company_setup.sheet_settings.purchase_default_terms', 'On Account');
+        $this->putJson('/settings/sheets', [...$base, 'purchase_default_terms' => 'Bad', 'purchase_default_bank_code' => '4000', 'purchase_default_ewt_code' => 'WB030', 'purchase_default_wvat_code' => 'WC160'])
+            ->assertUnprocessable()->assertJsonValidationErrors(['purchase_default_terms', 'purchase_default_bank_code', 'purchase_default_ewt_code', 'purchase_default_wvat_code']);
+        $this->withSession(['preview_access' => true, 'company_setup' => [...$company, 'company_name' => 'Another Demo Client']]);
+        $this->get('/masters/chart-of-accounts/catalog.js')->assertOk()->assertDontSee('"terms":"On Account"', false);
+    }
+
     /** @return array<string, mixed> */
     private function company(): array
     {

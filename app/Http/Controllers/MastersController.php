@@ -96,6 +96,13 @@ class MastersController extends Controller
             'cwtCode' => $settings['sales_default_cwt_code'] ?? '',
             'vatCwtCode' => $settings['sales_default_vat_cwt_code'] ?? '',
         ];
+        $masters['preferences']['purchases'] = [
+            'hideVatCwt' => (bool) ($settings['purchase_hide_wvat'] ?? true),
+            'terms' => $settings['purchase_default_terms'] ?? 'Cash',
+            'bankCode' => $settings['purchase_default_bank_code'] ?? null,
+            'cwtCode' => $settings['purchase_default_ewt_code'] ?? '',
+            'vatCwtCode' => $settings['purchase_default_wvat_code'] ?? '',
+        ];
         $masters['endpoints'] = ['accounts' => route('masters.accounts.store'), 'parties' => route('masters.registry.store', ['registry' => 'parties']), 'tax' => route('masters.registry.store', ['registry' => 'tax-codes']), 'banks' => route('masters.registry.store', ['registry' => 'bank-accounts'])];
 
         $canReadJournals = ! $request->user() || array_intersect($request->attributes->get('company_allowed_tabs', []), ['books', 'reports', 'lapsing']) !== [];

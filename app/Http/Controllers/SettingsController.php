@@ -52,7 +52,7 @@ class SettingsController extends Controller
             }
             $values['payroll_automation'] = (bool) ($values['payroll_automation'] ?? false);
             $values['payroll_frequency'] = $values['payroll_frequency'] ?? 'monthly';
-            foreach (['sales_hide_cwt', 'sales_hide_vat_cwt'] as $key) {
+            foreach (['sales_hide_cwt', 'sales_hide_vat_cwt', 'purchase_hide_wvat'] as $key) {
                 if (array_key_exists($key, $values)) {
                     $values[$key] = (bool) $values[$key];
                 }

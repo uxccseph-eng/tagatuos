@@ -105,9 +105,9 @@ test('guided mapping guesses familiar headers and keeps ambiguous columns unmapp
     assert.throws(()=>engine.mapRows('sales',Array.from({length:502},()=>['data']),{Customer:0}),/500/);
 });
 
-test('guided review requires a tax choice, resolves Masters, and skips excluded errors',()=>{
+test('guided review defaults blank tax to VAT, resolves Masters, and skips excluded errors',()=>{
     const context=workspace(),rows=[{_row:2,values:sale()},{_row:3,values:sale({Customer:'Unknown'})}];
-    let result=engine.previewMapped('sales',rows,context);assert.match(result.errors[0].message,/Tax Type/);
+    let result=engine.previewMapped('sales',rows,context);assert.equal(result.records[0].tax,'12% VAT');assert.match(result.errors[0].message,/Customer/);
     rows[0].values['Tax Type']='VAT';rows[1].skip=true;
     result=engine.previewMapped('sales',rows,context);assert.deepEqual(result.errors,[]);assert.equal(result.included,1);assert.equal(result.totalGross,11200);
     rows[0].skip=true;assert.match(engine.previewMapped('sales',rows,context).errors[0].message,/No rows/);
@@ -199,12 +199,12 @@ test('guided Sales imports apply the same defaults for unmapped cells without ch
     assert.deepEqual(result.errors,[]);assert.equal(result.records[0].terms,'On Account');assert.equal(result.records[0].classification,'Government');assert.equal(result.records[0].bank,'1030 \u00b7 BDO Checking');assert.equal(row.values.Terms,'');
 });
 
-test('Sales starts with Cash, Regular and Cash in Bank while Purchases keeps its existing defaults',()=>{
+test('Sales and Purchases start with Cash and Cash in Bank',()=>{
     const ws=workspace();ws.accounts.push({id:100,code:'1020',name:'Cash in Bank',type:'Asset',is_cash_bank:true});
     const sales=engine.preview('sales',csv('sales',[sale({Terms:''})]),ws);
     assert.deepEqual(sales.errors,[]);assert.equal(sales.records[0].terms,'Cash');assert.equal(sales.records[0].classification,'Regular');assert.equal(sales.records[0].bank,'1020 \u00b7 Cash in Bank');
     const purchases=engine.preview('purchases',csv('purchases',[purchase({Terms:''})]),ws);
-    assert.deepEqual(purchases.errors,[]);assert.equal(purchases.records[0].bank,'1010 \u00b7 Cash on Hand');
+    assert.deepEqual(purchases.errors,[]);assert.equal(purchases.records[0].bank,'1020 \u00b7 Cash in Bank');assert.equal(purchases.records[0].terms,'Cash');assert.equal(ws.masters.purchaseDefaults().hideVatCwt,true);
 });
 
 test('invalid explicit and archived configured deposit accounts are rejected instead of silently substituted',()=>{
@@ -215,4 +215,45 @@ test('invalid explicit and archived configured deposit accounts are rejected ins
     const archived=engine.preview('sales',csv('sales',[sale({'Deposit Account':''})]),ws);
     assert.equal(archived.errors.length,1);
     const other=workspace();assert.equal(other.masters.salesDefaults().terms,'Cash');assert.equal(other.masters.salesDefaults().hideCwt,false);
+});
+
+
+test('Purchases CSV and guided blanks inherit settings and Masters TIN while explicit values win',()=>{
+    const ws=workspace();ws.catalog.atcCodes.push({code:'WB030',name:'VAT withholding',rate:3,category:'VAT Withholding'});
+    ws.catalog.preferences={purchases:{terms:'On Account',bankCode:'1030',cwtCode:'WC160',vatCwtCode:'WB030',hideVatCwt:false}};
+    const values=purchase({Terms:'','Supplier TIN':'','Tax Type':'',Bank:'','Income Withholding ATC':'','VAT Withholding ATC':''});
+    for(const result of [preview('purchases',[values],ws),engine.previewMapped('purchases',[{_row:2,values}],ws)]){
+        assert.deepEqual(result.errors,[]);const row=result.records[0];assert.equal(row.terms,'On Account');assert.equal(row.bank,'1030 \u00b7 BDO Checking');assert.equal(row.tin,'000-000-000-00000');assert.equal(row.tax,'VAT (12%)');assert.equal(row.ewt,2);assert.equal(row.wvat,3);assert.equal(row.ewtCode,'WC160');assert.equal(row.wvatCode,'WB030');
+    }
+    assert.equal(values.Terms,'');assert.equal(values['Supplier TIN'],'');assert.equal(ws.masters.purchaseDefaults().hideVatCwt,false);
+    const explicit=preview('purchases',[{...values,Terms:'Cash',Bank:'1010','Tax Type':'NONVAT','Supplier TIN':'111-222-333-00000','Income Withholding ATC':'None','VAT Withholding ATC':'None'}],ws);
+    assert.deepEqual(explicit.errors,[]);const row=explicit.records[0];assert.equal(row.terms,'Cash');assert.equal(row.bank,'1010 \u00b7 Cash on Hand');assert.equal(row.tin,'111-222-333-00000');assert.equal(row.tax,'Non-VAT');assert.equal(row.ewt,0);assert.equal(row.wvat,0);
+});
+
+test('Purchases rejects invalid explicit options and archived configured banks without replacing them',()=>{
+    const ws=workspace();ws.catalog.preferences={purchases:{bankCode:'1030'}};
+    for(const change of [{Terms:'Bad'},{Bank:'Bad'},{'Tax Type':'Bad'},{'Income Withholding ATC':'WC999'},{'VAT Withholding ATC':'WB999'}]){
+        assert.ok(preview('purchases',[purchase(change)],ws).errors.length);
+        assert.ok(engine.previewMapped('purchases',[{_row:2,values:purchase(change)}],ws).errors.length);
+    }
+    ws.accounts.find(a=>a.code==='1030').archived=true;assert.ok(preview('purchases',[purchase({Bank:''})],ws).errors.length);
+});
+
+test('linked WTP and CWT imports inherit Masters TIN when source documents have no snapshot',()=>{
+    const ws=workspace();
+    const bill=ws.ledger.purchases().find(item=>item.number==='BILL-000002'),invoice=ws.ledger.sales().find(item=>item.number==='SI-000002');
+    ws.catalog.parties.push({id:90,code:'LEGACYSUP',name:bill.supplier,classification:'Supplier',tin:'111-222-333-00000'},{id:91,code:'LEGACYCUST',name:invoice.customer,classification:'Customer',tin:'444-555-666-00000'});
+    // Simulate imported historical source documents that predate party snapshots.
+    ws.ledger.purchases=()=>[{...bill,tin:'',supplierTin:''}];ws.ledger.sales=()=>[{...invoice,tin:'',customerTin:''}];
+    const wtp=preview('wtp',[{Date:'2026-10-19','Source Bill':bill.number}],ws),cwt=preview('cwt',[{Date:'2026-10-19','Source Invoice':invoice.number}],ws);
+    assert.deepEqual(wtp.errors,[]);assert.equal(wtp.records[0].tin,'111-222-333-00000');assert.deepEqual(cwt.errors,[]);assert.equal(cwt.records[0].tin,'444-555-666-00000');
+});
+
+
+test('blank purchase imports post with defaults and carry Masters TIN into automatic cash WTP once',()=>{
+    const ws=workspace();ws.catalog.preferences={purchases:{cwtCode:'WC160'}};
+    const result=post('purchases',[purchase({Terms:'','Supplier TIN':'',Bank:''})],ws),bill=result.records[0];
+    const certificates=ws.ledger.wtpCertificates().filter(record=>record.billId===bill.id&&record.status==='posted');
+    assert.equal(bill.terms,'Cash');assert.equal(certificates.length,1);assert.equal(certificates[0].tin,'000-000-000-00000');assert.equal(certificates[0].ewt,2);
+    const restored=workspace(ws.storage);assert.equal(restored.ledger.purchases().find(record=>record.id===bill.id).tin,'000-000-000-00000');assert.equal(restored.ledger.wtpCertificates().filter(record=>record.billId===bill.id&&record.status==='posted').length,1);
 });
