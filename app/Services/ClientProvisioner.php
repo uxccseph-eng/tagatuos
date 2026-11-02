@@ -141,7 +141,8 @@ class ClientProvisioner
             $admin->statement('CREATE DATABASE IF NOT EXISTS `'.$name.'` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci');
             $username = $admin->getPdo()->quote($runtime['username']);
             $host = $admin->getPdo()->quote(config('tenancy.runtime_user_host'));
-            $admin->statement('GRANT ALL PRIVILEGES ON `'.$name.'`.* TO '.$username.'@'.$host);
+            $grantName = str_replace('_', '\\_', $name);
+            $admin->statement('GRANT ALL PRIVILEGES ON `'.$grantName.'`.* TO '.$username.'@'.$host);
         } finally {
             DB::purge(config('tenancy.provisioner_connection'));
         }

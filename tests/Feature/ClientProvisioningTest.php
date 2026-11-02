@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Services\ClientProvisioner;
 use App\Services\CompanyLedgerService;
 use App\Services\TenantContext;
+use Illuminate\Database\Connection;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Bus;
@@ -20,6 +21,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use LogicException;
 use RuntimeException;
+use Stancl\Tenancy\Database\DatabaseManager;
 use Stancl\Tenancy\Tenancy;
 use Tests\TestCase;
 
@@ -60,6 +62,40 @@ class ClientProvisioningTest extends TestCase
         $this->assertSame('pending', $company->provisioning_status);
         Bus::assertDispatched(ProvisionClientDatabase::class, fn (ProvisionClientDatabase $job): bool => $job->companyId === $company->id && $job->afterCommit);
         $this->assertFalse($company->databaseReady());
+    }
+
+    public function test_mysql_provisioning_grants_runtime_access_to_the_exact_database_before_migrating(): void
+    {
+        $company = $this->newClient();
+        $name = 'client_'.substr($company->workspaceKey(), 0, 40);
+        config([
+            'database.connections.client_template.driver' => 'mysql',
+            'database.connections.client_template.username' => 'client_runtime',
+            'database.connections.client_provisioner' => ['driver' => 'grant-test', 'username' => 'client_provisioner'],
+            'tenancy.runtime_user_host' => 'localhost',
+        ]);
+        $pdo = DB::connection('sqlite')->getPdo();
+        $admin = $this->getMockBuilder(Connection::class)->setConstructorArgs([$pdo, '', '', ['driver' => 'grant-test']])->onlyMethods(['statement'])->getMock();
+        $statements = [];
+        $admin->expects($this->exactly(2))->method('statement')->willReturnCallback(function (string $sql, array $bindings = []) use (&$statements): bool {
+            $statements[] = $sql;
+
+            return true;
+        });
+        DB::extend('grant-test', fn (): Connection => $admin);
+        $this->mock(DatabaseManager::class)->shouldReceive('createTenantConnection')->once()->andThrow(new RuntimeException('Stop before connecting to MySQL in this regression test.'));
+
+        try {
+            app(ClientProvisioner::class)->provision($company->id);
+            $this->fail('The test must stop before the tenant connection is opened.');
+        } catch (RuntimeException $exception) {
+            $this->assertSame('Stop before connecting to MySQL in this regression test.', $exception->getMessage());
+        }
+
+        $this->assertSame([
+            'CREATE DATABASE IF NOT EXISTS `'.$name.'` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci',
+            'GRANT ALL PRIVILEGES ON `client\\_'.substr($company->workspaceKey(), 0, 40)."`.* TO 'client_runtime'@'localhost'",
+        ], $statements);
     }
 
     public function test_setup_creates_and_seeds_a_database_and_private_folder_idempotently(): void
