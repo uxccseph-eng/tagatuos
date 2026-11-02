@@ -7,6 +7,7 @@ use App\Models\Company;
 use App\Models\CompanyLedger;
 use App\Models\CompanySetting;
 use App\Models\Employee;
+use App\Models\MonthlyClosing;
 use App\Models\Party;
 use App\Models\TaxCode;
 use App\Models\User;
@@ -362,6 +363,140 @@ class CompanyLedgerTest extends TestCase
         $this->get(route('masters.accounts.catalog'))->assertOk()->assertDontSee('PRIVATE-DOCUMENT')->assertDontSee('PRIVATE-PAYROLL');
         $company->users()->updateExistingPivot($reader->id, ['allowed_tabs' => json_encode(['dashboard', 'lapsing'])]);
         $this->getJson(route('sheets.database.show'))->assertOk()->assertJsonCount(0, 'state.sales')->assertJsonCount(0, 'journals');
+    }
+
+    public function test_posted_correction_rebuilds_the_existing_journal_and_records_both_versions(): void
+    {
+        [$company, $owner, $accountant] = $this->book();
+        $this->asMember($owner, $company);
+        $state = CompanyLedgerService::emptyState();
+        $state['journalEntries'] = [$this->journal()];
+        $this->save($state)->assertOk();
+        $header = DB::table('journal_entries')->sole();
+        $state['journalEntries'][0]['date'] = '2026-10-02';
+        $state['journalEntries'][0]['reference'] = 'Corrected reference';
+        $state['journalEntries'][0]['lines'][0]['debit'] = 2500;
+        $state['journalEntries'][0]['lines'][1]['credit'] = 2500;
+        $this->asMember($accountant, $company);
+        $requestId = (string) Str::uuid();
+        $this->save($state, 1, [], $requestId)->assertOk()->assertJsonPath('revision', 2)->assertJsonPath('journals.0.lines.0.debit', 2500);
+        $this->save($state, 1, [], $requestId)->assertOk()->assertJsonPath('revision', 2);
+        $this->assertDatabaseCount('journal_entries', 1);
+        $this->assertDatabaseCount('journal_entry_lines', 2);
+        $this->assertDatabaseHas('journal_entries', ['id' => $header->id, 'number' => $header->number, 'posted_by' => $owner->id, 'transaction_date' => '2026-10-02', 'reference' => 'Corrected reference']);
+        $audit = DB::table('company_ledger_changes')->where('revision', 2)->sole();
+        $this->assertSame($accountant->id, $audit->user_id);
+        $change = json_decode($audit->changes, true, 512, JSON_THROW_ON_ERROR)[0];
+        $this->assertSame(1000, $change['before']['lines'][0]['debit']);
+        $this->assertSame(2500, $change['after']['lines'][0]['debit']);
+    }
+
+    public function test_invalid_posted_correction_keeps_the_confirmed_journal_and_revision(): void
+    {
+        [$company, $owner] = $this->book();
+        $this->asMember($owner, $company);
+        $state = CompanyLedgerService::emptyState();
+        $state['journalEntries'] = [$this->journal()];
+        $this->save($state)->assertOk();
+        $state['journalEntries'][0]['lines'][0]['debit'] = 2000;
+        $this->save($state, 1)->assertUnprocessable();
+        $this->assertSame(1, CompanyLedger::query()->sole()->revision);
+        $this->assertSame(1000, CompanyLedger::query()->sole()->state['journalEntries'][0]['lines'][0]['debit']);
+        $this->assertDatabaseHas('journal_entry_lines', ['debit' => '10.0000']);
+        $this->assertDatabaseCount('company_ledger_changes', 1);
+    }
+
+    public function test_failed_correction_audit_rolls_back_replaced_journal_lines(): void
+    {
+        [$company, $owner] = $this->book();
+        $state = CompanyLedgerService::emptyState();
+        $state['journalEntries'] = [$this->journal()];
+        app(CompanyLedgerService::class)->save($company, $owner, ['state' => $state, 'payroll' => [], 'revision' => 0, 'request_id' => (string) Str::uuid()]);
+        DB::listen(function (QueryExecuted $query): void {
+            if (str_starts_with(strtolower($query->sql), 'insert') && str_contains($query->sql, 'company_ledger_changes')) {
+                throw new \RuntimeException('Audit unavailable');
+            }
+        });
+        $state['journalEntries'][0]['lines'][0]['debit'] = 2000;
+        $state['journalEntries'][0]['lines'][1]['credit'] = 2000;
+        try {
+            app(CompanyLedgerService::class)->save($company, $owner, ['state' => $state, 'payroll' => [], 'revision' => 1, 'request_id' => (string) Str::uuid()]);
+            $this->fail('The audit failure must roll back the correction.');
+        } catch (\RuntimeException $exception) {
+            $this->assertSame('Audit unavailable', $exception->getMessage());
+        }
+        $this->assertSame(1, CompanyLedger::query()->sole()->revision);
+        $this->assertDatabaseCount('journal_entries', 1);
+        $this->assertDatabaseCount('journal_entry_lines', 2);
+        $this->assertDatabaseHas('journal_entry_lines', ['debit' => '10.0000']);
+        $this->assertDatabaseMissing('journal_entry_lines', ['debit' => '20.0000']);
+    }
+
+    public function test_completed_months_must_be_reopened_before_a_posted_correction(): void
+    {
+        [$company, $owner] = $this->book();
+        $this->asMember($owner, $company);
+        $state = CompanyLedgerService::emptyState();
+        $state['journalEntries'] = [$this->journal()];
+        $this->save($state)->assertOk();
+        $closing = MonthlyClosing::factory()->create(['company_id' => $company->id, 'month' => '2026-10', 'status' => 'completed']);
+        $state['journalEntries'][0]['date'] = '2026-11-01';
+        $this->save($state, 1)->assertUnprocessable()->assertJsonValidationErrors('ledger');
+        $closing->forceFill(['status' => 'in_progress'])->save();
+        $this->save($state, 1)->assertOk()->assertJsonPath('revision', 2);
+        MonthlyClosing::factory()->create(['company_id' => $company->id, 'month' => '2026-12', 'status' => 'completed']);
+        $state['journalEntries'][0]['date'] = '2026-12-01';
+        $this->save($state, 2)->assertUnprocessable();
+    }
+
+    public function test_purchase_corrections_must_still_match_existing_issued_certificates(): void
+    {
+        [$company, $owner] = $this->book();
+        $this->asMember($owner, $company);
+        Party::factory()->create(['workspace_key' => $company->workspaceKey(), 'name' => 'Supplier', 'classification' => 'Supplier']);
+        $state = CompanyLedgerService::emptyState();
+        $state['purchases'] = [['id' => 1, 'number' => 'BILL-000001', 'date' => '2026-10-01', 'status' => 'posted', 'supplier' => 'Supplier', 'gross' => 112000, 'tax' => 'VAT (12%)', 'ewt' => 2, 'ewtCode' => 'WC160', 'wvat' => 0, 'account' => '7110 · Rent Expense', 'terms' => 'On Account']];
+        $state['wtpCertificates'] = [['id' => 1, 'number' => '2307I-000001', 'date' => '2026-10-01', 'status' => 'posted', 'supplier' => 'Supplier', 'billId' => 1, 'taxBase' => 100000, 'ewt' => 2, 'ewtCode' => 'WC160', 'wvat' => 0]];
+        $this->save($state)->assertOk();
+        $state['purchases'][0]['gross'] = 224000;
+        $this->save($state, 1)->assertUnprocessable();
+        $this->assertSame(1, CompanyLedger::query()->sole()->revision);
+        $state['wtpCertificates'][0]['taxBase'] = 200000;
+        $this->save($state, 1)->assertOk()->assertJsonPath('revision', 2);
+        $this->assertDatabaseCount('journal_entries', 1);
+        $this->assertDatabaseHas('journal_entry_lines', ['credit' => '40.0000']);
+    }
+
+    public function test_editing_a_sale_cannot_leave_existing_collections_overpaid(): void
+    {
+        [$company, $owner] = $this->book();
+        $this->asMember($owner, $company);
+        Party::factory()->create(['workspace_key' => $company->workspaceKey(), 'name' => 'Customer', 'classification' => 'Customer']);
+        $state = CompanyLedgerService::emptyState();
+        $state['sales'] = [['id' => 1, 'number' => 'SI-000001', 'date' => '2026-10-01', 'status' => 'posted', 'customer' => 'Customer', 'gross' => 10000, 'tax' => 'Non-VAT', 'account' => '4020 · Sales - Services', 'terms' => 'On Account', 'cwt' => 'None', 'vatCwt' => 'None']];
+        $state['collections'] = [['id' => 1, 'number' => 'CR-000001', 'date' => '2026-10-01', 'status' => 'posted', 'customer' => 'Customer', 'invoice' => 'SI-000001', 'amount' => 10000, 'bank' => '1010 · Cash on Hand', 'type' => 'Settlement']];
+        $this->save($state)->assertOk();
+        $state['sales'][0]['gross'] = 5000;
+        $this->save($state, 1)->assertUnprocessable();
+        $state['collections'][0]['amount'] = 5000;
+        $this->save($state, 1)->assertOk();
+        $this->assertDatabaseCount('journal_entries', 2);
+        $this->assertDatabaseMissing('journal_entry_lines', ['debit' => '100.0000']);
+    }
+
+    public function test_reference_and_description_corrections_update_the_journal_without_changing_its_identity(): void
+    {
+        [$company, $owner] = $this->book();
+        $this->asMember($owner, $company);
+        $state = CompanyLedgerService::emptyState();
+        $state['journalEntries'] = [$this->journal()];
+        $this->save($state)->assertOk();
+        $headerId = DB::table('journal_entries')->sole()->id;
+        $state['journalEntries'][0]['reference'] = 'Ref-2';
+        $state['journalEntries'][0]['particulars'] = 'Correct explanation';
+        $this->save($state, 1)->assertOk();
+        $this->assertDatabaseHas('journal_entries', ['id' => $headerId, 'reference' => 'Ref-2']);
+        $this->assertDatabaseHas('journal_entry_lines', ['journal_entry_id' => $headerId, 'remarks' => 'Correct explanation']);
     }
 
     private function journal(string $id = 'first', string $number = 'GJ-000001', string $status = 'posted'): array

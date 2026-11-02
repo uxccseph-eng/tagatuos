@@ -316,6 +316,11 @@ class LedgerPostingService
                     if (! $bill || $bill['status'] !== 'posted') {
                         $this->fail('Void the issued certificate before voiding its source purchase.');
                     }
+                    if ($bill['supplier'] !== $record['supplier'] || $this->historicalTaxNet($bill['gross'], $bill['tax']) !== ($record['taxBase'] ?? 0)
+                        || ($bill['ewtCode'] ?? '') !== ($record['ewtCode'] ?? '') || ($bill['wvatCode'] ?? '') !== ($record['wvatCode'] ?? '')
+                        || $this->decimal($bill['ewt'] ?? 0, 4) !== $this->decimal($record['ewt'] ?? 0, 4) || $this->decimal($bill['wvat'] ?? 0, 4) !== $this->decimal($record['wvat'] ?? 0, 4)) {
+                        $this->fail('The posted issued certificate must match its source purchase. Correct or void the linked certificate before changing the purchase.');
+                    }
                 }
             }
         }

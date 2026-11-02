@@ -54,3 +54,24 @@ test('Sales sorting still changes row order once and subsequent updates keep row
     grid.context.updateSheet();
     assert.equal(grid.moves(), 1);
 });
+
+
+test('editing a posted imported sale retains its import identity and original transaction number', () => {
+    const fields=['Date','Customer','Gross amount','Tax type','Revenue account','Income withholding','VAT withholding','Terms','Invoice reference','Classification','Deposit account','Description','Particulars','Settlement amount'];
+    const values=['2026-10-02','Customer','200.00','Non-VAT','4020','None','None','On Account','Corrected','Regular','1010','Updated description','',''];
+    const entryFields=Object.fromEntries(fields.map((name,index)=>[name,{value:values[index],reportValidity:()=>true,setCustomValidity(){}}]));
+    const original={id:4,number:'SI-000004',status:'posted',importBatchKey:'a'.repeat(64),origin:'sheet-import',history:[{label:'Imported'}],gross:10000};
+    let saved;
+    const context=vm.createContext({entryIsEditable:true,editingEntry:original,entryFields,entryAttachments:[],entryFromInline:false,
+        amountToCents:value=>Number(value)*100,nextNumber:5,workingPeriod:'2026-10',
+        window:{SheetMasters:{withholdingError:()=>''},WorkingPeriod:{revealDate(){},current:()=>({from:'2026-10-01'})}},
+        renderEntry:entry=>{saved=entry;},updatePeriod(){},entryDrawer:{close(){}},announce(){},filterInput:{},globalSearch:{},statusFilter:{},nextSaleNumber:()=>''});
+    const save=source.slice(source.indexOf('function saveEntryDrawer('),source.indexOf('function suggestSalesFields('));
+    vm.runInContext(save+';saveEntryDrawer(false);',context);
+    assert.equal(saved.importBatchKey,original.importBatchKey);
+    assert.equal(saved.origin,original.origin);
+    assert.equal(saved.number,'SI-000004');
+    assert.equal(saved.status,'posted');
+    assert.equal(saved.gross,20000);
+    assert.equal(saved.history[0].label,'Imported');
+});

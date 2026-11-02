@@ -263,6 +263,28 @@ class ClientProvisioningTest extends TestCase
         $b->run(fn () => $this->assertSame(0, Party::query()->count()));
     }
 
+    public function test_posted_corrections_only_replace_journal_lines_in_the_selected_client_database(): void
+    {
+        $owner = User::factory()->firm()->create();
+        $a = $this->readyClient($owner);
+        $b = $this->readyClient($owner);
+        $state = CompanyLedgerService::emptyState();
+        $state['journalEntries'] = [['id' => 'one', 'number' => 'GJ-000001', 'date' => '2026-10-01', 'status' => 'posted', 'type' => 'General', 'lines' => [['account' => '1010', 'debit' => 1000, 'credit' => 0], ['account' => '3010', 'debit' => 0, 'credit' => 1000]]]];
+        foreach ([$a, $b] as $company) {
+            app(CompanyLedgerService::class)->save($company, $owner, ['state' => $state, 'payroll' => [], 'revision' => 0, 'request_id' => (string) Str::uuid()]);
+        }
+        $state['journalEntries'][0]['lines'][0]['debit'] = 2000;
+        $state['journalEntries'][0]['lines'][1]['credit'] = 2000;
+        $this->actingAs($owner)->withSession(['active_company_id' => $b->id])->withHeader('X-Company-ID', (string) $a->id)
+            ->postJson(route('sheets.database.save', ['company_id' => $a->id]), ['state' => $state, 'payroll' => [], 'revision' => 1, 'request_id' => (string) Str::uuid()])
+            ->assertOk()->assertJsonPath('revision', 2)->assertJsonPath('journals.0.lines.0.debit', 2000);
+        $a->run(function (): void {
+            $this->assertSame(1, DB::table('journal_entries')->count());
+            $this->assertSame('20.0000', number_format((float) DB::table('journal_entry_lines')->where('debit', '>', 0)->value('debit'), 4, '.', ''));
+        });
+        $b->run(fn () => $this->assertSame(1000, app(CompanyLedgerService::class)->read($b)['journals'][0]['lines'][0]['debit']));
+    }
+
     private function newClient(?User $owner = null): Company
     {
         $owner ??= User::factory()->firm()->create();

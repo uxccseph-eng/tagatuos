@@ -53,7 +53,8 @@
     }
     function postingLabel(sheet, record) {
         const confirmed = (sheet === 'payroll' ? database.payroll : database.state[sheet]) || [];
-        if (confirmed.some(saved => String(saved.id) === String(record.id) && saved.status === 'posted')) return 'Posted';
+        const current = (sheet === 'payroll' ? payroll : state[sheet])?.find(item => String(item.id) === String(record.id));
+        if (current && confirmed.some(saved => String(saved.id) === String(record.id) && saved.status === 'posted' && same(saved, current))) return 'Posted';
         return failure || recoveryReview || migration ? 'Not saved' : 'Saving…';
     }
     function decorateBadge(node, sheet, record) {

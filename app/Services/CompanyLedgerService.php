@@ -113,6 +113,7 @@ class CompanyLedgerService
             $previousState = $ledger?->state ?? self::emptyState();
             $previousPayroll = $ledger?->payroll ?? [];
             $changes = [];
+            $rebuild = [];
             foreach ([...self::SHEETS, 'payroll'] as $sheet) {
                 $before = $sheet === 'payroll' ? $previousPayroll : $previousState[$sheet];
                 $after = $sheet === 'payroll' ? $payroll : $state[$sheet];
@@ -124,8 +125,16 @@ class CompanyLedgerService
                         $this->fail('Posted and void transactions cannot be deleted. Void or archive them to preserve their history.');
                     }
                     if ($replacement && (isset($existing[$sheet.':'.$id]) || in_array($record['status'], ['posted', 'void', 'archived'], true))) {
-                        if ($this->financial($record) !== $this->financial($replacement)) {
-                            $this->fail('A previously posted transaction cannot change its number, date, parties, accounts or amounts. Void and duplicate it to make a correction.');
+                        if (($record['number'] ?? '') !== ($replacement['number'] ?? '')) {
+                            $this->fail('A posted transaction keeps its original transaction number.');
+                        }
+                        if ($record['status'] === 'posted' && $replacement['status'] === 'posted') {
+                            $this->validatePostedEdit($locked, $sheet, $record, $replacement);
+                            if ($this->postingContent($record) !== $this->postingContent($replacement)) {
+                                $rebuild[$sheet.':'.$id] = true;
+                            }
+                        } elseif ($this->financial($record) !== $this->financial($replacement)) {
+                            $this->fail('Void and archived transactions retain their original financial details. Restore the entry before editing it.');
                         }
                         if ($record['status'] === 'posted' && $replacement['status'] === 'draft') {
                             $this->fail('Void and duplicate a posted transaction instead of reopening it as a draft.');
@@ -143,10 +152,16 @@ class CompanyLedgerService
             }
             ChartAccount::seedWorkspace($locked->workspaceKey());
             $this->recordImportBatches($locked, $actor, $state, $previousState, $payroll, $previousPayroll);
-            foreach ($this->posting->prepare($locked, $state, $payroll, $existing) as $voucher) {
+            foreach ($this->posting->prepare($locked, $state, $payroll, array_diff_key($existing, $rebuild)) as $voucher) {
                 $lines = $voucher['lines'];
                 unset($voucher['lines']);
-                $id = DB::table('journal_entries')->insertGetId([...$voucher, 'company_id' => $locked->id, 'status' => 'posted', 'posted_by' => $actor->id, 'created_at' => now(), 'updated_at' => now()]);
+                if (isset($existing[$voucher['source_key']])) {
+                    $id = $existing[$voucher['source_key']]->id;
+                    DB::table('journal_entry_lines')->where('company_id', $locked->id)->where('journal_entry_id', $id)->delete();
+                    DB::table('journal_entries')->where('company_id', $locked->id)->where('id', $id)->update([...$voucher, 'updated_at' => now()]);
+                } else {
+                    $id = DB::table('journal_entries')->insertGetId([...$voucher, 'company_id' => $locked->id, 'status' => 'posted', 'posted_by' => $actor->id, 'created_at' => now(), 'updated_at' => now()]);
+                }
                 DB::table('journal_entry_lines')->insert(array_map(fn (array $line): array => [...$line, 'company_id' => $locked->id, 'journal_entry_id' => $id], $lines));
             }
             foreach ([...self::SHEETS, 'payroll'] as $sheet) {
@@ -257,6 +272,30 @@ class CompanyLedgerService
         }
 
         return json_encode($this->canonical(array_intersect_key($record, array_flip($fields))), JSON_THROW_ON_ERROR);
+    }
+
+    private function postingContent(array $record): string
+    {
+        return $this->financial($record).json_encode($this->canonical(array_intersect_key($record, array_flip(['reference', 'certificate', 'particulars', 'memo', 'description', 'notes']))), JSON_THROW_ON_ERROR);
+    }
+
+    private function validatePostedEdit(Company $company, string $sheet, array $before, array $after): void
+    {
+        foreach (['origin', 'importBatchKey', 'clientPayrollImport', 'saleId', 'payrollRunId', 'payrollAllocations'] as $field) {
+            if (($before[$field] ?? null) !== ($after[$field] ?? null)) {
+                $this->fail('The source and import links of a posted transaction cannot be changed.');
+            }
+        }
+        if ($sheet === 'wtpCertificates' && (string) ($before['billId'] ?? '') !== (string) ($after['billId'] ?? '')) {
+            $this->fail('Void and replace the issued certificate to change its source purchase.');
+        }
+        if (($before['origin'] ?? '') === 'payroll-remittance' && $this->financial($before) !== $this->financial($after)) {
+            $this->fail('Void this generated payroll remittance and generate a replacement from Payroll to change its date or amounts.');
+        }
+        if ($this->postingContent($before) !== $this->postingContent($after)
+            && app(ClientDatabase::class)->central()->table('monthly_closings')->where('company_id', $company->id)->where('status', 'completed')->whereIn('month', [substr($before['date'], 0, 7), substr($after['date'], 0, 7)])->exists()) {
+            $this->fail('Reopen the completed month before editing a posted transaction in or into that month.');
+        }
     }
 
     private function canonical(array $value): array

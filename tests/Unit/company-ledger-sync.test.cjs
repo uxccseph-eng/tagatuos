@@ -166,3 +166,25 @@ test('lost acknowledgements preserve the original request before saving newer ed
     assert.equal(p.requests[2].revision,1);
     assert.equal(p.api.pending(),false);
 });
+
+
+test('editing an already posted entry remains unconfirmed until its new values are saved', async () => {
+    const state = empty(); state.sales = [{id:1,status:'posted',gross:10000}];
+    let release;
+    const p = boot({snapshot:{state,revision:1},fetcher:payload=>new Promise(resolve=>{release=()=>resolve({ok:true,json:async()=>({...p.database,state:payload.state,revision:2})});})});
+    assert.equal(p.api.postingLabel('sales',{id:1}),'Posted');
+    const changed=p.api.state(); changed.sales[0].gross=20000; p.api.saveState(changed);
+    assert.equal(p.api.postingLabel('sales',{id:1}),'Saving\u2026');
+    const saving=p.api.flush(); release(); await saving;
+    assert.equal(p.api.postingLabel('sales',{id:1}),'Posted');
+});
+
+test('a rejected posted edit shows Not saved even though the original entry was posted', async () => {
+    const state=empty(); state.sales=[{id:1,status:'posted',gross:10000}];
+    const p=boot({snapshot:{state,revision:1},fetcher:async()=>({ok:false,status:422,json:async()=>({message:'Correction rejected'})})});
+    const changed=p.api.state(); changed.sales[0].gross=0; p.api.saveState(changed);
+    await assert.rejects(p.api.flush(),/Correction rejected/);
+    assert.equal(p.api.postingLabel('sales',{id:1}),'Not saved');
+    assert.equal(p.database.state.sales[0].gross,10000);
+    assert.equal(p.storage.has(recoveryKey),true);
+});
