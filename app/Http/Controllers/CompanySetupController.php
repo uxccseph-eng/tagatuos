@@ -86,6 +86,7 @@ class CompanySetupController extends Controller
                 $profile = array_replace($settings?->profile ?? [], $data, [
                     'workspace_key' => $workspace, 'company_id' => $company->getKey(),
                 ]);
+                $profile = SecRegistrationRules::withDisclosureDefaults($profile);
                 unset($profile['browser_key'], $profile['sheet_settings']);
                 CompanySetting::query()->updateOrCreate(['workspace_key' => $workspace], [
                     'lookup_key' => $workspace, 'profile' => $profile, 'preferences' => $settings?->preferences ?? [],
@@ -102,6 +103,7 @@ class CompanySetupController extends Controller
                 $data = array_replace($data, $settings->profile, ['full_name' => $data['full_name'], 'sheet_settings' => $settings->preferences, 'workspace_key' => $settings->workspace_key]);
             }
         }
+        $data = SecRegistrationRules::withDisclosureDefaults($data);
         $request->session()->put('company_setup', $data);
 
         return to_route('dashboard')->with('status', 'Company setup saved. Welcome to your local workspace preview.');

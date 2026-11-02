@@ -1,5 +1,6 @@
+@php($company = \App\SecRegistrationRules::withDisclosureDefaults($company))
 <section class="settings-card">
-    <div class="settings-card-title">@unless($setup ?? false)<span class="material-symbols-outlined">description</span>@endunless<div><h3>Disclosures</h3><p>Enter the statements approved for the reporting period. Examples are guidance only and are not saved automatically.</p></div></div>
+    <div class="settings-card-title">@unless($setup ?? false)<span class="material-symbols-outlined">description</span>@endunless<div><h3>Disclosures</h3><p>Blank disclosures use the default statements below. Edit them to reflect the reporting period; custom statements are kept when saved.</p></div></div>
     <div class="settings-disclosures">
         <x-settings-field name="going_concern_statement" label="Going concern statement" type="textarea" :value="$company['going_concern_statement'] ?? ''" rows="4" maxlength="5000" placeholder="Describe management's assessment of the entity's ability to continue as a going concern." hint="Include any material uncertainty and the period covered by the assessment." />
         <x-settings-field name="deficiency_tax_assessments" label="Deficiency tax assessments" type="textarea" :value="$company['deficiency_tax_assessments'] ?? ''" rows="3" maxlength="5000" placeholder="Describe any deficiency tax assessment received from the Bureau of Internal Revenue, or state that there are none as of the reporting date." hint="Review the actual status before entering a statement." />

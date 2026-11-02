@@ -6,6 +6,7 @@ use App\Models\ChartAccount;
 use App\Models\Company;
 use App\Models\CompanySetting;
 use App\Models\User;
+use App\SecRegistrationRules;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -53,6 +54,36 @@ class SecRegistrationSettingsTest extends TestCase
             ->assertSessionHasErrors(['registration_date', 'issued_outstanding_shares', 'par_value_per_share'])->assertSessionMissing('company_setup');
         $this->post('/company/setup', [...$payload, 'entity_type' => 'individual', 'tax_cases' => 'Reviewed disclosure'])
             ->assertSessionHasNoErrors()->assertSessionHas('company_setup.tax_cases', 'Reviewed disclosure')->assertSessionMissing('company_setup.authorized_shares');
+    }
+
+    public function test_blank_disclosures_use_defaults_in_settings_and_preserve_custom_statements(): void
+    {
+        $company = [...$this->company(), 'going_concern_statement' => 'Existing management assessment'];
+        $this->withSession(['preview_access' => true, 'company_setup' => $company]);
+        $this->get('/settings/sec')->assertOk()->assertSee(SecRegistrationRules::DISCLOSURE_DEFAULTS['tax_cases']);
+        $this->put('/settings/sec', ['deficiency_tax_assessments' => '   ', 'tax_cases' => null])
+            ->assertSessionHasNoErrors()->assertSessionHas('company_setup.going_concern_statement', 'Existing management assessment');
+        $profile = CompanySetting::query()->sole()->profile;
+        $this->assertSame('Existing management assessment', $profile['going_concern_statement']);
+        $this->assertSame(SecRegistrationRules::DISCLOSURE_DEFAULTS['deficiency_tax_assessments'], $profile['deficiency_tax_assessments']);
+        $this->assertSame(SecRegistrationRules::DISCLOSURE_DEFAULTS['tax_cases'], $profile['tax_cases']);
+        $this->put('/settings/sec', ['going_concern_statement' => ''])->assertSessionHasNoErrors();
+        $this->assertSame(SecRegistrationRules::DISCLOSURE_DEFAULTS['going_concern_statement'], CompanySetting::query()->sole()->profile['going_concern_statement']);
+    }
+
+    public function test_new_client_setup_defaults_blank_and_missing_disclosures_without_replacing_custom_text(): void
+    {
+        $firm = User::factory()->firm()->create();
+        $book = Company::factory()->create();
+        $book->users()->attach($firm, ['role' => 'owner']);
+        $payload = [...$this->company(), 'contact_number' => '09170000000', 'preview_ack' => '1', 'payroll' => 'no', 'supplier_tax' => 'none', 'customer_tax' => 'no', 'ppe' => 'no', 'going_concern_statement' => '   ', 'tax_cases' => 'Custom pending case details'];
+        $this->actingAs($firm)->withSession(['active_company_id' => $book->id])->post(route('company.store'), $payload)->assertSessionHasNoErrors();
+        $profile = CompanySetting::query()->where('workspace_key', $book->workspaceKey())->sole()->profile;
+        $this->assertSame(SecRegistrationRules::DISCLOSURE_DEFAULTS['going_concern_statement'], $profile['going_concern_statement']);
+        $this->assertSame(SecRegistrationRules::DISCLOSURE_DEFAULTS['deficiency_tax_assessments'], $profile['deficiency_tax_assessments']);
+        $this->assertSame('Custom pending case details', $profile['tax_cases']);
+        $this->withSession(['company_setup' => null])->get(route('settings.section', ['section' => 'sec', 'company_id' => $book->id]))
+            ->assertOk()->assertSee(SecRegistrationRules::DISCLOSURE_DEFAULTS['going_concern_statement'])->assertSee('Custom pending case details');
     }
 
     public function test_sec_page_requires_a_workspace_and_renders_blank_disclosures(): void

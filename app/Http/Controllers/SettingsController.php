@@ -6,6 +6,7 @@ use App\Http\Requests\SaveSettingsRequest;
 use App\Models\ChartAccount;
 use App\Models\CompanySetting;
 use App\Models\TaxCode;
+use App\SecRegistrationRules;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -60,6 +61,9 @@ class SettingsController extends Controller
             $company['sheet_settings'] = array_replace($company['sheet_settings'] ?? [], $values);
         } else {
             $company = array_replace($company, $values);
+            if ($section === 'sec') {
+                $company = SecRegistrationRules::withDisclosureDefaults($company);
+            }
         }
         if (($company['accounting_period'] ?? 'calendar') === 'calendar') {
             $company['fiscal_end_month'] = null;
