@@ -12,11 +12,15 @@ use Illuminate\Validation\ValidationException;
 
 class FinancialStatementCalculator
 {
-    /** Generate one annual snapshot from the saved, company-scoped ledger, never browser totals. */
-    public function generate(Company $company, int $auditPackId, int $year, int $revision): FinancialStatement
+    /**
+     * Generate one annual snapshot from the saved, company-scoped ledger, never browser totals.
+     *
+     * @param  array<string, mixed>  $inputs
+     */
+    public function generate(Company $company, int $auditPackId, int $year, int $revision, array $inputs = []): FinancialStatement
     {
-        return $company->run(function () use ($company, $auditPackId, $year, $revision): FinancialStatement {
-            return DB::transaction(function () use ($company, $auditPackId, $year, $revision): FinancialStatement {
+        return $company->run(function () use ($company, $auditPackId, $year, $revision, $inputs): FinancialStatement {
+            return DB::transaction(function () use ($company, $auditPackId, $year, $revision, $inputs): FinancialStatement {
                 $ledger = CompanyLedger::query()->where('company_id', $company->id)->lockForUpdate()->findOrFail($auditPackId);
                 abort_unless($ledger->revision === $revision, 409, 'The ledger changed. Reload before generating financial statements.');
                 $profile = CompanySetting::query()->where('company_id', $company->id)->firstOrFail()->profile;
@@ -27,9 +31,16 @@ class FinancialStatementCalculator
                     ['current' => $this->cashActivity($company->id, $year), 'previous' => $this->cashActivity($company->id, $year - 1)],
                 );
 
+                $previousStatement = FinancialStatement::query()->where('reporting_year', $year)->first();
+                $savedInputs = $previousStatement?->package['inputs'] ?? [];
+                if ($previousStatement && ($previousStatement->ledger_revision !== $revision || ($previousStatement->package['profile'] ?? []) !== $profile)) {
+                    $savedInputs['management_confirmed'] = false;
+                }
+                $package = app(FinancialStatementPackage::class)->build($company->id, $year, $profile, $matrices, array_replace_recursive($savedInputs, $inputs));
+
                 return FinancialStatement::query()->updateOrCreate(
                     ['company_id' => $company->id, 'reporting_year' => $year],
-                    ['company_ledger_id' => $ledger->id, 'company_name' => $profile['company_name'], 'tin' => $profile['tin'] ?? '', 'ledger_revision' => $revision, ...$matrices],
+                    ['company_ledger_id' => $ledger->id, 'company_name' => $profile['company_name'], 'tin' => $profile['tin'] ?? '', 'ledger_revision' => $revision, 'package' => $package, ...$matrices],
                 );
             }, 3);
         });
@@ -258,7 +269,7 @@ class FinancialStatementCalculator
         if (in_array($type, ['income', 'revenue']) || ($type === '' && preg_match('/sales|revenue|income/', $name) && ! str_contains($name, 'cost') && ! str_contains($name, 'tax'))) {
             return 'revenue';
         }
-        if (preg_match('/income tax expense/', $name)) {
+        if ($section === 'income tax expense' || preg_match('/income tax.*(expense|provision)|provision.*income tax/', $name)) {
             return 'tax';
         }
         if (preg_match('/advertising|handling|marketing|outsource|representation|cost of (sales|goods)/', $name) || preg_match('/cost of (goods|sales)/', $section)) {

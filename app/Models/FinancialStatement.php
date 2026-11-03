@@ -5,7 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 
-#[Fillable(['company_id', 'company_ledger_id', 'company_name', 'tin', 'reporting_year', 'ledger_revision', 'balance_sheet', 'income_statement', 'equity', 'cash_flows'])]
+#[Fillable(['company_id', 'company_ledger_id', 'company_name', 'tin', 'reporting_year', 'ledger_revision', 'balance_sheet', 'income_statement', 'equity', 'cash_flows', 'package'])]
 class FinancialStatement extends Model
 {
     use BelongsToCompany;
@@ -17,5 +17,6 @@ class FinancialStatement extends Model
         'income_statement' => 'array',
         'equity' => 'array',
         'cash_flows' => 'array',
+        'package' => 'array',
     ];
 }
