@@ -33,6 +33,7 @@ use App\Http\Controllers\PortalController;
 use App\Http\Controllers\PreviewSessionController;
 use App\Http\Controllers\PurchasesController;
 use App\Http\Controllers\SalesController;
+use App\Http\Controllers\SawtFileController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\SheetImportController;
 use App\Http\Controllers\SystemDashboardController;
@@ -206,6 +207,7 @@ Route::post('/tax-reports/relief-purchases/excel', [TaxReportsController::class,
 Route::post('/reports/generate-1604e-dat', [BirReportController::class, 'export1604EDat'])->name('reports.qap.annual.dat');
 Route::post('/reports/generate-qap-dat', [BirReportController::class, 'export1601EQDat'])->name('reports.qap.dat');
 Route::post('/reports/generate-sawt-dat', [BirReportController::class, 'generateSawtFromPayload'])->name('reports.sawt.dat');
+Route::post('/reports/sawt/from-2307', [SawtFileController::class, 'download'])->middleware(['auth', 'throttle:20,1'])->name('reports.sawt.saved');
 Route::post('/reports/generate-sales-dat', [BirReportController::class, 'generateFromPayload'])->name('reports.sales.dat');
 Route::post('/reports/generate-purchases-dat', [BirReportController::class, 'generatePurchasesFromPayload'])->name('reports.purchases.dat');
 Route::get('/tax-reports/{schedule}', [TaxReportsController::class, 'index'])->name('tax-reports.show');

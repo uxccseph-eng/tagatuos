@@ -60,7 +60,7 @@ class EnsureActiveCompany
             $request->routeIs('sheets.database.show') => ['sheets', 'books', 'reports', 'tax-reports', 'lapsing'],
             $request->routeIs('masters.accounts.catalog', 'masters.accounts.relief-catalog') => ['sheets', 'books', 'lapsing', 'masters', 'reports', 'tax-reports', 'settings'],
             $request->routeIs('reports.form2307') => ['sheets', 'tax-reports'],
-            $request->routeIs('reports.form2316', 'reports.sales.dat', 'reports.purchases.dat', 'reports.sawt.dat', 'reports.qap.dat', 'reports.qap.annual.dat') => ['tax-reports'],
+            $request->routeIs('reports.form2316', 'reports.sales.dat', 'reports.purchases.dat', 'reports.sawt.dat', 'reports.sawt.saved', 'reports.qap.dat', 'reports.qap.annual.dat') => ['tax-reports'],
             isset(TeamPermissions::TABS[$request->segment(1)]) => [$request->segment(1)],
             default => [],
         };

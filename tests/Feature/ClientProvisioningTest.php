@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Jobs\ProvisionClientDatabase;
 use App\Models\ChartAccount;
 use App\Models\Company;
+use App\Models\CompanyLedger;
 use App\Models\CompanySetting;
 use App\Models\InboxDocument;
 use App\Models\Party;
@@ -408,6 +409,31 @@ class ClientProvisioningTest extends TestCase
         });
         $this->actingAs($target)->getJson(route('account.companies.show', $company->id))->assertOk()->assertJsonPath('data.role', 'owner');
         $this->actingAs($owner)->getJson(route('account.companies.show', $company->id))->assertNotFound();
+    }
+
+    public function test_saved_sawt_download_reads_only_the_selected_client_database(): void
+    {
+        $owner = User::factory()->firm()->create(['must_change_password' => false]);
+        $first = $this->readyClient($owner);
+        $second = $this->readyClient($owner);
+        foreach ([$first, $second] as $index => $company) {
+            $company->run(function () use ($company, $index): void {
+                CompanySetting::query()->where('company_id', $company->id)->firstOrFail()->update(['profile' => ['company_name' => 'Client '.($index + 1), 'entity_type' => 'corporation', 'tin' => $index === 0 ? '123456789' : '987654321', 'branch_code' => '00000', 'rdo' => '033']]);
+                $state = CompanyLedgerService::emptyState();
+                $state['cwtCertificates'] = [['id' => 1, 'number' => 'CWT-000001', 'date' => '2026-10-20', 'status' => 'posted', 'customer' => 'Payor of client '.($index + 1), 'customerTin' => '00100200300000', 'entity_type' => 'corporation', 'atc' => 'WC157', 'taxBase' => $index === 0 ? 100000 : 200000, 'amount' => $index === 0 ? 2000 : 4000]];
+                CompanyLedger::factory()->create(['company_id' => $company->id, 'revision' => 1, 'state' => $state]);
+            });
+        }
+        $this->actingAs($owner)->withHeader('X-Ledger-Revision', '1');
+        $selection = ['from' => '2026-10-01', 'to' => '2026-12-31', 'form_type' => '1702Q', 'tax_kind' => 'income'];
+        $firstText = $this->postJson(route('reports.sawt.saved', ['company_id' => $first->id]), $selection)->assertOk()->assertDownload('12345678900001220261702Q.DAT')->streamedContent();
+        $secondText = $this->postJson(route('reports.sawt.saved', ['company_id' => $second->id]), $selection)->assertOk()->assertDownload('98765432100001220261702Q.DAT')->streamedContent();
+        $this->assertStringContainsString('PAYOR OF CLIENT 1', $firstText);
+        $this->assertStringNotContainsString('PAYOR OF CLIENT 2', $firstText);
+        $this->assertStringContainsString('WC157,2.00,1000.00,20.00', $firstText);
+        $this->assertStringContainsString('PAYOR OF CLIENT 2', $secondText);
+        $this->assertStringContainsString('WC157,2.00,2000.00,40.00', $secondText);
+        $this->assertDatabaseCount('tax_preflight_reviews', 2);
     }
 
     private function newClient(?User $owner = null): Company

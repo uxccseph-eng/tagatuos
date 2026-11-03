@@ -187,6 +187,24 @@
         }catch(error){el('tax-export-status').textContent='DAT export failed. '+error.message;el('tax-dat-error').textContent=error.message;}
         finally{generatingDat=false;el('tax-dat').disabled=!relief;el('tax-dat-download').disabled=false;}
     }
+    el('tax-sawt-saved')?.addEventListener('click',async event=>{
+        event.preventDefault();if(generatingDat)return;
+        generatingDat=true;const button=el('tax-sawt-saved');button.disabled=true;
+        el('tax-export-status').textContent='Preparing DAT from saved 2307 certificates…';
+        try{
+            if(!window.CompanyLedgerDatabase)throw Error('Open an assigned company book before exporting saved certificates.');
+            await window.CompanyLedger.flush();
+            if(window.CompanyLedger.pending())throw Error('Finish saving your changes before exporting.');
+            const range=window.WorkingPeriod.current();
+            const response=await fetch(main.dataset.sawtDatabaseUrl,{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json',Accept:'application/json','X-CSRF-TOKEN':window.WorkspaceMasters.csrfToken,'X-Ledger-Revision':String(window.CompanyLedgerDatabase.revision)},body:JSON.stringify({form_type:sawtForm,tax_kind:sawtTax,from:range.from,to:range.to})});
+            if(!response.ok){const problem=await response.json().catch(()=>({}));throw Error(Object.values(problem.errors || {}).flat()[0] || problem.message || 'Unable to export saved certificates.');}
+            const filename=(response.headers.get('Content-Disposition') || '').match(/filename="?([^";]+)"?/i)?.[1];
+            if(!filename||!/^\d{19}(?:1700|1701Q?|1702Q?|2550[MQ]|2551Q|2553)\.DAT$/.test(filename))throw Error('The server returned an invalid SAWT filename.');
+            const url=URL.createObjectURL(await response.blob()),link=document.createElement('a');link.href=url;link.download=filename;document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+            el('tax-export-status').textContent='SAWT DAT downloaded from saved 2307 certificates · '+response.headers.get('X-SAWT-Detail-Count')+' detail row(s) · Validate with the BIR module before filing.';
+        }catch(error){el('tax-export-status').textContent=error.message;}
+        finally{generatingDat=false;button.disabled=false;}
+    });
     let sawtExportPayload=null;
     function syncSawtEntity(){const individual=el('sawt-entity').value==='individual';el('sawt-business-field').hidden=individual;el('sawt-name').disabled=individual;el('sawt-name').required=!individual;document.querySelectorAll('[data-sawt-individual]').forEach(label=>{label.hidden=!individual;label.querySelector('input').disabled=!individual;});el('sawt-last').required=individual;el('sawt-first').required=individual;}
     function openSawtDat(event){
