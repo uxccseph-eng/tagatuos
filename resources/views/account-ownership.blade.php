@@ -1,0 +1,12 @@
+<x-account-layout title="Transfer firm ownership">
+    <section class="page-heading"><div><span class="eyebrow">FIRM ACCOUNT</span><h1>Transfer firm ownership</h1><p class="muted">Hand over all client books and team access to an existing approved account.</p></div><a class="button secondary" href="{{ route('account.dashboard') }}">Company books</a></section>
+    <div class="notice"><strong>Entire firm: {{ $scope['owner']['name'] }}</strong><p>The recipient becomes owner of every client below and manages the existing team. After acceptance, you lose access to these clients. Client databases, private folders and accounting records stay in place. Your personal login and password remain yours.</p><p>The recipient must sign in and accept within seven days. You can cancel while it is pending.</p></div>
+    @include('account-ownership-scope')
+    <section class="account-card"><h2>Request a handover</h2><p class="muted">Choose an approved firm account with no existing clients or team, or an active Accountant or Manager belonging only to this firm.</p><form class="field-stack" method="POST" action="{{ route('account.ownership.store') }}">@csrf
+        <div class="field"><label for="recipient-email">New owner's account email</label><input id="recipient-email" name="email" type="email" value="{{ old('email') }}" maxlength="255" required autocomplete="off"></div>
+        <div class="field"><label for="confirm-firm">Type {{ $scope['owner']['name'] }} to confirm the whole firm</label><input id="confirm-firm" name="confirmation" maxlength="255" required autocomplete="off"></div>
+        <div class="field"><label for="current-password">Your current password</label><input id="current-password" name="current_password" type="password" maxlength="128" autocomplete="current-password" required></div>
+        <button class="button primary" type="submit">Request ownership transfer</button>
+    </form></section>
+    @if($transfers->isNotEmpty())<section class="account-card"><h2>Recent handovers</h2>@foreach($transfers as $transfer)<p>Request #{{ $transfer->id }} · {{ $transfer->status === 'pending' && $transfer->expires_at->isPast() ? 'Expired' : ucfirst($transfer->status) }} · Expires {{ $transfer->expires_at->format('M j, Y') }}</p>@if($transfer->status === 'pending' && $transfer->expires_at->isFuture())<form method="POST" action="{{ route('account.ownership.close', $transfer->id) }}">@csrf<button class="button secondary" type="submit">Cancel handover #{{ $transfer->id }}</button></form>@endif @endforeach</section>@endif
+</x-account-layout>

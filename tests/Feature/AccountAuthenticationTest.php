@@ -175,6 +175,19 @@ class AccountAuthenticationTest extends TestCase
         $this->assertGuest();
     }
 
+    public function test_firm_owner_can_change_password_without_changing_client_ownership(): void
+    {
+        $owner = User::factory()->firm()->create(['password' => 'OwnerCurrent123!']);
+        $company = Company::factory()->create(['organization_owner_id' => $owner->id]);
+        $company->users()->attach($owner, ['role' => 'owner']);
+        $this->actingAs($owner)->get(route('account.dashboard'))->assertOk()->assertSee('Change firm owner password');
+        $this->putJson(route('account.password.update'), ['current_password' => 'IncorrectPassword123!', 'password' => 'OwnerNewPassword123!', 'password_confirmation' => 'OwnerNewPassword123!'])->assertUnprocessable();
+        $this->put(route('account.password.update'), ['current_password' => 'OwnerCurrent123!', 'password' => 'OwnerNewPassword123!', 'password_confirmation' => 'OwnerNewPassword123!'])->assertRedirect();
+        $this->assertTrue(Hash::check('OwnerNewPassword123!', $owner->fresh()->password));
+        $this->assertDatabaseHas('companies', ['id' => $company->id, 'organization_owner_id' => $owner->id]);
+        $this->assertDatabaseHas('company_user', ['company_id' => $company->id, 'user_id' => $owner->id, 'role' => 'owner']);
+    }
+
     /** @return array<string, string> */
     private function registrationData(): array
     {

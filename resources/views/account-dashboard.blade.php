@@ -2,6 +2,9 @@
     <section class="page-heading"><div><span class="eyebrow">{{ ucfirst(auth()->user()->type) }} ACCOUNT</span><h1>Company books</h1><p class="muted">Welcome, {{ auth()->user()->name }}. Choose a book to continue.</p></div><div class="count-badge"><strong>{{ $companies->total() }}</strong><span>{{ $companies->total() === 1 ? 'assigned book' : 'assigned books' }}</span></div></section>
     @if(auth()->user()->username)<p class="muted">Your assigned username: <strong>{{ auth()->user()->username }}</strong></p>@endif
     <div class="account-tabs"><span aria-current="page">My company books</span>@if(in_array(auth()->user()->type, ['individual', 'firm'], true))<a href="{{ route('team.entry') }}">Accountants &amp; access</a>@endif</div>
+    @foreach($incomingTransfers as $handover)
+        <section class="notice"><strong>Firm ownership handover awaiting your review</strong><p>{{ $handover->scope_summary['owner']['name'] }} has requested to transfer their firm and all client books to you.</p><a class="button secondary" href="{{ route('account.ownership.show', $handover->id) }}">Review handover</a></section>
+    @endforeach
     <div class="books-grid" data-client-books data-status-url="{{ route('account.companies.index') }}">
         <section aria-label="Assigned company books">
             @forelse($companies as $companyBook)
@@ -32,6 +35,9 @@
 <div class="field"><label for="book-name">Company / book name</label><input id="book-name" name="name" value="{{ old('name') }}" maxlength="200" required placeholder="e.g. Sample Trading Inc."></div><button class="button primary full" type="submit">+ Create book</button>@include('client-book-progress', ['status' => 'idle', 'message' => null])</form></section>
             @else
                 <section class="account-card"><span class="eyebrow">YOUR ACCESS</span><h2>{{ auth()->user()->type === 'individual' ? 'Your company workspace' : 'Assigned by your owner' }}</h2><p class="muted">{{ auth()->user()->type === 'individual' ? 'Open your book to continue setup or return to your accounting workspace.' : 'Only books assigned to your account appear here.' }}</p></section>
+            @endif
+            @if(auth()->user()->type === 'firm')
+                <section class="account-card"><span class="eyebrow">FIRM ACCOUNT</span><h2>Account security</h2><p class="muted">Manage your password or hand over the entire firm and all client books.</p><p><a class="button secondary" href="{{ route('account.password.edit') }}">Change firm owner password</a></p><a class="button secondary" href="{{ route('account.ownership.index') }}">Transfer firm ownership</a></section>
             @endif
             <p class="storage-note">Company settings, Masters and Sheet transactions are saved in your company database. Each save checks for changes made by other accountants.</p>
         </aside>

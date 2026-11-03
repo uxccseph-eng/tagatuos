@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\FirmOwnershipTransfer;
 use App\Services\ClientDatabase;
 use App\Services\CompanyBookService;
 use Illuminate\Http\Request;
@@ -16,6 +17,7 @@ class AccountDashboardController extends Controller
         $creationFirms = $books->creationFirms($request->user());
 
         return view('account-dashboard', [
+            'incomingTransfers' => FirmOwnershipTransfer::query()->where('target_owner_id', $request->user()->id)->where('status', 'pending')->where('expires_at', '>', now())->latest('id')->get(),
             'creationFirms' => $creationFirms,
             'setupRetryIds' => $companies->getCollection()->filter(fn ($company): bool => $books->canRetrySetup($request->user(), $company))->modelKeys(),
             'companies' => $companies,

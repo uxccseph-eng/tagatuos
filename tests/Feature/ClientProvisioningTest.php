@@ -11,6 +11,7 @@ use App\Models\Party;
 use App\Models\User;
 use App\Services\ClientProvisioner;
 use App\Services\CompanyLedgerService;
+use App\Services\FirmOwnershipService;
 use App\Services\OrganizationTeamService;
 use App\Services\TenantContext;
 use Illuminate\Database\Connection;
@@ -382,6 +383,31 @@ class ClientProvisioningTest extends TestCase
             $this->assertGreaterThan(0, ChartAccount::query()->count());
         });
         $this->actingAs($firm)->getJson(route('account.companies.show', $id))->assertOk()->assertJsonPath('data.role', 'owner');
+    }
+
+    public function test_firm_handover_preserves_separate_database_identity_records_and_files(): void
+    {
+        $owner = User::factory()->firm()->create();
+        $target = User::factory()->firm()->create();
+        $company = $this->readyClient($owner);
+        $database = $company->tenancy_db_name;
+        $folder = $company->storageDirectory();
+        $company->run(fn () => Party::factory()->create(['workspace_key' => $company->workspaceKey(), 'name' => 'Supplier before handover']));
+        Storage::disk('client_files')->put($folder.'/existing.txt', 'Existing client file');
+        $service = app(FirmOwnershipService::class);
+        $transfer = $service->request($owner, $target->email, 'password', $owner->name);
+        $service->accept($target, $transfer->id, 'password', $owner->name, $service->scopeHash($service->scope($owner)));
+        $company->refresh();
+        $this->assertSame($database, $company->tenancy_db_name);
+        $this->assertSame($folder, $company->storageDirectory());
+        $this->assertSame('Existing client file', Storage::disk('client_files')->get($folder.'/existing.txt'));
+        $company->run(function () use ($company): void {
+            $this->assertSame($company->id, (int) DB::table('client_database_identity')->value('company_id'));
+            $this->assertSame('Supplier before handover', Party::query()->sole()->name);
+            $this->assertSame($company->name, CompanySetting::query()->sole()->profile['company_name']);
+        });
+        $this->actingAs($target)->getJson(route('account.companies.show', $company->id))->assertOk()->assertJsonPath('data.role', 'owner');
+        $this->actingAs($owner)->getJson(route('account.companies.show', $company->id))->assertNotFound();
     }
 
     private function newClient(?User $owner = null): Company
