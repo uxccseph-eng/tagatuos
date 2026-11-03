@@ -457,6 +457,17 @@ class ClientProvisioningTest extends TestCase
         $this->assertSame(0, DB::connection(config('tenancy.database.central_connection'))->table('tax_return_preparations')->count());
         $this->getJson(route('tax-returns.download', ['company_id' => $second->id, 'id' => $id]))->assertNotFound();
         $this->get(route('tax-returns.show', ['company_id' => $first->id, 'id' => $id]))->assertOk()->assertSee('Preparation worksheet');
+        $first->run(function () use ($first): void {
+            $settings = CompanySetting::query()->where('company_id', $first->id)->firstOrFail();
+            $settings->update(['profile' => [...$settings->profile, 'street' => '12 Test Street', 'city' => 'Makati', 'zip_code' => '1209', 'contact_number' => '09171234567', 'contact_email' => 'demo@example.test', 'agent_category' => 'private']]);
+        });
+        $selection = ['form' => '1601-EQ', 'year' => 2026, 'period' => 3];
+        $preview = $this->getJson(route('tax-returns.preview', ['company_id' => $first->id, ...$selection]))->assertOk()->json();
+        $input = [...$input, ...$selection, 'request_id' => (string) Str::uuid(), 'source_hash' => $preview['source_hash'], 'xml_requested' => true];
+        $xmlId = $this->postJson(route('tax-returns.prepare', ['company_id' => $first->id]), $input)->assertCreated()->json('id');
+        $xml = $this->get(route('tax-returns.xml', ['company_id' => $first->id, 'id' => $xmlId]))->assertOk()->assertDownload('12345678900000-1601EQ-2026Q3.xml')->streamedContent();
+        $this->assertStringContainsString('frm1601EQ:optWithheld:N=truefrm1601EQ:optWithheld:N=', $xml);
+        $this->getJson(route('tax-returns.xml', ['company_id' => $second->id, 'id' => $xmlId]))->assertNotFound();
     }
 
     private function newClient(?User $owner = null): Company

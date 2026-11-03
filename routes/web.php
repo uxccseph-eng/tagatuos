@@ -224,6 +224,7 @@ Route::middleware(['auth', 'throttle:60,1'])->prefix('tax-returns')->name('tax-r
     Route::post('/prepare', [TaxReturnController::class, 'prepare'])->name('prepare');
     Route::get('/{id}/print', [TaxReturnController::class, 'show'])->whereNumber('id')->name('show');
     Route::get('/{id}/download', [TaxReturnController::class, 'download'])->whereNumber('id')->name('download');
+    Route::get('/{id}/xml', [TaxReturnController::class, 'xml'])->whereNumber('id')->name('xml');
     Route::post('/{id}/filed', [TaxReturnController::class, 'filed'])->whereNumber('id')->name('filed');
 });
 

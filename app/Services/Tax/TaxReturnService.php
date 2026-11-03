@@ -12,7 +12,7 @@ use Illuminate\Validation\ValidationException;
 
 class TaxReturnService
 {
-    public function __construct(private readonly TaxReturnCatalog $catalog) {}
+    public function __construct(private readonly TaxReturnCatalog $catalog, private readonly BirVatLedgerMapper $vatMapper, private readonly BirExporterFactory $exporters) {}
 
     /** @param array<string, mixed> $input
      * @return array<string, mixed>
@@ -28,6 +28,8 @@ class TaxReturnService
             $sources = [];
             $gross = $withheld = 0;
             $details = [];
+            $withholdingRows = [];
+            $vatLedger = $input['form'] === '2550Q' ? $this->vatMapper->map($ledger?->state['sales'] ?? [], $ledger?->state['purchases'] ?? [], $period) : null;
             $records = match ($definition['source']) {
                 'payroll' => $ledger?->payroll ?? [],
                 'expanded' => $ledger?->state['wtpCertificates'] ?? [],
@@ -77,6 +79,7 @@ class TaxReturnService
                         throw ValidationException::withMessages(['sources' => 'Correct the saved expanded withholding rate.']);
                     }
                     $tax = intdiv($base * $rate + 500000, 1000000);
+                    $withholdingRows[] = ['atc' => substr($code, 0, 5), 'base' => $base, 'rate' => $rate, 'withheld' => $tax];
                     $gross += $base;
                     $withheld += $tax;
                     $atc = substr($code, 0, 5);
@@ -111,17 +114,18 @@ class TaxReturnService
                 $warnings[] = 'Review non-taxable compensation, benefit caps and minimum-wage-earner classifications separately; this summary uses actual saved payroll withholding.';
             }
             $info = $definition['category'] === 'Information return';
-            $hash = hash('sha256', json_encode([$input['form'], $period, $profile, $sources, $definition, $gross, $withheld, $details, 'preparation-2026-11-v1'], JSON_THROW_ON_ERROR));
+            $hash = hash('sha256', json_encode([$input['form'], $period, $profile, $sources, $definition, $gross, $withheld, $details, $vatLedger, $withholdingRows, 'preparation-2026-11-xml-v1'], JSON_THROW_ON_ERROR));
 
             return [
-                'form' => $input['form'], 'definition' => $definition, 'period' => $period,
-                'taxpayer' => array_intersect_key($profile, array_flip(['company_name', 'registered_name', 'tin', 'branch_code', 'rdo', 'entity_type', 'street', 'city', 'province', 'zip_code'])), 'ledger_revision' => (int) ($ledger?->revision ?? 0),
+                'form' => $input['form'], 'definition' => $definition, 'period' => [...$period, 'year' => (int) $input['year'], 'quarter' => (int) $input['period']],
+                'taxpayer' => array_intersect_key($profile, array_flip(['company_name', 'registered_name', 'tin', 'branch_code', 'rdo', 'entity_type', 'building', 'street', 'barangay', 'city', 'province', 'zip_code', 'contact_number', 'contact_email', 'agent_category', 'taxpayer_size', 'accounting_period', 'fiscal_end_month'])), 'ledger_revision' => (int) ($ledger?->revision ?? 0),
                 'source_hash' => $hash, 'source_count' => count($sources),
                 'sources' => array_map(fn (array $row): array => array_diff_key($row, ['record' => true]), $sources),
                 'source_totals' => ['gross' => $gross, 'withheld' => $withheld, 'details' => $details],
                 'tax_before_credits' => $manual ? null : ($info ? 0 : $withheld),
                 'manual' => $manual, 'information_return' => $info, 'issues' => $issues, 'warnings' => $warnings,
-                'rules_version' => 'preparation-2026-11-v1', 'xml_available' => false,
+                'rules_version' => 'preparation-2026-11-xml-v1', 'xml_available' => false,
+                'xml_capable' => in_array($input['form'], ['2550Q', '1601-EQ'], true), 'xml_vat_ledger' => $vatLedger, 'withholding_rows' => $withholdingRows,
             ];
         });
     }
@@ -160,10 +164,27 @@ class TaxReturnService
                     if ($snapshot['information_return'] && array_sum($adjustments) !== 0) {
                         throw ValidationException::withMessages(['additional_tax' => 'Information returns do not create a tax payment. Remove tax adjustments.']);
                     }
-                    $tax = $snapshot['manual'] ? $this->money($input['reviewed_tax']) : $snapshot['tax_before_credits'];
+                    $reviewedTax = (string) ($input['reviewed_tax'] ?? '');
+                    $negativeVat = $input['form'] === '2550Q' && str_starts_with($reviewedTax, '-');
+                    $tax = $snapshot['manual'] ? ($negativeVat ? -$this->money(substr($reviewedTax, 1)) : $this->money($reviewedTax)) : $snapshot['tax_before_credits'];
                     $balance = $tax + $adjustments['additional_tax'] - $adjustments['credits'];
-                    $snapshot['calculation'] = ['tax' => $tax, ...$adjustments, 'credit_balance' => max(0, -$balance), 'payable' => max(0, $balance) + $adjustments['surcharge'] + $adjustments['interest'] + $adjustments['compromise']];
+                    $net = $balance + $adjustments['surcharge'] + $adjustments['interest'] + $adjustments['compromise'];
+                    $snapshot['calculation'] = ['tax' => $tax, ...$adjustments, 'credit_balance' => max(0, -$net), 'payable' => max(0, $net)];
                     $snapshot['review_note'] = $input['review_note'];
+                    if ($input['xml_requested'] ?? false) {
+                        if ($snapshot['xml_vat_ledger']['issues'] ?? []) {
+                            throw ValidationException::withMessages(['bir_xml.sources' => $snapshot['xml_vat_ledger']['issues']]);
+                        }
+                        $options = ['vat_reviewed' => (bool) ($input['xml_vat_reviewed'] ?? false), 'overpayment_action' => $input['xml_overpayment_action'] ?? ''];
+                        foreach (['carryover_input', 'remittance_month1', 'remittance_month2', 'prior_overremittance'] as $key) {
+                            $options[$key] = $this->money($input['xml_'.$key] ?? '0');
+                        }
+                        $snapshot['bir_xml'] = $this->exporters->make($input['form'])->prepare([
+                            'taxpayer' => $snapshot['taxpayer'], 'period' => $snapshot['period'], 'vat' => $snapshot['xml_vat_ledger']['values'] ?? [],
+                            'withholding' => $snapshot['withholding_rows'], 'options' => $options, 'calculation' => $snapshot['calculation'], 'prepared_at' => now('Asia/Manila')->toDateString(),
+                        ]);
+                        $snapshot['xml_available'] = true;
+                    }
                     $id = DB::table('tax_return_preparations')->insertGetId([
                         'company_id' => $company->id, 'request_id' => $input['request_id'], 'prepared_by' => $actorId,
                         'form' => $input['form'], 'period_from' => $snapshot['period']['from'], 'period_to' => $snapshot['period']['to'],

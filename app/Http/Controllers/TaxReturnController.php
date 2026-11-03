@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\PrepareTaxReturnRequest;
 use App\Models\CompanySetting;
+use App\Services\Tax\BirExporterFactory;
 use App\Services\Tax\TaxReturnCatalog;
 use App\Services\Tax\TaxReturnService;
 use Carbon\CarbonImmutable;
@@ -93,6 +94,22 @@ class TaxReturnController extends Controller
             $row(['Source hash', $snapshot['source_hash']]);
             fclose($stream);
         }, 'tax-worksheet-'.$record->form.'-'.$record->period_to.'-'.$id.'.csv', ['Content-Type' => 'text/csv; charset=UTF-8', 'Cache-Control' => 'no-store, private', 'X-Content-Type-Options' => 'nosniff']);
+    }
+
+    public function xml(Request $request, int $id, BirExporterFactory $factory): StreamedResponse
+    {
+        $record = $this->record($request, $id);
+        $snapshot = json_decode($record->snapshot, true, 512, JSON_THROW_ON_ERROR);
+        abort_unless(isset($snapshot['bir_xml']), 422, 'Prepare a new version with eBIRForms XML enabled and complete its review fields first.');
+        $exporter = $factory->make($record->form);
+        $prepared = $snapshot['bir_xml'];
+        $exporter->assertPrepared($prepared);
+
+        return response()->streamDownload(function () use ($exporter, $prepared): void {
+            foreach ($exporter->stream($prepared) as $chunk) {
+                echo $chunk;
+            }
+        }, $prepared['filename'], ['Content-Type' => 'application/octet-stream', 'Cache-Control' => 'no-store, private', 'X-Content-Type-Options' => 'nosniff', 'X-BIR-Validation' => 'not-verified']);
     }
 
     public function filed(Request $request, int $id): JsonResponse
