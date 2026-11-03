@@ -7,15 +7,20 @@
             @forelse($companies as $companyBook)
                 <article class="account-card book-card">
                     <div class="book-avatar" aria-hidden="true">▤</div>
-                    <div class="book-copy"><h2>{{ $companyBook->name }}</h2><p><span class="role-badge">{{ ucfirst($companyBook->pivot->role) }}</span><span class="muted">{{ in_array($companyBook->workspaceKey(), $configuredWorkspaces, true) ? 'Setup complete' : 'Setup needed' }}</span><span class="role-badge">{{ config('tenancy.enabled') ? ucfirst($companyBook->provisioning_status).' database' : 'Shared database' }}</span></p></div>
-                    @if($companyBook->pivot->role === 'owner')<a class="team-book-link" href="{{ route('team.index', ['companyId' => $companyBook->id]) }}">Manage team</a>@endif
-                    @if(config('tenancy.enabled') && ! $companyBook->databaseReady())
+                    <div class="book-copy"><h2>{{ $companyBook->name }}</h2><p><span class="role-badge">{{ ucfirst($companyBook->pivot->role) }}</span><span class="muted">{{ in_array($companyBook->workspaceKey(), $configuredWorkspaces, true) ? 'Setup complete' : 'Setup needed' }}</span><span class="role-badge">{{ $companyBook->deletionPending() ? ($companyBook->provisioning_status === 'deleting' ? 'Deleting client' : 'Deletion needs retry') : (config('tenancy.enabled') ? ucfirst($companyBook->provisioning_status).' database' : 'Shared database') }}</span></p></div>
+                    @if(! $companyBook->deletionPending() && $companyBook->pivot->role === 'owner')<a class="team-book-link" href="{{ route('team.index', ['companyId' => $companyBook->id]) }}">Manage team</a>@endif
+                    @if($companyBook->deletionPending())
+                        <span class="muted book-progress">{{ $companyBook->provisioning_error ?: 'Permanently deleting the client database and private folder. Refresh to check progress.' }}</span>
+                    @elseif(config('tenancy.enabled') && ! $companyBook->databaseReady())
                         <span class="muted">{{ $companyBook->provisioning_error ?: 'Preparing the client database and private folder. Refresh to check progress.' }}</span>
                         @if($companyBook->pivot->role === 'owner' && in_array($companyBook->provisioning_status, ['pending', 'failed'], true))
                             <form method="POST" action="{{ route('account.companies.provision', $companyBook->id) }}">@csrf<button class="button secondary" type="submit">Retry setup</button></form>
                         @endif
                     @else
                     <form method="POST" action="{{ route('account.companies.open', $companyBook->id) }}">@csrf<button class="button secondary" type="submit">Open book <span aria-hidden="true">→</span></button></form>
+                    @endif
+                    @if(config('tenancy.enabled') && $companyBook->pivot->role === 'owner' && in_array(auth()->user()->type, ['firm', 'individual'], true) && ($companyBook->organization_owner_id === null || (int) $companyBook->organization_owner_id === auth()->id()) && $companyBook->provisioning_status !== 'deleting')
+                        <a class="book-delete-link" href="{{ route('account.companies.delete', $companyBook->id) }}">{{ $companyBook->provisioning_status === 'delete_failed' ? 'Retry deletion' : 'Delete client' }}</a>
                     @endif
                 </article>
             @empty

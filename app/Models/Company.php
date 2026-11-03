@@ -41,6 +41,11 @@ class Company extends Model implements TenantWithDatabase
         return $this->provisioning_status === 'ready' && $this->tenancy_activated_at !== null;
     }
 
+    public function deletionPending(): bool
+    {
+        return in_array($this->provisioning_status, ['deleting', 'delete_failed'], true);
+    }
+
     public function run(callable $callback): mixed
     {
         return app(ClientDatabase::class)->run($this, fn (): mixed => $callback($this));

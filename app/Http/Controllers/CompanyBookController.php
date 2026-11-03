@@ -72,6 +72,7 @@ class CompanyBookController extends Controller
     {
         $company = $books->findAccessibleBook($request->user(), $companyId);
         abort_unless(config('tenancy.enabled') && $company->pivot->role === 'owner', 403, 'Only the book owner can retry client setup.');
+        abort_if($company->deletionPending(), 409, 'This client is being deleted. Retry deletion instead.');
         if (! $company->databaseReady()) {
             ProvisionClientDatabase::dispatch($company->id)->afterCommit();
         }

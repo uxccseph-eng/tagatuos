@@ -11,6 +11,7 @@ use App\Http\Controllers\CompanyLedgerController;
 use App\Http\Controllers\CompanySetupController;
 use App\Http\Controllers\CwtController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DeleteClientController;
 use App\Http\Controllers\DocumentInboxController;
 use App\Http\Controllers\DocumentPurgeController;
 use App\Http\Controllers\FinancialReportsController;
@@ -120,6 +121,8 @@ Route::get('/portal/{firmSlug}/access/{tokenId}', [PortalController::class, 'acc
 Route::post('/portal/{firmSlug}/access/{tokenId}', [PortalController::class, 'consume'])->middleware(['signed', 'throttle:10,1'])->name('portal.consume');
 
 Route::middleware('auth')->prefix('account/companies')->name('account.companies.')->group(function (): void {
+    Route::get('/{companyId}/delete', [DeleteClientController::class, 'show'])->whereNumber('companyId')->name('delete');
+    Route::delete('/{companyId}', [DeleteClientController::class, 'destroy'])->whereNumber('companyId')->middleware('throttle:3,1')->name('destroy');
     Route::get('/', [CompanyBookController::class, 'index'])->name('index');
     Route::post('/', [CompanyBookController::class, 'store'])->middleware('throttle:20,1')->name('store');
     Route::post('/{companyId}/provision', [CompanyBookController::class, 'retry'])->whereNumber('companyId')->middleware('throttle:3,1')->name('provision');

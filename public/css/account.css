@@ -113,3 +113,5 @@ small { font-size: 11px; color: var(--muted); line-height: 1.6; }
     .page-heading { gap: 10px; }
     .account-header .button { font-size: 11px; }
 }
+
+.book-card{flex-wrap:wrap}.book-copy{flex:1 1 200px}.book-copy p{flex-wrap:wrap}.book-progress{flex:1 1 220px}.book-delete-link{color:#fca5a5;font-size:12px;text-decoration:underline}.delete-client-card{max-width:760px}.delete-client-card>p{line-height:1.7}.button.danger{background:#b42335;border-color:#d85c6a;color:#fff}

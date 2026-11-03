@@ -27,7 +27,10 @@ class ClientProvisioner
         $central = app(ClientDatabase::class)->central();
         try {
             $central->transaction(function () use ($companyId, $central): void {
-                $company = Company::query()->lockForUpdate()->findOrFail($companyId);
+                $company = Company::query()->lockForUpdate()->find($companyId);
+                if (! $company || $company->deletionPending()) {
+                    return;
+                }
                 if ($company->databaseReady()) {
                     return;
                 }
