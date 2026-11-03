@@ -28,7 +28,7 @@
       <div class="w-7 h-7 rounded-lg bg-gradient-to-tr from-[#00f5a0] to-[#00d8f6] text-[#030712] flex items-center justify-center font-black shadow-[0_0_12px_rgba(0,245,160,0.35)]">
         <span class="material-symbols-outlined text-[17px] font-bold">hub</span>
       </div>
-      <div class="flex items-baseline">
+      <div class="hidden sm:flex items-baseline">
         <span class="font-headline font-bold text-base tracking-tight text-slate-900 dark:text-white">kontadurya</span>
         <span class="font-mono text-xs font-bold text-emerald-500 dark:text-[#00f5a0]">.io</span>
       </div>
@@ -54,20 +54,11 @@
     </button>
   </div>
 
-  <!-- Right Controls: Free Badge, Company Switcher, Theme Toggle, Notification, Profile -->
+  <!-- Company and account controls -->
   <div class="flex items-center gap-2 sm:gap-2.5 shrink-0">
-    <!-- Free Core Unlimited Pill Badge -->
-    <div class="hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/30 font-mono text-[11px] text-emerald-700 dark:text-[#00f5a0]">
-      <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-[#00f5a0] animate-pulse"></span>
-      <span class="font-semibold">Free Core · Unlimited</span>
-    </div>
 
     <!-- Company Switcher -->
-    <a href="{{ route('account.dashboard') }}" aria-label="Switch company book" class="h-8 px-2.5 rounded-lg bg-slate-100 dark:bg-[#1d2433] border border-slate-200 dark:border-[#2b3548] hover:bg-slate-200/70 dark:hover:bg-[#252f42] flex items-center gap-1.5 text-slate-800 dark:text-slate-200 font-mono text-xs transition-colors">
-      <span class="material-symbols-outlined text-[15px] text-cyan-600 dark:text-[#00d8f6]">domain</span>
-      <span class="font-semibold tracking-tight max-w-[120px] xl:max-w-[160px] truncate">{{ $company['company_name'] }}</span>
-      <span class="material-symbols-outlined text-[14px] text-slate-400">unfold_more</span>
-    </a>
+    @include('company-switcher')
 
     <!-- LIVE INTERACTIVE THEME TOGGLE (DARK / LIGHT) -->
     <button id="themeToggleBtn" type="button" aria-label="Toggle dark/light theme" title="Toggle theme (Light / Dark)" class="relative w-8 h-8 rounded-lg bg-slate-100 dark:bg-[#1d2433] border border-slate-200 dark:border-[#2b3548] flex items-center justify-center text-slate-600 dark:text-amber-400 hover:text-slate-900 dark:hover:text-amber-300 hover:bg-slate-200/70 dark:hover:bg-[#252f42] transition-colors focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer">
@@ -75,7 +66,7 @@
     </button>
 
     @auth
-    <a href="{{ route('account.dashboard') }}" class="text-xs font-semibold text-emerald-500">Company books</a>
+    <a href="{{ route('account.dashboard') }}" class="hidden sm:inline text-xs font-semibold text-emerald-500">Company books</a>
     @endauth
 
     <!-- User Profile Avatar (JR) -->
@@ -204,7 +195,7 @@
         <span class="w-2 h-2 rounded-full bg-emerald-500 dark:bg-[#00f5a0] shadow-[0_0_6px_rgba(0,245,160,0.8)]"></span>
       </div>
       <div class="flex items-center justify-between font-mono text-[10px]">
-        <span class="text-emerald-700 dark:text-[#00f5a0] font-semibold">Local preview</span>
+        <span class="text-emerald-700 dark:text-[#00f5a0] font-semibold">{{ auth()->check() ? 'Company workspace' : 'Local preview' }}</span>
         <span class="text-slate-400">No BIR connection</span>
       </div>
     </div>
@@ -214,200 +205,8 @@
 <button type="button" id="sidebarBackdrop" aria-label="Close navigation" hidden></button><!-- MAIN WORKSPACE CONTENT -->
 <div id="workspaceContent" class="pl-0 md:pl-[240px] transition-all duration-300">
   <main id="workspaceMain" class="relative pt-14 min-h-screen workspace-bg text-slate-800 dark:text-slate-100 px-6 sm:px-8 py-6 lg:py-7 transition-colors duration-300">
+    @if(session('status'))<p role="status">{{ session('status') }}</p>@endif
     @include('dashboard-overview')
-    <div data-dashboard-onboarding class="max-w-5xl mx-auto space-y-4">
-@if(session('status'))<div role="status" class="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm text-emerald-700 dark:text-emerald-200">{{ session('status') }}</div>@endif
-<p class="text-xs text-slate-500 dark:text-slate-400">Local workspace preview · Settings are session-based. Records stay in this browser tab. No BIR filings are submitted.</p>
-      <!-- COMPANY HEADER -->
-      <section class="ui-panel rounded-xl bg-white dark:bg-[#161c28] border border-slate-200 dark:border-[#262f40] p-6 sm:p-8 shadow-sm">
-        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div class="flex items-center gap-3.5 min-w-0">
-            <div class="w-10 h-10 rounded-lg bg-slate-100 dark:bg-[#202838] border border-slate-200 dark:border-[#2b3548] flex items-center justify-center text-slate-600 dark:text-slate-300 shrink-0">
-              <span class="material-symbols-outlined text-[22px]">apartment</span>
-            </div>
-            <div class="flex flex-col gap-1 min-w-0">
-              <div class="flex items-center gap-2 flex-wrap">
-                <h1 class="font-headline font-bold text-base sm:text-lg text-slate-900 dark:text-white tracking-tight leading-snug truncate">{{ $company['company_name'] }}</h1>
-                <span class="inline-flex items-center px-2 py-0.5 rounded bg-slate-100 dark:bg-[#202838] border border-slate-200 dark:border-[#2b3548] text-slate-600 dark:text-slate-300 font-mono text-[10px] font-medium">Active</span>
-              </div>
-              <p class="font-mono text-[11px] text-slate-500 dark:text-slate-400 tracking-tight leading-tight truncate">{{ now('Asia/Manila')->format('F j, Y') }} · {{ $company['accounting_period'] === 'fiscal' ? 'Fiscal year' : 'Calendar year' }} · {{ $company['vat_type'] === 'vat' ? 'VAT-registered' : 'Non-VAT' }} · RDO {{ $company['rdo'] ?? 'not set' }} · TIN: {{ \App\Tin::format($company['tin'] ?? '', $company['branch_code'] ?? '00000') ?: 'not set' }}</p>
-            </div>
-          </div>
-          <div class="flex items-center gap-3 shrink-0 self-start md:self-center">
-            <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/30 text-emerald-700 dark:text-emerald-400 font-mono text-xs font-semibold">
-              <span class="material-symbols-outlined text-[15px] font-bold">check_circle</span>Setup saved
-            </span>
-            <button data-workspace-topic="Sheets" class="inline-flex items-center justify-center gap-2 whitespace-nowrap font-medium cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:cursor-not-allowed bg-orange-500 hover:bg-orange-600 text-slate-950 font-semibold shadow-sm h-8 rounded-md px-3.5 text-xs">
-              <span>Open sheets</span>
-              <span class="material-symbols-outlined text-[15px]">arrow_forward</span>
-            </button>
-          </div>
-        </div>
-      </section>
-
-      <!-- CARD 3: JUMP IN QUICK ACTIONS DOCK -->
-      <section class="ui-panel rounded-xl bg-white dark:bg-[#161c28] border border-slate-200 dark:border-[#262f40] px-6 sm:px-8 py-3.5 shadow-sm">
-        <div class="flex items-center gap-2 overflow-x-auto scrollbar-none py-0.5">
-          <span class="font-mono text-[10px] font-bold tracking-wider uppercase text-slate-400 shrink-0 whitespace-nowrap mr-2">JUMP IN</span>
-          <div class="flex items-center gap-1.5 shrink-0">
-            <a href="{{ route('sheets.sales') }}" class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md hover:bg-slate-100 dark:hover:bg-[#202838] text-slate-700 dark:text-slate-300 font-mono text-xs transition-colors shrink-0">
-              <span class="material-symbols-outlined text-[16px] text-orange-500">receipt</span>
-              <span>Sales</span>
-            </a>
-            <a href="#workspace-dialog" data-workspace-topic="Collections" class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md hover:bg-slate-100 dark:hover:bg-[#202838] text-slate-700 dark:text-slate-300 font-mono text-xs transition-colors shrink-0">
-              <span class="material-symbols-outlined text-[16px] text-amber-500">payments</span>
-              <span>Collections</span>
-            </a>
-            <a href="#workspace-dialog" data-workspace-topic="Purchases" class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md hover:bg-slate-100 dark:hover:bg-[#202838] text-slate-700 dark:text-slate-300 font-mono text-xs transition-colors shrink-0">
-              <span class="material-symbols-outlined text-[16px] text-emerald-500">shopping_cart</span>
-              <span>Purchases</span>
-            </a>
-            <a href="#workspace-dialog" data-workspace-topic="Payments" class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md hover:bg-slate-100 dark:hover:bg-[#202838] text-slate-700 dark:text-slate-300 font-mono text-xs transition-colors shrink-0">
-              <span class="material-symbols-outlined text-[16px] text-cyan-500">credit_card</span>
-              <span>Payments</span>
-            </a>
-            <a href="#workspace-dialog" data-workspace-topic="Journal" class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md hover:bg-slate-100 dark:hover:bg-[#202838] text-slate-700 dark:text-slate-300 font-mono text-xs transition-colors shrink-0">
-              <span class="material-symbols-outlined text-[16px] text-slate-400">edit_note</span>
-              <span>Journal</span>
-            </a>
-            <a href="#workspace-dialog" data-workspace-topic="Documents" class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md hover:bg-slate-100 dark:hover:bg-[#202838] text-slate-700 dark:text-slate-300 font-mono text-xs transition-colors shrink-0">
-              <span class="material-symbols-outlined text-[16px] text-rose-500">document_scanner</span>
-              <span>Documents</span>
-            </a>
-            <a href="{{ route('reports') }}" data-workspace-topic="Reports" class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md hover:bg-slate-100 dark:hover:bg-[#202838] text-slate-700 dark:text-slate-300 font-mono text-xs transition-colors shrink-0">
-              <span class="material-symbols-outlined text-[16px] text-indigo-400">bar_chart</span>
-              <span>Reports</span>
-            </a>
-            <a href="#workspace-dialog" data-workspace-topic="Masters" class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md hover:bg-slate-100 dark:hover:bg-[#202838] text-slate-700 dark:text-slate-300 font-mono text-xs transition-colors shrink-0">
-              <span class="material-symbols-outlined text-[16px] text-amber-600">layers</span>
-              <span>Masters</span>
-            </a>
-          </div>
-        </div>
-      </section>
-
-      <!-- CARD 4: GET STARTED 5-STEP CHECKLIST -->
-      <section id="setupChecklist" class="ui-panel rounded-xl bg-white dark:bg-[#161c28] border border-slate-200 dark:border-[#262f40] p-6 sm:p-8 space-y-4 shadow-sm">
-        <!-- Checklist Header -->
-        <div class="flex items-center justify-between gap-3">
-          <div class="flex items-center gap-3 min-w-0">
-            <div class="w-9 h-9 rounded-lg bg-orange-500/10 dark:bg-orange-500/15 border border-orange-500/30 text-orange-600 dark:text-orange-400 flex items-center justify-center shrink-0">
-              <span class="material-symbols-outlined text-[18px] leading-none">rocket_launch</span>
-            </div>
-            <div class="min-w-0">
-              <h2 class="font-headline font-bold text-base text-slate-900 dark:text-white leading-tight">Get started</h2>
-              <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">A few steps to set up the books and start recording.</p>
-            </div>
-          </div>
-          <button data-checklist-dismiss class="inline-flex items-center gap-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 font-mono text-xs transition-colors shrink-0">
-            <span class="material-symbols-outlined text-[15px] leading-none">schedule</span>
-            <span>Set up later</span>
-          </button>
-        </div>
-
-        <!-- Progress Indicator -->
-        <div class="space-y-1.5 pt-0.5">
-          <div class="flex justify-between items-center font-mono text-xs leading-none">
-            <span class="text-slate-500 dark:text-slate-400">1 of 5 complete</span>
-            <span class="font-bold text-orange-600 dark:text-orange-400">20%</span>
-          </div>
-          <div class="w-full h-1.5 rounded-full bg-slate-200 dark:bg-[#262f40] overflow-hidden">
-            <div class="h-full rounded-full bg-gradient-to-r from-orange-500 to-amber-500 w-[20%]"></div>
-          </div>
-        </div>
-
-        <!-- 5 Steps List with generous breathing room -->
-        <div class="space-y-1 pt-1 divide-y divide-slate-100 dark:divide-[#242c3d]">
-          <!-- Step 1: Add your company details (Done) -->
-          <div class="flex items-center justify-between gap-4 py-3.5">
-            <div class="flex items-center gap-3.5 min-w-0 flex-1">
-              <div class="w-6 h-6 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
-                <span class="material-symbols-outlined text-[14px] font-bold leading-none">check</span>
-              </div>
-              <div class="min-w-0 flex-1">
-                <span class="text-xs font-semibold text-slate-800 dark:text-slate-200 block leading-tight">Add your company details</span>
-                <p class="text-[11px] text-slate-400 mt-0.5 truncate">TIN, RDO, and registered name — the header block every BIR form needs.</p>
-              </div>
-            </div>
-            <div class="shrink-0 flex items-center justify-end min-w-[110px]">
-              <span class="text-xs font-mono font-medium text-emerald-600 dark:text-emerald-400 inline-flex items-center gap-1">
-                <span class="material-symbols-outlined text-[14px] font-bold leading-none">check</span>
-                <span>Done</span>
-              </span>
-            </div>
-          </div>
-
-          <!-- Step 2: Review your chart of accounts (Done) -->
-          <button type="button" data-workspace-topic="Chart of accounts" class="checklist-review flex w-full items-center justify-between gap-4 py-3.5 text-left">
-            <div class="flex items-center gap-3.5 min-w-0 flex-1">
-              <div class="w-6 h-6 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
-                <span class="material-symbols-outlined text-[14px] font-bold leading-none">account_tree</span>
-              </div>
-              <div class="min-w-0 flex-1">
-                <span class="text-xs font-semibold text-slate-800 dark:text-slate-200 block leading-tight">Review your chart of accounts</span>
-                <p class="text-[11px] text-slate-400 mt-0.5 truncate">Explore the proposed account structure before recording transactions.</p>
-              </div>
-            </div>
-            <div class="shrink-0 flex items-center justify-end min-w-[110px]">
-              <span class="text-xs font-mono font-medium text-emerald-600 dark:text-emerald-400 inline-flex items-center gap-1">
-                <span class="material-symbols-outlined text-[14px] font-bold leading-none">account_tree</span>
-                <span>Review</span>
-              </span>
-            </div>
-          </button>
-<!-- Step 3: Record your first transaction (Active Next Step) -->
-          <div class="flex items-center justify-between gap-4 py-3.5">
-            <div class="flex items-center gap-3.5 min-w-0 flex-1">
-              <div class="w-6 h-6 rounded-full bg-orange-500/20 border border-orange-500/40 text-orange-600 dark:text-orange-400 flex items-center justify-center shrink-0">
-                <span class="material-symbols-outlined text-[14px] leading-none">edit_document</span>
-              </div>
-              <div class="min-w-0 flex-1">
-                <div class="flex items-center gap-2">
-                  <span class="text-xs font-bold text-slate-900 dark:text-white leading-tight">Record your first transaction</span>
-                  <span class="px-1.5 py-0.5 rounded bg-cyan-50 dark:bg-cyan-500/15 text-cyan-700 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-500/30 font-mono text-[10px] font-semibold leading-none">Next step</span>
-                </div>
-                <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 truncate">Enter a sale, purchase, or journal entry in the sheets, then post it to the ledger.</p>
-              </div>
-            </div>
-            <div class="shrink-0 flex items-center justify-end min-w-[110px]">
-              <button data-workspace-topic="Sheets" class="h-8 px-4 rounded-md bg-orange-500 hover:bg-[#ea580c] text-slate-950 font-semibold text-xs inline-flex items-center justify-center shadow-sm transition-colors cursor-pointer">Open sheets</button>
-            </div>
-          </div>
-
-          <!-- Step 4: Review your books (Pending) -->
-          <div class="flex items-center justify-between gap-4 py-3.5 opacity-80 hover:opacity-100 transition-opacity">
-            <div class="flex items-center gap-3.5 min-w-0 flex-1">
-              <div class="w-6 h-6 rounded-full bg-slate-100 dark:bg-[#202838] border border-slate-200 dark:border-slate-700 text-slate-400 flex items-center justify-center shrink-0">
-                <span class="material-symbols-outlined text-[13px] leading-none">menu_book</span>
-              </div>
-              <div class="min-w-0 flex-1">
-                <span class="text-xs font-medium text-slate-700 dark:text-slate-300 block leading-tight">Review your books</span>
-                <p class="text-[11px] text-slate-400 mt-0.5 truncate">Trial balance, financial statements, agings, and the BIR schedules.</p>
-              </div>
-            </div>
-            <div class="shrink-0 flex items-center justify-end min-w-[110px]">
-              <button data-workspace-topic="Financial Reports" class="h-7 px-2.5 rounded border border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-500 text-slate-600 dark:text-slate-300 text-[11px] font-mono transition-colors">Open reports</button>
-            </div>
-          </div>
-
-          <!-- Step 5: File your BIR returns (Pending) -->
-          <div class="flex items-center justify-between gap-4 py-3.5 opacity-80 hover:opacity-100 transition-opacity">
-            <div class="flex items-center gap-3.5 min-w-0 flex-1">
-              <div class="w-6 h-6 rounded-full bg-slate-100 dark:bg-[#202838] border border-slate-200 dark:border-slate-700 text-slate-400 flex items-center justify-center shrink-0">
-                <span class="material-symbols-outlined text-[13px] leading-none">assignment</span>
-              </div>
-              <div class="min-w-0 flex-1">
-                <span class="text-xs font-medium text-slate-700 dark:text-slate-300 block leading-tight">File your BIR returns</span>
-                <p class="text-[11px] text-slate-400 mt-0.5 truncate">Generate the eBIRForms XML for a period straight from your posted books.</p>
-              </div>
-            </div>
-            <div class="shrink-0 flex items-center justify-end min-w-[110px]">
-              <button data-workspace-topic="Tax Returns" class="h-7 px-2.5 rounded border border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-500 text-slate-600 dark:text-slate-300 text-[11px] font-mono transition-colors">Open Tax Returns</button>
-            </div>
-          </div>
-        </div>
-      </section>
-    </div>
   <script type="application/json" id="workspace-ledger-config" data-key="{{ $company['browser_key'] ?? hash('sha256', session()->getId().'|'.$company['company_name'].'|'.($company['tin'] ?? '')) }}">{"period":"{{ now('Asia/Manila')->format('Y-m') }}"}</script>
   <script type="application/json" id="dashboard-routes">@json($dashboardRoutes)</script>
   </main>
@@ -446,6 +245,6 @@
     <p class="mt-3 text-xs text-slate-500">Search workspace pages and planned modules.</p>
     <div data-search-results class="mt-4 max-h-72 space-y-1 overflow-y-auto"></div>
 </dialog>
-<button type="button" data-checklist-restore hidden class="fixed bottom-5 right-5 z-30 rounded-lg bg-orange-500 px-4 py-2.5 text-xs font-bold text-slate-950 shadow-lg">Show setup checklist</button>
+
 </body>
 </html>

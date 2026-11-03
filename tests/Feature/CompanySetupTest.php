@@ -124,7 +124,7 @@ class CompanySetupTest extends TestCase
             ->assertSee('&lt;script&gt;alert(1)&lt;/script&gt;', false)
             ->assertDontSee('<script>alert(1)</script>', false)
             ->assertSee('Non-VAT')
-            ->assertSee('1 of 5 complete')
+            ->assertDontSee('Get started')->assertDontSee('Free Core')
             ->assertSee('data-dashboard-overview', false)
             ->assertSee('dashboard-report.js')
             ->assertSee('Books Flow Pipeline')

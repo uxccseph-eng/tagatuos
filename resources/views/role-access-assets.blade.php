@@ -1,4 +1,6 @@
 @once
+<link rel="stylesheet" href="{{ asset('css/company-switcher.css') }}?v={{ filemtime(public_path('css/company-switcher.css')) }}">
+<script src="{{ asset('js/company-switcher.js') }}?v={{ filemtime(public_path('js/company-switcher.js')) }}" defer></script>
 @if(auth()->check() && (request()->attributes->get('active_company') || request()->attributes->get('tenant_company')))
 <meta name="tenant-company" content="{{ (request()->attributes->get('active_company') ?? request()->attributes->get('tenant_company'))->id }}">
 <script src="{{ asset('js/tenant-context.js') }}?v={{ filemtime(public_path('js/tenant-context.js')) }}" defer></script>

@@ -121,18 +121,6 @@ document.addEventListener('keydown', (event) => {
         sidebarToggle.focus();
     }
 });
-const checklist = document.getElementById('setupChecklist');
-const restoreChecklist = document.querySelector('[data-checklist-restore]');
-document.querySelector('[data-checklist-dismiss]').addEventListener('click', () => {
-    checklist.hidden = true;
-    restoreChecklist.hidden = false;
-    restoreChecklist.focus();
-});
-restoreChecklist.addEventListener('click', () => {
-    checklist.hidden = false;
-    restoreChecklist.hidden = true;
-    document.querySelector('[data-checklist-dismiss]').focus();
-});
 [workspaceDialog, searchDialog].forEach((dialog) => {
     dialog.addEventListener('click', (event) => {
         if (event.target !== dialog) return;
@@ -142,13 +130,10 @@ restoreChecklist.addEventListener('click', () => {
 });
 
 const overview=document.querySelector('[data-dashboard-overview]');
-const dashboardReport=window.DashboardReports.build(window.KontaduryaLedger,overview.dataset.today,Number(overview.dataset.fiscalEnd));
-const onboardingKey='kontadurya.onboarding.'+document.getElementById('workspace-ledger-config').dataset.key;
-let completed=dashboardReport.hasFirstEntry;
-try {completed=completed||sessionStorage.getItem(onboardingKey)==='complete';if(completed)sessionStorage.setItem(onboardingKey,'complete');}catch{}
-overview.hidden=!completed;document.querySelector('[data-dashboard-onboarding]').hidden=completed;
-if(completed){
-    restoreChecklist.hidden=true;
+function renderDashboard() {
+    const dashboardReport=window.DashboardReports.build(window.KontaduryaLedger,overview.dataset.today,Number(overview.dataset.fiscalEnd));
+    overview.hidden=false;
+    for (const id of ['dashboard-calendar','dashboard-posting-chart','dashboard-income-chart','dashboard-periods']) document.getElementById(id).replaceChildren();
     const money=value=>new Intl.NumberFormat('en-PH',{style:'currency',currency:'PHP'}).format(value/100);
     document.querySelectorAll('[data-dashboard-metric]').forEach(node=>{const value=dashboardReport[node.dataset.dashboardMetric];node.textContent=new Intl.NumberFormat('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2}).format(value/100);node.classList.toggle('dash-negative',value<0);});
     const today=new Date(overview.dataset.today+'T12:00:00Z'),year=today.getUTCFullYear(),month=today.getUTCMonth();
@@ -174,3 +159,6 @@ if(completed){
     for(const [id,value] of [['dashboard-month-sales',dashboardReport.monthSales],['dashboard-month-purchases',dashboardReport.monthPurchases],['dashboard-net-vat',dashboardReport.netVat]])document.getElementById(id).textContent=money(value);
     for(const period of dashboardReport.periods){const row=document.createElement('tr');for(const value of [period.period,period.posted,period.drafts,period.posted?'Posted':'Nothing yet']){const cell=document.createElement('td');cell.textContent=value;row.append(cell);}document.getElementById('dashboard-periods').append(row);}
 }
+
+renderDashboard();
+window.addEventListener('company-ledger:saved', renderDashboard);
