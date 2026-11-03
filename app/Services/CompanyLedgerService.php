@@ -47,7 +47,13 @@ class CompanyLedgerService
             $state[$sheet] = array_map($withoutDraftNumbers, $state[$sheet]);
         }
 
-        return ['company_id' => $company->id, 'revision' => $ledger?->revision ?? 0, 'initialized' => $ledger !== null, 'state' => $state, 'payroll' => array_map($withoutDraftNumbers, $ledger?->payroll ?? []), 'journals' => $journals];
+        $visibility = app(LedgerRecordConcurrency::class);
+        foreach (self::SHEETS as $sheet) {
+            $state[$sheet] = array_values(array_filter($state[$sheet], fn (array $row): bool => $visibility->visible($row, auth()->id())));
+        }
+        $payroll = array_values(array_filter(array_map($withoutDraftNumbers, $ledger?->payroll ?? []), fn (array $row): bool => $visibility->visible($row, auth()->id())));
+
+        return ['record_versions' => $visibility->versions($company->id, $state, $payroll), 'company_id' => $company->id, 'revision' => $ledger?->revision ?? 0, 'initialized' => $ledger !== null, 'state' => $state, 'payroll' => $payroll, 'journals' => $journals];
     }
 
     public function snapshotFor(Company $company, array $tabs): array
@@ -114,20 +120,59 @@ class CompanyLedgerService
             abort_unless($member && ! $member->must_change_password, 403, 'Your company membership is no longer active.');
             $tabs = TeamPermissions::allowed($member->pivot->role, $member->pivot->allowed_tabs);
             abort_unless(in_array('sheets', $tabs, true), 403, 'Your company owner has not enabled Sheets.');
-            $hash = hash('sha256', json_encode([$data['state'], $data['payroll']], JSON_THROW_ON_ERROR));
+            $isOperations = isset($data['operations']);
+            $hash = hash('sha256', json_encode($isOperations ? $data['operations'] : [$data['state'], $data['payroll']], JSON_THROW_ON_ERROR));
             $receipt = DB::table('company_ledger_changes')->where('company_id', $locked->id)->where('request_id', $data['request_id'])->first();
             if ($receipt) {
                 abort_unless(hash_equals($receipt->payload_hash, $hash), 409, 'This save identifier was already used for a different change.');
-                abort_unless((int) CompanyLedger::query()->where('company_id', $locked->id)->value('revision') === (int) $receipt->revision, 409, 'Your save succeeded, and another accountant has since updated the book. Reload the latest records before continuing.');
+                abort_unless($isOperations || (int) CompanyLedger::query()->where('company_id', $locked->id)->value('revision') === (int) $receipt->revision, 409, 'Your save succeeded, and another accountant has since updated the book. Reload the latest records before continuing.');
 
-                return $this->read($locked);
+                $appliedVersions = [];
+                foreach (json_decode($receipt->changes, true, 512, JSON_THROW_ON_ERROR) as $change) {
+                    if (isset($change['version'])) {
+                        $appliedVersions[$change['sheet']][$change['id']] = $change['version'];
+                    }
+                }
+
+                return [...$this->read($locked), 'replayed' => true, 'applied_revision' => (int) $receipt->revision, 'applied_versions' => $appliedVersions];
             }
             $ledger = CompanyLedger::query()->where('company_id', $locked->id)->lockForUpdate()->first();
-            abort_unless(($ledger?->revision ?? 0) === $data['revision'], 409, 'Another accountant saved this company book. Your changes were not applied. Download your unsaved work, then reload the latest records.');
-            $previousState = $ledger?->state ?? self::emptyState();
+            abort_unless($isOperations || ($ledger?->revision ?? 0) === $data['revision'], 409, 'Another accountant saved this company book. Your changes were not applied. Download your unsaved work, then reload the latest records.');
+            $previousState = array_replace(self::emptyState(), $ledger?->state ?? []);
             $previousPayroll = $ledger?->payroll ?? [];
-            $payroll = $data['payroll'];
-            $state = $this->validateState($data['state'], $payroll, false);
+            if ($isOperations) {
+                $merged = app(LedgerRecordConcurrency::class)->apply($locked->id, $actor, $previousState, $previousPayroll, $data['operations']);
+                $payroll = $merged['payroll'];
+                $incomingState = $merged['state'];
+            } else {
+                $payroll = $data['payroll'];
+                $incomingState = $this->validateState($data['state'], $payroll, false);
+                foreach ([...self::SHEETS, 'payroll'] as $sheet) {
+                    $oldRows = $sheet === 'payroll' ? $previousPayroll : $previousState[$sheet];
+                    $newRows = $sheet === 'payroll' ? $payroll : ($incomingState[$sheet] ?? []);
+                    foreach ($oldRows as $record) {
+                        if (! app(LedgerRecordConcurrency::class)->visible($record, $actor->id)) {
+                            abort_if(collect($newRows)->contains(fn (array $row): bool => (string) $row['id'] === (string) $record['id']), 403, 'This saved draft belongs to another accountant.');
+                            $newRows[] = $record;
+                        }
+                    }
+                    $oldById = collect($oldRows)->keyBy(fn (array $row): string => (string) $row['id']);
+                    foreach ($newRows as &$row) {
+                        $owner = $oldById->get((string) $row['id'])['draft_owner_id'] ?? null;
+                        unset($row['draft_owner_id']);
+                        if ($owner !== null) {
+                            $row['draft_owner_id'] = $owner;
+                        }
+                    }
+                    unset($row);
+                    if ($sheet === 'payroll') {
+                        $payroll = $newRows;
+                    } else {
+                        $incomingState[$sheet] = $newRows;
+                    }
+                }
+            }
+            $state = $this->validateState($incomingState, $payroll, false);
             app(CashPurchaseWithholding::class)->synchronize($locked, $state, $previousState);
             $baseline = app(TransactionNumbering::class)->normalize($state, $payroll, $previousState, $previousPayroll);
             $state = $this->validateState($state, $payroll);
@@ -174,7 +219,10 @@ class CompanyLedgerService
             }
             ChartAccount::seedWorkspace($locked->workspaceKey());
             $this->recordImportBatches($locked, $actor, $state, $previousState, $payroll, $previousPayroll);
-            DB::table('journal_entries')->where('company_id', $locked->id)->update(['reserved_number' => null]);
+            $changedSources = array_fill_keys(array_map(fn (array $change): string => $change['sheet'].':'.$change['id'], $changes), true);
+            foreach (array_chunk(array_keys($changedSources), 500) as $sources) {
+                DB::table('journal_entries')->where('company_id', $locked->id)->whereIn('source_key', $sources)->update(['reserved_number' => null]);
+            }
             foreach ($this->posting->prepare($locked, $state, $payroll, array_diff_key($existing, $rebuild)) as $voucher) {
                 $lines = $voucher['lines'];
                 unset($voucher['lines']);
@@ -189,11 +237,19 @@ class CompanyLedgerService
             }
             foreach ([...self::SHEETS, 'payroll'] as $sheet) {
                 foreach ($sheet === 'payroll' ? $payroll : $state[$sheet] as $record) {
+                    if (! isset($changedSources[$sheet.':'.$record['id']])) {
+                        continue;
+                    }
                     DB::table('journal_entries')->where('company_id', $locked->id)->where('source_key', $sheet.':'.$record['id'])->update(['status' => $record['status'] === 'posted' ? 'posted' : ($record['status'] === 'archived' ? 'archived' : 'void'), 'number' => $record['number'], 'reserved_number' => $record['status'] === 'archived' ? null : $record['number'], 'reference' => mb_substr((string) ($record['reference'] ?? $record['certificate'] ?? ''), 0, 255), 'updated_at' => now()]);
                 }
             }
             $revision = ($ledger?->revision ?? 0) + 1;
             CompanyLedger::query()->updateOrCreate(['company_id' => $locked->id], ['revision' => $revision, 'state' => $state, 'payroll' => $payroll]);
+            $appliedVersions = app(LedgerRecordConcurrency::class)->record($locked->id, $actor->id, $changes);
+            foreach ($changes as &$change) {
+                $change['version'] = $appliedVersions[$change['sheet']][$change['id']];
+            }
+            unset($change);
             DB::table('company_ledger_changes')->insert(['company_id' => $locked->id, 'user_id' => $actor->id, 'revision' => $revision, 'request_id' => $data['request_id'], 'payload_hash' => $hash, 'changes' => json_encode($changes, JSON_THROW_ON_ERROR), 'created_at' => now()]);
 
             return $this->read($locked);
@@ -236,7 +292,7 @@ class CompanyLedgerService
             }
             $ids = [];
             $numbers = [];
-            $drafts = 0;
+            $drafts = [];
             foreach ($rows as &$record) {
                 if (! is_array($record)) {
                     $this->fail('Every transaction must be an object.');
@@ -263,7 +319,8 @@ class CompanyLedgerService
                     $numbers[$record['number']] = true;
                 }
                 if ($record['status'] === 'draft' && ($record['origin'] ?? '') !== 'cash-sale' && ($record['origin'] ?? '') !== 'cash-purchase') {
-                    $drafts++;
+                    $owner = (string) ($record['draft_owner_id'] ?? 'legacy');
+                    $drafts[$owner] = ($drafts[$owner] ?? 0) + 1;
                 }
                 if ($sheet === 'payroll' && $record['status'] === 'posted') {
                     Validator::make($record, ['periodStart' => ['required', 'date_format:Y-m-d'], 'periodEnd' => ['required', 'date_format:Y-m-d', 'after_or_equal:periodStart'], 'employees' => ['required', 'array', 'list', 'min:1', 'max:1000']])->validate();
@@ -278,8 +335,8 @@ class CompanyLedgerService
             } else {
                 $state[$sheet] = $rows;
             }
-            if ($drafts > 1) {
-                $this->fail('Only one saved draft is allowed per company sheet. Another accountant may already have saved a draft.');
+            if ($drafts !== [] && max($drafts) > 1) {
+                $this->fail('Only one saved draft per accountant is allowed on each sheet. Post or delete your existing draft first.');
             }
         }
 

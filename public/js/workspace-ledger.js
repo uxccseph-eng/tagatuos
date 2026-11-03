@@ -188,7 +188,7 @@
     }
     if(!Array.isArray(state.payments))state.payments=[];
     function nextPayment(posted=false) {
-        const id=state.payments.reduce((highest,record)=>Math.max(highest,Number(record.id) || 0),0)+1;
+        const id=window.CompanyLedger?window.CompanyLedger.newId():state.payments.reduce((highest,record)=>Math.max(highest,Number(record.id) || 0),0)+1;
         const number=state.payments.filter(record=>!['draft','archived'].includes(record.status)).reduce((highest,record)=>Math.max(highest,Number(String(record.number).split('-')[1]) || 0),0)+1;
         return {id,number:posted?`PV-${String(number).padStart(6,'0')}`:''};
     }
@@ -275,7 +275,7 @@
         return Math.max(0,sale.gross-Math.round(net*rate(sale.cwt)/100)-Math.round(net*rate(sale.vatCwt)/100));
     }
     function nextCollection(posted=false) {
-        const id=state.nextCollectionId++;
+        const id=window.CompanyLedger?window.CompanyLedger.newId():state.nextCollectionId++;
         const number=posted?state.nextCollectionNumber++:0;
         return {id,number:posted?`CR-${String(number).padStart(6,'0')}`:''};
     }
@@ -347,8 +347,8 @@
                 try{
                     const record=clone(input),signature=importFingerprint(sheet,record);delete record._row;delete record.voucherKey;delete record._suggestion;if(batchKey)record.importBatchKey=batchKey;
                     if(seen.has(signature))throw new Error('Duplicate entry: already in this file or the current sheet.');
-                    record.id=state[key].reduce((highest,item)=>Math.max(highest,Number(item.id) || 0),0)+1;
-                    if(sheet==='collections')record.id=state.nextCollectionId++;
+                    record.id=window.CompanyLedger?window.CompanyLedger.newId():state[key].reduce((highest,item)=>Math.max(highest,Number(item.id) || 0),0)+1;
+                    if(sheet==='collections')record.id=window.CompanyLedger?window.CompanyLedger.newId():state.nextCollectionId++;
                     const suffix=state[key].filter(item=>!['draft','archived'].includes(item.status)).reduce((highest,item)=>Math.max(highest,Number(String(item.number).split('-').at(-1)) || 0),0)+1;
                     record.number=prefix+'-'+String(suffix).padStart(6,'0');record.status='posted';if(['cwt','wtp'].includes(sheet))record.certificate=certificateNumber(record,state[key]);record.origin='manual';record.attachments=[];record.createdAt=new Date().toISOString();record.postedAt=record.createdAt;record.history=[{label:'Imported and posted',user,time:record.createdAt}];
                     if(!/^\d{4}-\d{2}-\d{2}$/.test(record.date || '')||Number.isNaN(Date.parse(record.date+'T12:00:00Z'))||new Date(record.date+'T12:00:00Z').toISOString().slice(0,10)!==record.date)throw new Error('Enter a valid transaction date.');
@@ -426,7 +426,7 @@
         journalAmounts,
         journalError,
         nextJournalEntry(){
-            const id=state.journalEntries.reduce((max,record)=>Math.max(max,Number(record.id) || 0),0)+1;
+            const id=window.CompanyLedger?window.CompanyLedger.newId():state.journalEntries.reduce((max,record)=>Math.max(max,Number(record.id) || 0),0)+1;
             return {id,number:''};
         },
         saveJournalEntries(entries){
@@ -463,7 +463,7 @@
         wtpError,
         certificateNumber,
         nextWtpCertificate() {
-            const id=state.wtpCertificates.reduce((highest,record)=>Math.max(highest,Number(record.id) || 0),0)+1;
+            const id=window.CompanyLedger?window.CompanyLedger.newId():state.wtpCertificates.reduce((highest,record)=>Math.max(highest,Number(record.id) || 0),0)+1;
             return {id,number:''};
         },
         saveWtpCertificates(certificates) {

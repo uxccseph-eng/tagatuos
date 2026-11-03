@@ -97,7 +97,7 @@ class ClientDeletion
     private function assertNoSharedAccountingData(Company $company): void
     {
         $central = app(ClientDatabase::class)->central();
-        foreach (['chart_accounts', 'parties', 'tax_codes', 'bank_accounts', 'employees', 'ppe_assets', 'depreciation_runs', 'company_settings', 'company_ledgers', 'journal_entries', 'journal_entry_lines', 'company_ledger_changes', 'sheet_import_profiles', 'sheet_import_batches'] as $table) {
+        foreach (['chart_accounts', 'parties', 'tax_codes', 'bank_accounts', 'employees', 'ppe_assets', 'depreciation_runs', 'company_settings', 'company_ledgers', 'journal_entries', 'journal_entry_lines', 'company_ledger_changes', 'sheet_import_profiles', 'sheet_import_batches', 'company_transaction_versions'] as $table) {
             $records = $central->table($table)->where('company_id', $company->id);
             if (in_array($table, ['chart_accounts', 'parties', 'tax_codes', 'bank_accounts', 'employees', 'ppe_assets', 'depreciation_runs', 'company_settings'], true)) {
                 $records->orWhere('workspace_key', $company->workspaceKey());

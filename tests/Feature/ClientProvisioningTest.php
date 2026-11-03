@@ -344,6 +344,25 @@ class ClientProvisioningTest extends TestCase
         $b->run(fn () => $this->assertSame(1000, app(CompanyLedgerService::class)->read($b)['journals'][0]['lines'][0]['debit']));
     }
 
+    public function test_collaborative_saves_keep_versions_and_private_drafts_in_the_correct_database(): void
+    {
+        $owner = User::factory()->firm()->create();
+        $accountant = User::factory()->accountant()->create(['must_change_password' => false]);
+        $a = $this->readyClient($owner);
+        $b = $this->readyClient($owner);
+        $a->users()->attach($accountant, ['role' => 'accountant']);
+        $save = function (Company $company, User $user, string $id): void {
+            $this->actingAs($user)->withSession(['active_company_id' => $company->id])->withHeader('X-Company-ID', (string) $company->id)
+                ->postJson(route('sheets.database.save', ['company_id' => $company->id]), ['revision' => 0, 'request_id' => (string) Str::uuid(), 'operations' => [['sheet' => 'journalEntries', 'id' => $id, 'expected_version' => 0, 'record' => ['id' => $id, 'number' => '', 'date' => '2026-11-01', 'status' => 'draft', 'lines' => []]]]])->assertOk();
+        };
+        $save($a, $owner, 'same-id');
+        $save($a, $accountant, 'second-accountant');
+        $save($b, $owner, 'same-id');
+        $a->run(fn () => $this->assertSame(2, DB::table('company_transaction_versions')->count()));
+        $b->run(fn () => $this->assertSame(1, DB::table('company_transaction_versions')->count()));
+        $this->assertSame(0, DB::table('company_transaction_versions')->count());
+    }
+
     private function newClient(?User $owner = null): Company
     {
         $owner ??= User::factory()->firm()->create();

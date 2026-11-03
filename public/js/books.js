@@ -107,5 +107,6 @@
     const menu=element('sales-menu-toggle'),backdrop=element('sales-backdrop');const closeMenu=()=>{document.body.classList.remove('sales-menu-open');menu.setAttribute('aria-expanded','false');backdrop.hidden=true;};menu.addEventListener('click',()=>{const open=document.body.classList.toggle('sales-menu-open');menu.setAttribute('aria-expanded',String(open));backdrop.hidden=!open;});backdrop.addEventListener('click',closeMenu);window.matchMedia('(min-width:1024px)').addEventListener('change',closeMenu);
     document.addEventListener('keydown',event=>{if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==='k'){event.preventDefault();element('books-filter-panel').hidden=false;element('books-filter').setAttribute('aria-expanded','true');element('books-search').focus();}});
     document.addEventListener('working-period:change',event=>{period=event.detail.period;render();});
+    window.addEventListener('company-ledger:refreshed',render);
     render();const nav=document.querySelector('[aria-label="Books navigation"]'),active=nav.querySelector('[aria-current="page"]');if(active){const bounds=nav.parentElement.getBoundingClientRect(),item=active.getBoundingClientRect();if(item.right>bounds.right)nav.parentElement.scrollLeft+=item.right-bounds.right+8;}
 })();

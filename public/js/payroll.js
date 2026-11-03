@@ -395,6 +395,7 @@
             }
         },
     });
+    window.addEventListener('company-ledger:refreshed', () => { if (window.CompanyLedger) { records = window.CompanyLedger.payroll(); render(); } });
     document.querySelector('#sales-header button')?.addEventListener('click', () => add());
     render();
     document.querySelector('.sheet-tabs [aria-current="page"]')?.scrollIntoView({block: 'nearest', inline: 'nearest'});

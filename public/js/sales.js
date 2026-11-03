@@ -121,7 +121,7 @@ function renderEntry(entry, existingRow) {
 }
 [...tbody.querySelectorAll('tr')].filter(row=>row!==draft).forEach(row=>row.remove());
 window.KontaduryaLedger.sales().forEach(entry=>renderEntry(entry));
-nextNumber = Math.max(0,...entries.keys()) + 1;
+nextNumber = window.CompanyLedger?window.CompanyLedger.newId():Math.max(0,...entries.keys()) + 1;
 function nextSaleNumber(){return '';}
 function persistSales() {
     const values=[...entries.values()].map(({row,attachments,...entry})=>entry);
@@ -205,7 +205,7 @@ function saveDraft() {
     if(editorFields[2].value && gross===null) { editorFields[2].setCustomValidity('Enter a positive amount with at most two decimal places.');editorFields[2].reportValidity();return; }
     const values=editorFields.map(field=>field.value.trim());
     const entry={id:nextNumber,number:nextSaleNumber(),date,customer:values[1],gross:gross || 0,tax:values[3],account:values[4],cwt:values[5],vatCwt:values[6],terms:values[7],reference:values[8],classification:values[9],bank:values[10],memo:values[11],status:'draft'};
-    renderEntry(entry);nextNumber++;draft.hidden=true;updateSheet();announce(`${entry.number} saved as a draft in this tab. No ledger entry was posted.`);
+    renderEntry(entry);nextNumber=window.CompanyLedger?window.CompanyLedger.newId():nextNumber+1;draft.hidden=true;updateSheet();announce(`${entry.number} saved as a draft in this tab. No ledger entry was posted.`);
 }
 editorFields.forEach((field,index)=>{
     field.addEventListener('input',()=>{field.setCustomValidity('');autoSaveSalesForm(false);});
@@ -443,7 +443,7 @@ function saveEntryDrawer(posted=false) {
     if(editingEntry?.previousStatus) entry.previousStatus=editingEntry.previousStatus;
     if(editingEntry && !posted) entry.status = editingEntry.status;
     renderEntry(entry,editingEntry?.row);
-    if(!editingEntry) nextNumber++;
+    if(!editingEntry) nextNumber=window.CompanyLedger?window.CompanyLedger.newId():nextNumber+1;
     if(entryFromInline) draft.hidden = true;
     window.WorkingPeriod.revealDate(entry.date);workingPeriod=window.WorkingPeriod.current().from.slice(0,7);
     filterInput.value='';globalSearch.value='';statusFilter.value='all';
@@ -669,7 +669,7 @@ function autoSaveSalesForm(popup,touched=true){
     persistSales();
     refreshPostCount();
 }
-function keepAutoSalesDraft(){if(autoSalesDraft){const record=autoSalesDraft;autoSalesDraft=null;renderEntry(record);nextNumber=Math.max(nextNumber,record.id+1);}else if(editingEntry?.status==='draft')renderEntry(editingEntry,editingEntry.row);draft.hidden=true;persistSales();}
+function keepAutoSalesDraft(){if(autoSalesDraft){const record=autoSalesDraft;autoSalesDraft=null;renderEntry(record);nextNumber=window.CompanyLedger?window.CompanyLedger.newId():Math.max(nextNumber,record.id+1);}else if(editingEntry?.status==='draft')renderEntry(editingEntry,editingEntry.row);draft.hidden=true;persistSales();}
 function inlineDraftChanged(){return !draft.hidden&&window.DraftLeaveGuard.hasDraftDetails(inlineDraftRecord());}
 function hasSalesDrafts(){return Boolean(autoSalesDraft)||[...entries.values()].some(entry=>window.DraftLeaveGuard.hasDraftDetails(entry));}
 function popupSnapshot() {
@@ -698,6 +698,6 @@ const leaveGuard=new window.DraftLeaveGuard({hasChanges:()=>hasSalesDrafts()||in
 const requestedSale=new URLSearchParams(location.search).get('entry');
 if(requestedSale){const sale=[...entries.values()].find(entry=>String(entry.id)===requestedSale||entry.number===requestedSale);if(sale)openEntryDrawer(sale);}
 
-window.SheetBulk={selected:selectedEntries,refresh:()=>{const saved=window.KontaduryaLedger.sales();for(const entry of [...entries.values()])if(!saved.some(item=>item.id===entry.id)){entry.row.remove();entries.delete(entry.id);}for(const item of saved){if(autoSalesDraft?.id===item.id){Object.assign(autoSalesDraft,item);continue;}const previous=entries.get(item.id);renderEntry({...item,attachments:previous?.attachments || []},previous?.row);}nextNumber=autoSalesDraft?.id || Math.max(0,...saved.map(item=>Number(item.id) || 0))+1;if(!draft.hidden)draft.cells[3].textContent='Draft';updateSheet();},announce};
+window.SheetBulk={selected:selectedEntries,refresh:()=>{const saved=window.KontaduryaLedger.sales();for(const entry of [...entries.values()])if(!saved.some(item=>item.id===entry.id)){entry.row.remove();entries.delete(entry.id);}for(const item of saved){if(autoSalesDraft?.id===item.id){Object.assign(autoSalesDraft,item);continue;}const previous=entries.get(item.id);renderEntry({...item,attachments:previous?.attachments || []},previous?.row);}nextNumber=autoSalesDraft?.id || (window.CompanyLedger?window.CompanyLedger.newId():Math.max(0,...saved.map(item=>Number(item.id) || 0))+1);if(!draft.hidden)draft.cells[3].textContent='Draft';updateSheet();},announce};
 
 document.addEventListener('working-period:change',event=>{workingPeriod=event.detail.period;updatePeriod();});
