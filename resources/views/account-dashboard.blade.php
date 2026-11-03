@@ -11,7 +11,7 @@
                     @if(! $companyBook->deletionPending() && $companyBook->pivot->role === 'owner')<a class="team-book-link" data-client-team href="{{ route('team.index', ['companyId' => $companyBook->id]) }}">Manage team</a>@endif
                     @if(config('tenancy.enabled'))
                         @include('client-book-progress', ['status' => $companyBook->provisioning_status, 'message' => $companyBook->provisioning_error])
-                        @if($companyBook->pivot->role === 'owner')
+                        @if(in_array($companyBook->id, $setupRetryIds, true))
                             <form data-client-retry method="POST" action="{{ route('account.companies.provision', $companyBook->id) }}" @if($companyBook->provisioning_status !== 'failed') hidden @endif>@csrf<button class="button secondary" type="submit">Retry setup</button></form>
                         @endif
                     @endif
@@ -21,13 +21,15 @@
                     @endif
                 </article>
             @empty
-                <div class="account-card empty-books"><span class="empty-icon" aria-hidden="true">▤</span><h2>{{ auth()->user()->type === 'accountant' ? 'No books assigned yet' : 'Your first book starts here' }}</h2><p class="muted">{{ auth()->user()->type === 'accountant' ? 'Your company owner will assign the books you can work on.' : 'Create a company book, then complete its registration details.' }}</p></div>
+                <div class="account-card empty-books"><span class="empty-icon" aria-hidden="true">▤</span><h2>{{ auth()->user()->type === 'accountant' ? 'No books assigned yet' : 'Your first book starts here' }}</h2><p class="muted">{{ auth()->user()->type === 'accountant' ? ($canCreate ? 'Create a client book for your firm to get started.' : 'Your firm owner will assign your access. Client creation requires organization Accountant or Manager access with Settings enabled.') : 'Create a company book, then complete its registration details.' }}</p></div>
             @endforelse
             @if($companies->hasPages())<nav class="pagination" aria-label="Company book pages">@if($companies->previousPageUrl())<a class="button secondary" href="{{ $companies->previousPageUrl() }}">Previous</a>@endif<span>Page {{ $companies->currentPage() }} of {{ $companies->lastPage() }}</span>@if($companies->nextPageUrl())<a class="button secondary" href="{{ $companies->nextPageUrl() }}">Next</a>@endif</nav>@endif
         </section>
         <aside>
             @if($canCreate)
-                <section class="account-card create-book"><span class="eyebrow">{{ $companies->total() ? 'ADD A CLIENT' : 'FIRST COMPANY BOOK' }}</span><h2>Create a company book</h2><p class="muted">{{ auth()->user()->type === 'firm' ? 'Each client gets a separate company book.' : 'Your individual account includes one company book.' }}</p><form method="POST" action="{{ route('account.companies.store') }}" class="field-stack" data-client-create>@csrf<div class="field"><label for="book-name">Company / book name</label><input id="book-name" name="name" value="{{ old('name') }}" maxlength="200" required placeholder="e.g. Sample Trading Inc."></div><button class="button primary full" type="submit">+ Create book</button>@include('client-book-progress', ['status' => 'idle', 'message' => null])</form></section>
+                <section class="account-card create-book"><span class="eyebrow">{{ $companies->total() ? 'ADD A CLIENT' : 'FIRST COMPANY BOOK' }}</span><h2>Create a company book</h2><p class="muted">{{ auth()->user()->type === 'accountant' ? 'Create a client for your firm. The firm remains the owner, and you keep your assigned accountant access.' : (auth()->user()->type === 'firm' ? 'Each client gets a separate company book.' : 'Your individual account includes one company book.') }}</p><form method="POST" action="{{ route('account.companies.store') }}" class="field-stack" data-client-create>@csrf
+@if(auth()->user()->type === 'accountant')<div class="field"><label for="client-firm">Firm</label><select id="client-firm" name="firm_id" required>@if($creationFirms->count() > 1)<option value="">Choose a firm</option>@endif @foreach($creationFirms as $firm)<option value="{{ $firm->id }}" @selected((string) old('firm_id') === (string) $firm->id)>{{ $firm->name }}</option>@endforeach</select></div>@endif
+<div class="field"><label for="book-name">Company / book name</label><input id="book-name" name="name" value="{{ old('name') }}" maxlength="200" required placeholder="e.g. Sample Trading Inc."></div><button class="button primary full" type="submit">+ Create book</button>@include('client-book-progress', ['status' => 'idle', 'message' => null])</form></section>
             @else
                 <section class="account-card"><span class="eyebrow">YOUR ACCESS</span><h2>{{ auth()->user()->type === 'individual' ? 'Your company workspace' : 'Assigned by your owner' }}</h2><p class="muted">{{ auth()->user()->type === 'individual' ? 'Open your book to continue setup or return to your accounting workspace.' : 'Only books assigned to your account appear here.' }}</p></section>
             @endif

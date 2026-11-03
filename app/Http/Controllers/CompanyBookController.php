@@ -24,7 +24,7 @@ class CompanyBookController extends Controller
 
     public function store(StoreCompanyBookRequest $request, CompanyBookService $books): JsonResponse|RedirectResponse
     {
-        $company = $books->createBook($request->user(), $request->validated('name'), $request->validated('slug'));
+        $company = $books->createBook($request->user(), $request->validated('name'), $request->validated('slug'), $request->filled('firm_id') ? $request->integer('firm_id') : null);
 
         if (config('tenancy.enabled') && ! $request->expectsJson()) {
             return to_route('account.dashboard')->with('status', 'Client created. Its database and private folder are being prepared. Setup status updates automatically.');
@@ -58,7 +58,7 @@ class CompanyBookController extends Controller
         return to_route('dashboard', ['company_id' => $company->id]);
     }
 
-    /** @return array{id: int, name: string, slug: ?string, role: string, setup_status: string, database_ready: bool, setup_message: ?string} */
+    /** @return array{id: int, name: string, slug: ?string, role: string, setup_status: string, database_ready: bool, setup_message: ?string, can_retry_setup: bool} */
     private function bookData(Company $company): array
     {
         return [
@@ -69,13 +69,14 @@ class CompanyBookController extends Controller
             'setup_status' => $company->provisioning_status,
             'database_ready' => $company->databaseReady(),
             'setup_message' => $company->provisioning_error,
+            'can_retry_setup' => app(CompanyBookService::class)->canRetrySetup(request()->user(), $company),
         ];
     }
 
     public function retry(Request $request, int $companyId, CompanyBookService $books): RedirectResponse
     {
         $company = $books->findAccessibleBook($request->user(), $companyId);
-        abort_unless(config('tenancy.enabled') && $company->pivot->role === 'owner', 403, 'Only the book owner can retry client setup.');
+        abort_unless(config('tenancy.enabled') && $books->canRetrySetup($request->user(), $company), 403, 'Your firm has not enabled client setup access for your account.');
         abort_if($company->deletionPending(), 409, 'This client is being deleted. Retry deletion instead.');
         DB::connection(config('tenancy.database.central_connection'))->transaction(function () use ($company): void {
             $locked = Company::query()->lockForUpdate()->findOrFail($company->id);

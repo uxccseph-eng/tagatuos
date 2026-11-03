@@ -86,7 +86,7 @@ class OrganizationTeamService
 
     public function inherit(Company $company, User $owner): void
     {
-        foreach (DB::connection(config('tenancy.database.central_connection'))->table('organization_members')->where('owner_id', $owner->id)->get() as $membership) {
+        foreach (DB::connection(config('tenancy.database.central_connection'))->table('organization_members')->where('owner_id', $owner->id)->orderBy('user_id')->lockForUpdate()->get() as $membership) {
             $this->attach($company, $membership->user_id, ['role' => $membership->role, 'allowed_tabs' => $membership->allowed_tabs, 'is_suspended' => (bool) $membership->is_suspended, 'updated_at' => now()]);
         }
     }

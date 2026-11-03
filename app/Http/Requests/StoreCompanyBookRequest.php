@@ -16,7 +16,7 @@ class StoreCompanyBookRequest extends FormRequest
     {
         return $this->user() !== null
             && ! $this->user()->must_change_password
-            && in_array($this->user()->type, ['individual', 'firm'], true);
+            && in_array($this->user()->type, ['individual', 'firm', 'accountant'], true);
     }
 
     /**
@@ -28,6 +28,8 @@ class StoreCompanyBookRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'max:200'],
+            'firm_id' => ['nullable', 'integer', 'min:1', Rule::prohibitedIf($this->user()?->type !== 'accountant')],
+            'organization_owner_id' => ['prohibited'],
             'slug' => [
                 'nullable', 'string', 'max:63', 'regex:/^[a-z0-9]+(?:-[a-z0-9]+)*$/D',
                 Rule::unique('companies', 'slug'),

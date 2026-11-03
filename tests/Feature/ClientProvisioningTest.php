@@ -11,6 +11,7 @@ use App\Models\Party;
 use App\Models\User;
 use App\Services\ClientProvisioner;
 use App\Services\CompanyLedgerService;
+use App\Services\OrganizationTeamService;
 use App\Services\TenantContext;
 use Illuminate\Database\Connection;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -361,6 +362,26 @@ class ClientProvisioningTest extends TestCase
         $a->run(fn () => $this->assertSame(2, DB::table('company_transaction_versions')->count()));
         $b->run(fn () => $this->assertSame(1, DB::table('company_transaction_versions')->count()));
         $this->assertSame(0, DB::table('company_transaction_versions')->count());
+    }
+
+    public function test_accountant_created_client_is_provisioned_with_its_own_database_and_folder(): void
+    {
+        $firm = User::factory()->firm()->create();
+        $accountant = User::factory()->accountant()->create(['must_change_password' => false]);
+        app(OrganizationTeamService::class)->save($firm, $accountant, ['role' => 'accountant', 'tabs' => ['settings', 'sheets']]);
+        Bus::fake([ProvisionClientDatabase::class]);
+        $id = $this->actingAs($accountant)->postJson(route('account.companies.store'), ['name' => 'Accountant Provisioning Test'])->assertCreated()->assertJsonPath('data.role', 'accountant')->json('data.id');
+        $company = Company::query()->findOrFail($id);
+        $this->databaseFiles[] = database_path('client_'.substr($company->workspaceKey(), 0, 40).'.sqlite');
+        app(ClientProvisioner::class)->provision($company->id);
+        $company->refresh();
+        $this->assertTrue($company->databaseReady());
+        $this->assertTrue(Storage::disk('client_files')->exists($company->storageDirectory().'/identity.json'));
+        $company->run(function () use ($company): void {
+            $this->assertSame($company->id, (int) DB::table('client_database_identity')->value('company_id'));
+            $this->assertGreaterThan(0, ChartAccount::query()->count());
+        });
+        $this->actingAs($firm)->getJson(route('account.companies.show', $id))->assertOk()->assertJsonPath('data.role', 'owner');
     }
 
     private function newClient(?User $owner = null): Company

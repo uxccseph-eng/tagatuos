@@ -33,7 +33,7 @@
         const open = card.querySelector('[data-client-open]');
         if (open) open.hidden = !ready;
         const retry = card.querySelector('[data-client-retry]');
-        if (retry) retry.hidden = status !== 'failed' || data.role !== 'owner';
+        if (retry) retry.hidden = status !== 'failed' || !(data.can_retry_setup ?? data.role === 'owner');
         const team = card.querySelector('[data-client-team]');
         if (team) team.hidden = ['deleting', 'delete_failed'].includes(status) || data.role !== 'owner';
         const remove = card.querySelector('[data-client-delete]');
