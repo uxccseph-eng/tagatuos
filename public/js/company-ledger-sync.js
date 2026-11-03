@@ -123,6 +123,7 @@
         sessionStorage.setItem(recoveryKey, JSON.stringify({company_id: database.company_id, revision, state, payroll, base_state: database.state, base_payroll: database.payroll, base_versions: database.record_versions, request: retry, error: failure}));
     }
     function stage(section, next) {
+        next = clone(next);
         if (!database.canWrite) throw Error('You do not have permission to save Sheet transactions.');
         if (failure?.status === 409) throw Error(failure.message);
         if (same(next, section === 'state' ? state : payroll)) return;
@@ -160,10 +161,10 @@
             if (String(result.company_id) !== String(database.company_id) || !Number.isInteger(result.revision) || result.revision < payload.revision || !validState(result.state) || !Array.isArray(result.payroll)) throw Error('The server did not confirm the saved company records. Keep this tab open and retry the save.');
             const later = pending && collaborative ? records.rebase(payload.state, payload.payroll, state, payroll, result.state, result.payroll) : null;
             const lateEdits = pending && collaborative && result.replayed && result.revision > result.applied_revision ? records.changes(payload.state,payload.payroll,state,payroll,database.record_versions) : [];
-            const expectedAfterRetry = lateEdits.map(op=>({...op, expected_version:result.applied_versions?.[op.sheet]?.[op.id] ?? op.expected_version}));
+            const expectedAfterRetry = lateEdits.map(op=>({...op, expected_version:records.version(result.applied_versions,op.sheet,op.id,op.expected_version)}));
             revision = result.revision;
             Object.assign(database, result);
-            for(const op of expectedAfterRetry) { database.record_versions[op.sheet] ||= {}; database.record_versions[op.sheet][op.id] = op.expected_version; }
+            for(const op of expectedAfterRetry) { database.record_versions[op.sheet] ||= {}; Object.defineProperty(database.record_versions[op.sheet],op.id,{value:op.expected_version,writable:true,enumerable:true,configurable:true}); }
             state = clone(later?.state || result.state); payroll = clone(later?.payroll || result.payroll);
             retry = null;
             pending = collaborative ? operations().length > 0 : pending;
@@ -217,7 +218,7 @@
         const latest=await response.json();
         if (String(latest.company_id)!==String(database.company_id) || !validState(latest.state) || !Array.isArray(latest.payroll)) throw Error('The server did not return this company book.');
         const edits=operations();
-        const conflicts=edits.filter(op => op.expected_version !== (latest.record_versions?.[op.sheet]?.[op.id] ?? 0));
+        const conflicts=edits.filter(op => op.expected_version !== records.version(latest.record_versions,op.sheet,op.id,0));
         const dialog=document.createElement('dialog');dialog.className='company-conflict-dialog';
         const title=document.createElement('h2');title.textContent='Review changes to the same entry';dialog.append(title);
         const explanation=document.createElement('p');explanation.textContent='Choose which changes to keep. Applying choices closes entry dialogs and refreshes the sheet. All saves are checked again by the server.';dialog.append(explanation);

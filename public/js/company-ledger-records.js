@@ -3,6 +3,7 @@
     const sheets = ['sales','purchases','collections','payments','cwtCertificates','wtpCertificates','journalEntries','payroll'];
     const clone = value => JSON.parse(JSON.stringify(value));
     const stable = value => Array.isArray(value) ? value.map(stable) : value && typeof value === 'object' ? Object.fromEntries(Object.keys(value).sort().map(key => [key, stable(value[key])])) : value;
+    const version = (versions,sheet,id,fallback=0) => Number.isSafeInteger(versions?.[sheet]?.[id]) ? versions[sheet][id] : fallback;
     const same = (a,b) => JSON.stringify(stable(a)) === JSON.stringify(stable(b));
     const rows = (state,payroll,sheet) => sheet === 'payroll' ? payroll : state[sheet] || [];
     const indexed = values => new Map(values.map(row => [String(row.id),row]));
@@ -12,7 +13,7 @@
             const before=indexed(rows(baseState,basePayroll,sheet)), after=indexed(rows(state,payroll,sheet));
             for(const id of new Set([...before.keys(),...after.keys()])) {
                 const old=before.get(id), record=after.get(id);
-                if(!same(old,record)) operations.push({sheet,id,expected_version:versions[sheet]?.[id] ?? (old ? 1 : 0),record:record ? clone(record) : null});
+                if(!same(old,record)) operations.push({sheet,id,expected_version:version(versions,sheet,id,old ? 1 : 0),record:record ? clone(record) : null});
             }
         }
         return operations;
@@ -30,7 +31,7 @@
                     const merged=clone(latest.get(id));
                     for(const key of new Set([...Object.keys(old),...Object.keys(local)])) {
                         if(!same(old[key],local[key])) {
-                            if(Object.hasOwn(local,key)) merged[key]=clone(local[key]); else delete merged[key];
+                            if(Object.hasOwn(local,key)) Object.defineProperty(merged,key,{value:clone(local[key]),writable:true,enumerable:true,configurable:true}); else delete merged[key];
                         }
                     }
                     latest.set(id,merged);
@@ -40,5 +41,5 @@
         }
         return result;
     }
-    window.LedgerRecordChanges={changes,rebase,same};
+    window.LedgerRecordChanges={changes,rebase,same,version};
 })();
