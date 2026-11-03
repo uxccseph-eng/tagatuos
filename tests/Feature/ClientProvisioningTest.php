@@ -5,12 +5,15 @@ namespace Tests\Feature;
 use App\Jobs\ProvisionClientDatabase;
 use App\Models\ChartAccount;
 use App\Models\Company;
+use App\Models\CompanyLedger;
 use App\Models\CompanySetting;
+use App\Models\FinancialStatement;
 use App\Models\InboxDocument;
 use App\Models\Party;
 use App\Models\User;
 use App\Services\ClientProvisioner;
 use App\Services\CompanyLedgerService;
+use App\Services\FinancialStatementCalculator;
 use App\Services\TenantContext;
 use Illuminate\Database\Connection;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -342,6 +345,22 @@ class ClientProvisioningTest extends TestCase
             $this->assertSame('20.0000', number_format((float) DB::table('journal_entry_lines')->where('debit', '>', 0)->value('debit'), 4, '.', ''));
         });
         $b->run(fn () => $this->assertSame(1000, app(CompanyLedgerService::class)->read($b)['journals'][0]['lines'][0]['debit']));
+    }
+
+    public function test_financial_statements_use_each_clients_own_database_even_with_identical_ledger_ids(): void
+    {
+        $a = $this->readyClient();
+        $b = $this->readyClient();
+        foreach ([$a, $b] as $company) {
+            $ledger = $company->run(fn () => CompanyLedger::factory()->create(['company_id' => $company->id, 'revision' => 1]));
+            $statement = app(FinancialStatementCalculator::class)->generate($company, $ledger->id, 2026, 1);
+            $this->assertSame($company->id, $statement->company_id);
+            $this->assertSame($company->name, $statement->company_name);
+            $company->run(fn () => $this->assertSame(1, FinancialStatement::query()->count()));
+        }
+        $this->assertSame(0, DB::table('financial_statements')->count());
+        $a->run(fn () => $this->assertSame($a->id, FinancialStatement::query()->sole()->company_id));
+        $b->run(fn () => $this->assertSame($b->id, FinancialStatement::query()->sole()->company_id));
     }
 
     private function newClient(?User $owner = null): Company

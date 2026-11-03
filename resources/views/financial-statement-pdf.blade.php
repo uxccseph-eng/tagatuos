@@ -1,0 +1,1 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>Financial Statements</title><style>{!! file_get_contents(public_path('css/financial-statement.css')) !!}</style></head><body class="fs-pdf">@include('financial-statement-document')</body></html>

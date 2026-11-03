@@ -15,6 +15,7 @@ use App\Http\Controllers\DeleteClientController;
 use App\Http\Controllers\DocumentInboxController;
 use App\Http\Controllers\DocumentPurgeController;
 use App\Http\Controllers\FinancialReportsController;
+use App\Http\Controllers\FinancialStatementController;
 use App\Http\Controllers\Form2307Controller;
 use App\Http\Controllers\Form2316Controller;
 use App\Http\Controllers\HomeController;
@@ -202,6 +203,9 @@ Route::post('/reports/generate-sawt-dat', [BirReportController::class, 'generate
 Route::post('/reports/generate-sales-dat', [BirReportController::class, 'generateFromPayload'])->name('reports.sales.dat');
 Route::post('/reports/generate-purchases-dat', [BirReportController::class, 'generatePurchasesFromPayload'])->name('reports.purchases.dat');
 Route::get('/tax-reports/{schedule}', [TaxReportsController::class, 'index'])->name('tax-reports.show');
+Route::get('/reports/financial-statement', [FinancialStatementController::class, 'index'])->middleware('auth')->name('financial-statements.index');
+Route::post('/reports/financial-statement/generate/{auditPackId}', [FinancialStatementController::class, 'generate'])->whereNumber('auditPackId')->middleware(['auth', 'throttle:10,1'])->name('financial-statements.generate');
+Route::get('/reports/financial-statement/pdf', [FinancialStatementController::class, 'pdf'])->middleware('auth')->name('financial-statements.pdf');
 Route::get('/reports/{report}/transactions', [FinancialReportsController::class, 'transactions'])->name('reports.transactions');
 Route::get('/reports/{report}', [FinancialReportsController::class, 'index'])->name('reports.show');
 
