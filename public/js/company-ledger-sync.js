@@ -92,13 +92,13 @@
         actions.replaceChildren();
         document.documentElement.classList.toggle('company-save-pending', pending || Boolean(running) || Boolean(failure) || migration);
         if (failure) {
-            label.textContent = 'Not saved to the database: ' + failure.message;
-            banner.dataset.state = 'error';
-            button('Download unsaved work', download);
+            label.textContent = failure.record_conflict ? 'Changes need review: another accountant updated this entry. Your changes are kept in this tab. Compare both versions before saving.' : 'Not saved to the database: ' + failure.message;
+            banner.dataset.state = failure.record_conflict ? 'warning' : 'error';
+            if (!failure.record_conflict) button('Download unsaved work', download);
             if (restoreAvailable) button('Restore unsaved work', () => { try { sessionStorage.setItem(restoreKey, '1'); leaving = true; location.reload(); } catch { leaving = false; label.textContent = 'Could not prepare recovery. Download the unsaved work before continuing.'; } });
-            if (failure.record_conflict) button('Review conflicting entries', () => reviewConflicts().catch(error => { label.textContent = error.message; }));
+            if (failure.record_conflict) button('Review changes', () => reviewConflicts().catch(error => { label.textContent = error.message; }));
             if (failure.status !== 409) button('Retry save', () => { failure = null; pending = true; flush().catch(() => {}); });
-            button('Download and reload', () => { download(); leaving = true; location.reload(); });
+            if (!failure.record_conflict) button('Download and reload', () => { download(); leaving = true; location.reload(); });
         } else if (recoveryReview) {
             label.textContent = 'Unsaved work restored in this tab. Review the entries, then save them to the company database.';
             banner.dataset.state = 'pending';
@@ -221,7 +221,7 @@
         const conflicts=edits.filter(op => op.expected_version !== records.version(latest.record_versions,op.sheet,op.id,0));
         const dialog=document.createElement('dialog');dialog.className='company-conflict-dialog';
         const title=document.createElement('h2');title.textContent='Review changes to the same entry';dialog.append(title);
-        const explanation=document.createElement('p');explanation.textContent='Choose which changes to keep. Applying choices closes entry dialogs and refreshes the sheet. All saves are checked again by the server.';dialog.append(explanation);
+        const explanation=document.createElement('p');explanation.textContent='Compare your changes with the latest saved entry and choose which one to keep. Confirming closes the entry window and refreshes the sheet.';dialog.append(explanation);
         const choices=[];
         const getRows=(snapshot,sheet)=>sheet==='payroll'?snapshot.payroll:snapshot.state[sheet];
         for (const operation of conflicts) {
@@ -244,11 +244,11 @@
             }
             section.append(summary);
             const select=document.createElement('select');select.setAttribute('aria-label','Resolution for '+operation.id);
-            select.add(new Option('Use the latest saved entry','latest'));if(saved)select.add(new Option('Keep my changes and retry validation','mine'));section.append(select);choices.push({operation,select});dialog.append(section);
+            select.add(new Option('Use the latest saved entry','latest'));if(saved)select.add(new Option('Use my changes','mine'));section.append(select);choices.push({operation,select});dialog.append(section);
         }
-        if (!conflicts.length) {const message=document.createElement('p');message.textContent='These entries can be retried against the latest book.';dialog.append(message);}
+        if (!conflicts.length) {const message=document.createElement('p');message.textContent='Your changes can now be saved. Select Confirm and continue.';dialog.append(message);}
         const controls=document.createElement('div'),cancel=document.createElement('button'),apply=document.createElement('button');
-        cancel.type=apply.type='button';cancel.textContent='Keep reviewing';apply.textContent='Apply choices and retry';controls.append(cancel,apply);dialog.append(controls);
+        cancel.type=apply.type='button';cancel.textContent='Cancel';apply.textContent='Confirm and continue';controls.append(cancel,apply);dialog.append(controls);
         cancel.addEventListener('click',()=>dialog.close());dialog.addEventListener('close',()=>dialog.remove());
         apply.addEventListener('click',()=>{
             const merged=records.rebase(database.state,database.payroll,state,payroll,latest.state,latest.payroll);
