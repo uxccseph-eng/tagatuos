@@ -36,6 +36,6 @@ class DeleteClientController extends Controller
             return response()->json(['message' => 'Client deletion queued.'], 202);
         }
 
-        return to_route('account.dashboard')->with('status', 'Client deletion queued. Its database, private folder, and related records will be permanently removed. Refresh to check progress.');
+        return to_route('account.dashboard')->with('status', 'Client deletion queued. Its database, private folder, and related records will be permanently removed. Deletion status updates automatically.');
     }
 }

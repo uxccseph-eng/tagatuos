@@ -2,25 +2,22 @@
     <section class="page-heading"><div><span class="eyebrow">{{ ucfirst(auth()->user()->type) }} ACCOUNT</span><h1>Company books</h1><p class="muted">Welcome, {{ auth()->user()->name }}. Choose a book to continue.</p></div><div class="count-badge"><strong>{{ $companies->total() }}</strong><span>{{ $companies->total() === 1 ? 'assigned book' : 'assigned books' }}</span></div></section>
     @if(auth()->user()->username)<p class="muted">Your assigned username: <strong>{{ auth()->user()->username }}</strong></p>@endif
     <div class="account-tabs"><span aria-current="page">My company books</span>@if(in_array(auth()->user()->type, ['individual', 'firm'], true))<a href="{{ route('team.entry') }}">Accountants &amp; access</a>@endif</div>
-    <div class="books-grid">
+    <div class="books-grid" data-client-books data-status-url="{{ route('account.companies.index') }}">
         <section aria-label="Assigned company books">
             @forelse($companies as $companyBook)
-                <article class="account-card book-card">
+                <article class="account-card book-card" data-client-book="{{ $companyBook->id }}" data-setup-status="{{ config('tenancy.enabled') ? $companyBook->provisioning_status : 'shared' }}" data-database-ready="{{ $companyBook->databaseReady() ? 'true' : 'false' }}">
                     <div class="book-avatar" aria-hidden="true">▤</div>
-                    <div class="book-copy"><h2>{{ $companyBook->name }}</h2><p><span class="role-badge">{{ ucfirst($companyBook->pivot->role) }}</span><span class="muted">{{ in_array($companyBook->workspaceKey(), $configuredWorkspaces, true) ? 'Setup complete' : 'Setup needed' }}</span><span class="role-badge">{{ $companyBook->deletionPending() ? ($companyBook->provisioning_status === 'deleting' ? 'Deleting client' : 'Deletion needs retry') : (config('tenancy.enabled') ? ucfirst($companyBook->provisioning_status).' database' : 'Shared database') }}</span></p></div>
-                    @if(! $companyBook->deletionPending() && $companyBook->pivot->role === 'owner')<a class="team-book-link" href="{{ route('team.index', ['companyId' => $companyBook->id]) }}">Manage team</a>@endif
-                    @if($companyBook->deletionPending())
-                        <span class="muted book-progress">{{ $companyBook->provisioning_error ?: 'Permanently deleting the client database and private folder. Refresh to check progress.' }}</span>
-                    @elseif(config('tenancy.enabled') && ! $companyBook->databaseReady())
-                        <span class="muted">{{ $companyBook->provisioning_error ?: 'Preparing the client database and private folder. Refresh to check progress.' }}</span>
-                        @if($companyBook->pivot->role === 'owner' && in_array($companyBook->provisioning_status, ['pending', 'failed'], true))
-                            <form method="POST" action="{{ route('account.companies.provision', $companyBook->id) }}">@csrf<button class="button secondary" type="submit">Retry setup</button></form>
+                    <div class="book-copy"><h2>{{ $companyBook->name }}</h2><p><span class="role-badge">{{ ucfirst($companyBook->pivot->role) }}</span><span class="muted">{{ in_array($companyBook->workspaceKey(), $configuredWorkspaces, true) ? 'Setup complete' : 'Setup needed' }}</span><span class="role-badge" data-client-status>{{ $companyBook->deletionPending() ? ($companyBook->provisioning_status === 'deleting' ? 'Deleting client' : 'Deletion needs retry') : (config('tenancy.enabled') ? ucfirst($companyBook->provisioning_status).' database' : 'Shared database') }}</span></p></div>
+                    @if(! $companyBook->deletionPending() && $companyBook->pivot->role === 'owner')<a class="team-book-link" data-client-team href="{{ route('team.index', ['companyId' => $companyBook->id]) }}">Manage team</a>@endif
+                    @if(config('tenancy.enabled'))
+                        @include('client-book-progress', ['status' => $companyBook->provisioning_status, 'message' => $companyBook->provisioning_error])
+                        @if($companyBook->pivot->role === 'owner')
+                            <form data-client-retry method="POST" action="{{ route('account.companies.provision', $companyBook->id) }}" @if($companyBook->provisioning_status !== 'failed') hidden @endif>@csrf<button class="button secondary" type="submit">Retry setup</button></form>
                         @endif
-                    @else
-                    <form method="POST" action="{{ route('account.companies.open', $companyBook->id) }}">@csrf<button class="button secondary" type="submit">Open book <span aria-hidden="true">→</span></button></form>
                     @endif
-                    @if(config('tenancy.enabled') && $companyBook->pivot->role === 'owner' && in_array(auth()->user()->type, ['firm', 'individual'], true) && ($companyBook->organization_owner_id === null || (int) $companyBook->organization_owner_id === auth()->id()) && $companyBook->provisioning_status !== 'deleting')
-                        <a class="book-delete-link" href="{{ route('account.companies.delete', $companyBook->id) }}">{{ $companyBook->provisioning_status === 'delete_failed' ? 'Retry deletion' : 'Delete client' }}</a>
+                    <form data-client-open method="POST" action="{{ route('account.companies.open', $companyBook->id) }}" @if(config('tenancy.enabled') && ! $companyBook->databaseReady()) hidden @endif>@csrf<button class="button secondary" type="submit">Open book <span aria-hidden="true">→</span></button></form>
+                    @if(config('tenancy.enabled') && $companyBook->pivot->role === 'owner' && in_array(auth()->user()->type, ['firm', 'individual'], true) && ($companyBook->organization_owner_id === null || (int) $companyBook->organization_owner_id === auth()->id()))
+                        <a class="book-delete-link" data-client-delete @if($companyBook->provisioning_status === 'deleting') hidden @endif href="{{ route('account.companies.delete', $companyBook->id) }}">{{ $companyBook->provisioning_status === 'delete_failed' ? 'Retry deletion' : 'Delete client' }}</a>
                     @endif
                 </article>
             @empty
@@ -30,11 +27,12 @@
         </section>
         <aside>
             @if($canCreate)
-                <section class="account-card create-book"><span class="eyebrow">{{ $companies->total() ? 'ADD A CLIENT' : 'FIRST COMPANY BOOK' }}</span><h2>Create a company book</h2><p class="muted">{{ auth()->user()->type === 'firm' ? 'Each client gets a separate company book.' : 'Your individual account includes one company book.' }}</p><form method="POST" action="{{ route('account.companies.store') }}" class="field-stack">@csrf<div class="field"><label for="book-name">Company / book name</label><input id="book-name" name="name" value="{{ old('name') }}" maxlength="200" required placeholder="e.g. Sample Trading Inc."></div><button class="button primary full" type="submit">+ Create book</button></form></section>
+                <section class="account-card create-book"><span class="eyebrow">{{ $companies->total() ? 'ADD A CLIENT' : 'FIRST COMPANY BOOK' }}</span><h2>Create a company book</h2><p class="muted">{{ auth()->user()->type === 'firm' ? 'Each client gets a separate company book.' : 'Your individual account includes one company book.' }}</p><form method="POST" action="{{ route('account.companies.store') }}" class="field-stack" data-client-create>@csrf<div class="field"><label for="book-name">Company / book name</label><input id="book-name" name="name" value="{{ old('name') }}" maxlength="200" required placeholder="e.g. Sample Trading Inc."></div><button class="button primary full" type="submit">+ Create book</button>@include('client-book-progress', ['status' => 'idle', 'message' => null])</form></section>
             @else
                 <section class="account-card"><span class="eyebrow">YOUR ACCESS</span><h2>{{ auth()->user()->type === 'individual' ? 'Your company workspace' : 'Assigned by your owner' }}</h2><p class="muted">{{ auth()->user()->type === 'individual' ? 'Open your book to continue setup or return to your accounting workspace.' : 'Only books assigned to your account appear here.' }}</p></section>
             @endif
             <p class="storage-note">Company settings, Masters and Sheet transactions are saved in your company database. Each save checks for changes made by other accountants.</p>
         </aside>
     </div>
+<script src="{{ asset('js/client-book-progress.js') }}?v={{ filemtime(public_path('js/client-book-progress.js')) }}" defer></script>
 </x-account-layout>

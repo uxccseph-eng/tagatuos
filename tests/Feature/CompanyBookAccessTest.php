@@ -2,12 +2,14 @@
 
 namespace Tests\Feature;
 
+use App\Jobs\ProvisionClientDatabase;
 use App\Models\Company;
 use App\Models\User;
 use App\Services\CompanyBookService;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use RuntimeException;
@@ -26,6 +28,39 @@ class CompanyBookAccessTest extends TestCase
         $this->getJson(route('account.companies.show', $company->id))->assertUnauthorized();
         $this->postJson(route('account.companies.store'), ['name' => 'Untrusted Book'])->assertUnauthorized();
         $this->assertDatabaseMissing('companies', ['name' => 'Untrusted Book']);
+    }
+
+    public function test_status_polling_returns_only_requested_assigned_books_and_validates_ids(): void
+    {
+        $owner = User::factory()->firm()->create();
+        $first = Company::factory()->create(['provisioning_status' => 'pending']);
+        $second = Company::factory()->create(['provisioning_status' => 'failed', 'provisioning_error' => 'Client setup needs retry.']);
+        $foreign = Company::factory()->create();
+        foreach ([$first, $second] as $company) {
+            $company->users()->attach($owner, ['role' => 'owner']);
+        }
+        $this->actingAs($owner)->getJson(route('account.companies.index', ['ids' => [$second->id, $foreign->id]]))
+            ->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('data.0.id', $second->id)
+            ->assertJsonPath('data.0.setup_status', 'failed')->assertJsonPath('data.0.database_ready', false)->assertJsonPath('data.0.setup_message', 'Client setup needs retry.')
+            ->assertHeader('Cache-Control', 'no-store, private');
+        $this->getJson(route('account.companies.index', ['ids' => [$first->id, $first->id]]))->assertUnprocessable();
+        $this->getJson(route('account.companies.index', ['ids' => ['bad']]))->assertUnprocessable();
+        $this->getJson(route('account.companies.index', ['ids' => range(1, 26)]))->assertUnprocessable();
+    }
+
+    public function test_pending_client_displays_progress_and_failed_retry_resets_its_status(): void
+    {
+        config(['tenancy.enabled' => true]);
+        Bus::fake([ProvisionClientDatabase::class]);
+        $owner = User::factory()->firm()->create();
+        $company = Company::factory()->create(['provisioning_status' => 'pending']);
+        $company->users()->attach($owner, ['role' => 'owner']);
+        $this->actingAs($owner)->get(route('account.dashboard'))->assertOk()->assertSee('data-client-progress', false)->assertSee('Waiting for client setup to start')->assertSee('client-book-progress.js');
+        $company->forceFill(['provisioning_status' => 'failed', 'provisioning_error' => 'Old failure'])->save();
+        $this->post(route('account.companies.provision', $company->id))->assertRedirect(route('account.dashboard'));
+        $this->assertSame('pending', $company->fresh()->provisioning_status);
+        $this->assertNull($company->fresh()->provisioning_error);
+        Bus::assertDispatched(ProvisionClientDatabase::class, fn (ProvisionClientDatabase $job): bool => $job->companyId === $company->id && $job->afterCommit);
     }
 
     public function test_firms_can_create_multiple_books_with_server_assigned_owner_memberships(): void
