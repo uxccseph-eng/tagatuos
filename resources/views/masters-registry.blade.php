@@ -49,6 +49,7 @@ $registryTitle = match ($registry) { 'employees' => 'Employees', 'parties' => 'P
 <label>ZIP code<input name="zip_code" inputmode="numeric" maxlength="4" pattern="[0-9]{4}" placeholder="0000" data-party-address-part></label>
 </div><div class="party-address-preview"><span>Formatted address</span><output id="party-address-preview">Enter the registered address above.</output></div>
 <p id="party-legacy-address" hidden></p><input type="hidden" name="address"></fieldset>
+<section class="masters-wide" id="party-dat-preview" data-preview-url="{{ route('masters.parties.dat-preview', ['company_id' => $company['company_id'] ?? null]) }}" aria-live="polite"><strong>BIR DAT text preview</strong><p>DAT files use uppercase letters, numbers and spaces. Ñ becomes N, &amp; becomes AND, and punctuation is removed. Your saved registered details are kept unchanged.</p><p>Name: <output id="party-dat-name">Enter a name to preview.</output></p><p>Address: <output id="party-dat-address">Enter an address to preview.</output></p><p id="party-dat-message"></p></section>
 @else
 <label>Rate (%) <span class="masters-required">*</span><input name="rate" type="number" required min="0" max="100" step="0.0001" value="0"></label><label>ATC<input name="atc" maxlength="5" pattern="[A-Za-z]{2}[0-9]{3}" placeholder="Optional, e.g. WI100"></label>
 @endif

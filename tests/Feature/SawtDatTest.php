@@ -41,7 +41,7 @@ class SawtDatTest extends TestCase
             $this->assertCount(10, $header);
             $this->assertSame(['HSAWT', 'H'.$form, '123456789', '0000'], array_slice($header, 0, 4));
             $this->assertSame(['12/2026', '033'], array_slice($header, 8));
-            $this->assertSame('DSAWT,D'.$form.',1,234567890,1234,"WITHHOLDING AGENT INC.",,,,12/2026,"SERVICES",WC157,2.00,446.43,8.93', $lines[1]);
+            $this->assertSame('DSAWT,D'.$form.',1,234567890,1234,"WITHHOLDING AGENT INC",,,,12/2026,"SERVICES",WC157,2.00,446.43,8.93', $lines[1]);
             $this->assertSame('DSAWT,D'.$form.',3,234567890,1234,,"SANTOS","JUAN","",12/2026,"SERVICES",WC157,2.00,446.43,8.93', $lines[3]);
             foreach (array_slice($lines, 1, 3) as $line) {
                 $this->assertCount(15, str_getcsv($line, ',', '"', ''));
@@ -100,7 +100,7 @@ class SawtDatTest extends TestCase
         $lines = explode("\r\n", rtrim($text, "\r\n"));
         $this->assertCount(3, $lines);
         $this->assertSame('HSAWT,H1702Q,123456789,0000,"TAXPAYER COMPANY","","","",12/2026,033', $lines[0]);
-        $this->assertSame('DSAWT,D1702Q,1,234567890,1234,"WITHHOLDING AGENT INC.","","","",12/2026,"SERVICES",WC157,2.00,446.43,8.93', $lines[1]);
+        $this->assertSame('DSAWT,D1702Q,1,234567890,1234,"WITHHOLDING AGENT INC","","","",12/2026,"SERVICES",WC157,2.00,446.43,8.93', $lines[1]);
         $this->assertSame('CSAWT,C1702Q,123456789,0000,12/2026,446.43,8.93', $lines[2]);
         foreach ([10, 15, 7] as $index => $count) {
             $this->assertCount($count, str_getcsv($lines[$index], ',', '"', ''));
@@ -145,7 +145,7 @@ class SawtDatTest extends TestCase
         $lines = explode("\r\n", trim($text));
         $header = str_getcsv($lines[0], ',', '"', '');
         $this->assertSame(['', 'DELA CRUZ', 'MARIA', 'SANTOS'], array_slice($header, 4, 4));
-        $this->assertSame('AGENT, "QUOTED" INC.', str_getcsv($lines[1], ',', '"', '')[5]);
+        $this->assertSame('AGENT QUOTED INC', str_getcsv($lines[1], ',', '"', '')[5]);
     }
 
     public function test_validation_stops_bad_branches_amounts_duplicates_unknown_atc_and_wrong_period_before_streaming(): void

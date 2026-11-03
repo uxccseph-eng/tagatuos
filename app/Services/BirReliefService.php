@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use Carbon\CarbonImmutable;
-use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -37,11 +36,7 @@ class BirReliefService
 
     public function cleanText(?string $value): string
     {
-        $text = Str::ascii(mb_strtoupper(trim($value ?? ''), 'UTF-8'));
-        $text = str_replace([',', '$', '`', '&', '"', "'"], '', $text);
-        $text = preg_replace('/[\s\x00-\x1f\x7f]+/', ' ', $text);
-
-        return strtoupper(trim($text));
+        return BirDatText::clean($value);
     }
 
     public function tin(?string $value, string $field, bool $allowMissing = false): string

@@ -172,6 +172,7 @@ Route::get('/books/{book}', [BooksController::class, 'index'])->name('books.show
 Route::post('/books/{book}/export/{format}', [BooksController::class, 'export'])->where('format', 'xlsx|pdf')->middleware('throttle:15,1,books-export:')->name('books.export');
 
 Route::redirect('/masters', '/masters/chart-of-accounts')->name('masters');
+Route::post('/masters/parties/dat-preview', [MastersRegistryController::class, 'datPreview'])->middleware(['auth', 'throttle:120,1'])->name('masters.parties.dat-preview');
 Route::prefix('masters/{registry}')->where(['registry' => 'chart-of-accounts|parties|tax-codes|bank-accounts|atc-codes|employees'])->group(function (): void {
     Route::get('/import/template', [MastersImportController::class, 'template'])->name('masters.import.template');
     Route::post('/import/preview', [MastersImportController::class, 'preview'])->name('masters.import.preview');

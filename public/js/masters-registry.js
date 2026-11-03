@@ -51,7 +51,28 @@
         el('party-tin-help').textContent=petty?'TIN and unknown address details may be left blank. This does not establish tax deductibility or input VAT eligibility.':'Required: 14 digits including the five-digit branch.';
     }
     if(parties){form.elements.is_petty_cash.addEventListener('change',updatePettyCash);form.elements.classification.addEventListener('change',updatePettyCash);}
-    function updatePartyAddress(){if(!parties)return;const parts=Array.from(form.querySelectorAll('[data-party-address-part]')).map(input=>input.value.trim()).filter(Boolean);const address=parts.join(', ');form.elements.address.value=address;el('party-address-preview').textContent=address || 'Enter the registered address above.';}
+    let datPreviewTimer, datPreviewController;
+    function updateDatPreview(){
+        if(!parties)return;
+        clearTimeout(datPreviewTimer);datPreviewController?.abort();
+        datPreviewTimer=setTimeout(async()=>{
+            const controller=new AbortController();datPreviewController=controller;
+            const individual=form.elements.entity_type.value==='individual';
+            const name=individual?['last_name','first_name','middle_name'].map(key=>form.elements[key].value).join(' '):form.elements.name.value;
+            const address=form.elements.address.value;
+            el('party-dat-message').textContent='Preparing DAT preview…';
+            try{
+                const response=await fetch(el('party-dat-preview').dataset.previewUrl,{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json','X-CSRF-TOKEN':token},body:JSON.stringify({fields:{name,address}}),signal:controller.signal});
+                if(!response.ok)throw Error('Preview unavailable');
+                const result=await response.json();if(controller.signal.aborted)return;
+                el('party-dat-name').textContent=result.fields.name || 'No exportable name.';
+                el('party-dat-address').textContent=result.fields.address || 'No exportable address.';
+                el('party-dat-message').textContent='Preview only. Review spelling and required details before exporting.';
+            }catch(error){if(error.name!=='AbortError')el('party-dat-message').textContent='Preview unavailable. DAT exports still apply character cleanup.';}
+        },450);
+    }
+    if(parties)for(const key of ['name','last_name','first_name','middle_name','entity_type'])form.elements[key].addEventListener('input',updateDatPreview);
+    function updatePartyAddress(){if(!parties)return;const parts=Array.from(form.querySelectorAll('[data-party-address-part]')).map(input=>input.value.trim()).filter(Boolean);const address=parts.join(', ');form.elements.address.value=address;el('party-address-preview').textContent=address || 'Enter the registered address above.';updateDatPreview();}
     if(parties)form.querySelectorAll('[data-party-address-part]').forEach(input=>input.addEventListener('input',updatePartyAddress));
     function openEditor(record = null) {
         editing = record; form.reset(); el('registry-error').textContent = ''; el('registry-title').textContent = (record ? 'Edit ' : 'New ')+label;

@@ -47,7 +47,7 @@ class QapDatTest extends TestCase
     {
         $response = $this->postJson('/reports/generate-qap-dat', $this->payload())->assertOk()->assertDownload('QAP-EWT-Q4-2026.zip')->assertHeader('Content-Type', 'application/zip')->assertHeader('X-QAP-Detail-Count', '1')->assertHeader('X-QAP-File-Count', '1');
         $expected = 'H,1601EQ,"123456789","00001",10/2026'."\r\n"
-            .'D,1601EQ,"123456789","00001","234567890","01234","SUPPLIER, ""QUOTED"" INC.","","","","WC157",446.43,2.00,8.93,"10/2026"'."\r\n";
+            .'D,1601EQ,"123456789","00001","234567890","01234","SUPPLIER QUOTED INC","","","","WC157",446.43,2.00,8.93,"10/2026"'."\r\n";
         $files = $this->archiveFiles($response);
         $this->assertSame(['123456789000011601EQ102026.DAT'], array_keys($files));
         $this->assertSame($expected, $files['123456789000011601EQ102026.DAT']);
@@ -110,7 +110,7 @@ class QapDatTest extends TestCase
         }
         $response = $this->postJson('/reports/generate-1604e-dat', $payload)->assertOk()->assertDownload('123456789000011604E122026.DAT')->assertHeader('Content-Type', 'text/plain; charset=utf-8')->assertHeader('X-QAP-Detail-Count', '1');
         $expected = 'H,1604E,"123456789","00001",12/2026'."\r\n"
-            .'D,1604E,"123456789","00001","234567890","01234","SUPPLIER, ""QUOTED"" INC.","","","","WC157",1785.72,2.00,35.72,"12/2026"'."\r\n";
+            .'D,1604E,"123456789","00001","234567890","01234","SUPPLIER QUOTED INC","","","","WC157",1785.72,2.00,35.72,"12/2026"'."\r\n";
         $this->assertSame($expected, $response->streamedContent());
     }
 

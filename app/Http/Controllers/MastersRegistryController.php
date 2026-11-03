@@ -9,6 +9,7 @@ use App\Models\ChartAccount;
 use App\Models\Employee;
 use App\Models\Party;
 use App\Models\TaxCode;
+use App\Services\BirDatText;
 use App\Tin;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -20,6 +21,17 @@ use Illuminate\View\View;
 
 class MastersRegistryController extends Controller
 {
+    public function datPreview(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'fields' => ['required', 'array:name,address,last_name,first_name,middle_name,building,street,barangay,city,province'],
+            'fields.*' => ['nullable', 'string', 'max:1000'],
+        ]);
+
+        return response()->json(['fields' => array_map(BirDatText::clean(...), $data['fields'])])
+            ->header('Cache-Control', 'no-store, private');
+    }
+
     public function index(Request $request, string $registry): View|RedirectResponse
     {
         if (! $request->session()->get('preview_access')) {

@@ -11,6 +11,26 @@ class BirPurchasesDatTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_supplier_names_and_addresses_are_plain_text_while_amounts_and_columns_are_preserved(): void
+    {
+        $this->workspace();
+        $payload = $this->payload();
+        foreach ($payload['purchase_records'] as &$record) {
+            $record['supplier_name'] = 'Peña & Co., Inc. 🚚';
+            $record['supplier_street'] = "Unit #12-B / O’Brien St.\r\n(Main)";
+            $record['supplier_city'] = 'Las Piñas';
+        }
+        unset($record);
+        $response = $this->postJson('/reports/generate-purchases-dat', $payload)->assertOk();
+        $lines = explode("\r\n", rtrim($response->streamedContent(), "\r\n"));
+        $detail = str_getcsv($lines[1], ',', '"', '');
+        $this->assertSame('PENA AND CO INC', $detail[3]);
+        $this->assertSame('UNIT 12 B OBRIEN ST MAIN', $detail[7]);
+        $this->assertSame('LAS PINAS', $detail[8]);
+        $this->assertCount(17, $detail);
+        $this->assertSame(['50', '75', '100', '200', '300', '72'], array_slice($detail, 9, 6));
+    }
+
     public function test_purchases_export_requires_a_workspace(): void
     {
         $this->postJson('/reports/generate-purchases-dat', $this->payload())->assertForbidden();
@@ -24,8 +44,8 @@ class BirPurchasesDatTest extends TestCase
         $response->assertOk()->assertDownload('123456789P102026.DAT')->assertHeader('Content-Type', 'text/plain; charset=windows-1252');
         $lines = explode("\r\n", rtrim($response->streamedContent(), "\r\n"));
         $this->assertCount(2, $lines);
-        $this->assertSame('H,P,"123456789","TEST COMPANY","","","","TRADE","COMPANY ST.","CITY",50.00,75.00,100.00,200.00,300.00,72.00,66.00,6.00,001,10/31/2026,12', $lines[0]);
-        $this->assertSame('D,P,"234567890","ACME SUPPLIER","","","","1 SUPPLIER ST.","CITY",50,75,100,200,300,72,123456789,10/31/2026', $lines[1]);
+        $this->assertSame('H,P,"123456789","TEST COMPANY","","","","TRADE","COMPANY ST","CITY",50.00,75.00,100.00,200.00,300.00,72.00,66.00,6.00,001,10/31/2026,12', $lines[0]);
+        $this->assertSame('D,P,"234567890","ACME SUPPLIER","","","","1 SUPPLIER ST","CITY",50,75,100,200,300,72,123456789,10/31/2026', $lines[1]);
         $this->assertCount(21, str_getcsv($lines[0], ',', '"', ''));
         $this->assertCount(17, str_getcsv($lines[1], ',', '"', ''));
     }

@@ -4,7 +4,6 @@ namespace App\Services;
 
 use Carbon\CarbonImmutable;
 use Generator;
-use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class SawtDatService
@@ -109,7 +108,7 @@ class SawtDatService
 
     private function text(string $value, int $limit, string $field, bool $allowEmpty = false): string
     {
-        $value = strtoupper(Str::ascii(trim(preg_replace('/[\s\x00-\x1f\x7f]+/u', ' ', $value))));
+        $value = BirDatText::clean($value);
         if ($value === '' && ! $allowEmpty) {
             throw ValidationException::withMessages([$field => 'Enter a name or description that can be exported as text.']);
         }

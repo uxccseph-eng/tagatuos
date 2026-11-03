@@ -24,8 +24,8 @@ class BirSalesDatTest extends TestCase
         $response->assertOk()->assertDownload('123456789S102026.DAT')->assertHeader('Content-Type', 'text/plain; charset=windows-1252');
         $content = $response->streamedContent();
         $lines = explode("\r\n", rtrim($content, "\r\n"));
-        $this->assertSame('H,S,"123456789","TEST COMPANY INC.","","","","TEST TRADE","123 MAIN ST.","CITY",10.50,0.00,100.00,12.00,001,10/31/2026,12', $lines[0]);
-        $this->assertSame('D,S,"","VARIOUS CUSTOMERS","","","","123 MAIN ST. CITY","",0,0,100,12,123456789,10/31/2026', $lines[1]);
+        $this->assertSame('H,S,"123456789","TEST COMPANY INC","","","","TEST TRADE","123 MAIN ST","CITY",10.50,0.00,100.00,12.00,001,10/31/2026,12', $lines[0]);
+        $this->assertSame('D,S,"","VARIOUS CUSTOMERS","","","","123 MAIN ST CITY","",0,0,100,12,123456789,10/31/2026', $lines[1]);
         $this->assertSame('D,S,"234567890","SECOND CUSTOMER","","","","","",10.5,0,0,0,123456789,10/31/2026', $lines[2]);
         $this->assertCount(17, str_getcsv($lines[0], ',', '"', ''));
         $this->assertCount(15, str_getcsv($lines[1], ',', '"', ''));

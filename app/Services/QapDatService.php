@@ -4,7 +4,6 @@ namespace App\Services;
 
 use Carbon\CarbonImmutable;
 use Generator;
-use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class QapDatService
@@ -147,7 +146,7 @@ class QapDatService
 
     private function name(string $value, int $limit, string $field, bool $allowEmpty = false): string
     {
-        $value = strtoupper(Str::ascii(trim(preg_replace('/[\s\x00-\x1f\x7f]+/u', ' ', $value))));
+        $value = BirDatText::clean($value);
         if ((! $allowEmpty && $value === '') || strlen($value) > $limit) {
             throw ValidationException::withMessages([$field => 'Enter an exportable name of at most '.$limit.' characters.']);
         }
