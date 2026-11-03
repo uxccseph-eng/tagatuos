@@ -39,7 +39,7 @@ class ClientProvisioner
                         throw new RuntimeException('Existing shared records require a verified transfer before provisioning.');
                     }
                 }
-                foreach (['company_ledgers', 'journal_entries', 'company_ledger_changes', 'sheet_import_profiles', 'sheet_import_batches', 'company_transaction_versions'] as $table) {
+                foreach (['company_ledgers', 'journal_entries', 'company_ledger_changes', 'sheet_import_profiles', 'sheet_import_batches', 'company_transaction_versions', 'tax_return_preparations'] as $table) {
                     if ($central->table($table)->where('company_id', $company->id)->exists()) {
                         throw new RuntimeException('Existing shared records require a verified transfer before provisioning.');
                     }

@@ -39,6 +39,7 @@ use App\Http\Controllers\SheetImportController;
 use App\Http\Controllers\SystemDashboardController;
 use App\Http\Controllers\TaxPreflightController;
 use App\Http\Controllers\TaxReportsController;
+use App\Http\Controllers\TaxReturnController;
 use App\Http\Controllers\TeamController;
 use App\Http\Controllers\WorkspacePreviewController;
 use App\Http\Controllers\WtpController;
@@ -216,5 +217,14 @@ Route::get('/reports/{report}', [FinancialReportsController::class, 'index'])->n
 
 Route::post('/reports/form-2316/{employeeId}', [Form2316Controller::class, 'print2316'])->whereNumber('employeeId')->name('reports.form2316');
 Route::post('/reports/form-2307/{supplierId}', [Form2307Controller::class, 'print2307'])->whereNumber('supplierId')->name('reports.form2307');
+
+Route::middleware(['auth', 'throttle:60,1'])->prefix('tax-returns')->name('tax-returns.')->group(function (): void {
+    Route::get('/', [TaxReturnController::class, 'index'])->name('index');
+    Route::get('/preview', [TaxReturnController::class, 'preview'])->name('preview');
+    Route::post('/prepare', [TaxReturnController::class, 'prepare'])->name('prepare');
+    Route::get('/{id}/print', [TaxReturnController::class, 'show'])->whereNumber('id')->name('show');
+    Route::get('/{id}/download', [TaxReturnController::class, 'download'])->whereNumber('id')->name('download');
+    Route::post('/{id}/filed', [TaxReturnController::class, 'filed'])->whereNumber('id')->name('filed');
+});
 
 Route::get('/{firmSlug}', [PortalController::class, 'show'])->where('firmSlug', '[a-z0-9]+(?:-[a-z0-9]+)*')->name('portal.show');

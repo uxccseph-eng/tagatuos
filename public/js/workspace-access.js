@@ -2,7 +2,7 @@
     const element = document.getElementById('workspace-access-config');
     if (!element) return;
     const access = JSON.parse(element.textContent);
-    const modules = ['dashboard', 'sheets', 'books', 'lapsing', 'masters', 'reports', 'tax-reports', 'settings'];
+    const modules = ['dashboard', 'sheets', 'books', 'lapsing', 'masters', 'reports', 'tax-reports', 'tax-returns', 'settings'];
     const isWorkspaceUrl = value => {
         const url = new URL(value, location.href);
         return url.origin === location.origin && (modules.includes(url.pathname.split('/').filter(Boolean)[0]) || url.pathname === '/company/setup');
@@ -30,7 +30,7 @@
         headers.set('X-Company-ID', String(access.companyId));
         const path = new URL(url, location.href).pathname;
         const method = (options.method || (input instanceof Request ? input.method : 'GET')).toUpperCase();
-        if (window.CompanyLedger && method === 'POST' && /^\/(?:reports|tax-reports)\//.test(path)) {
+        if (window.CompanyLedger && method === 'POST' && /^\/(?:reports|tax-reports|tax-returns)\//.test(path)) {
             return window.CompanyLedger.flush().then(() => {
                 if (window.CompanyLedger.pending()) throw Error('Transfer or recover the pending browser records before exporting this company book.');
                 headers.set('X-Ledger-Revision', String(window.CompanyLedgerDatabase.revision));
@@ -43,7 +43,7 @@
         const url = new URL(link.getAttribute('href'), location.href);
         if (url.origin !== location.origin) return;
         const module = url.pathname.split('/').filter(Boolean)[0];
-        if ((modules.includes(module) && !access.tabs.includes(module)) || (module === 'team' && access.role !== 'owner')) { link.hidden = true; link.style.display = 'none'; }
+        if ((modules.includes(module) && !access.tabs.includes(module==='tax-returns'?'tax-reports':module)) || (module === 'team' && access.role !== 'owner')) { link.hidden = true; link.style.display = 'none'; }
     });
     if (!(access.canEditSettings ?? (['owner', 'manager', 'accountant'].includes(access.role) && access.tabs.includes('settings')))) {
         document.querySelectorAll('form[action]').forEach(form => {

@@ -24,7 +24,7 @@ class SetTenantContext
         $previousCompany = $request->session()->get('active_company_id');
         $previousProfile = $request->session()->get('company_setup');
         try {
-            $bookRoute = $request->is('company/setup', 'dashboard', 'sheets', 'sheets/*', 'books', 'books/*', 'masters', 'masters/*', 'reports', 'reports/*', 'tax-reports', 'tax-reports/*', 'settings', 'settings/*', 'lapsing', 'lapsing/*');
+            $bookRoute = $request->is('company/setup', 'dashboard', 'sheets', 'sheets/*', 'books', 'books/*', 'masters', 'masters/*', 'reports', 'reports/*', 'tax-reports', 'tax-reports/*', 'tax-returns', 'tax-returns/*', 'settings', 'settings/*', 'lapsing', 'lapsing/*');
             if (! $request->user()) {
                 if (app()->environment(['local', 'testing']) && is_array($previousProfile)) {
                     $context->previewWorkspace = ChartAccount::workspaceKey($previousProfile);
@@ -65,7 +65,7 @@ class SetTenantContext
             if ($ids !== [] && $response instanceof RedirectResponse) {
                 $target = $response->getTargetUrl();
                 $parts = parse_url($target);
-                if ((! isset($parts['host']) || $parts['host'] === $request->getHost()) && preg_match('#^/(?:company/setup|dashboard|sheets|books|masters|reports|tax-reports|settings|lapsing)(?:/|$)#', $parts['path'] ?? '')) {
+                if ((! isset($parts['host']) || $parts['host'] === $request->getHost()) && preg_match('#^/(?:company/setup|dashboard|sheets|books|masters|reports|tax-reports|tax-returns|settings|lapsing)(?:/|$)#', $parts['path'] ?? '')) {
                     parse_str($parts['query'] ?? '', $parameters);
                     if (! isset($parameters['company_id'])) {
                         $base = explode('#', $target, 2)[0];

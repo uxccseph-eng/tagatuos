@@ -18,7 +18,7 @@ class EnsureActiveCompany
      */
     public function handle(Request $request, Closure $next): Response
     {
-        if (! $request->is('company/setup', 'dashboard', 'sheets', 'sheets/*', 'books', 'books/*', 'masters', 'masters/*', 'reports', 'reports/*', 'tax-reports', 'tax-reports/*', 'settings', 'settings/*', 'lapsing', 'lapsing/*')) {
+        if (! $request->is('company/setup', 'dashboard', 'sheets', 'sheets/*', 'books', 'books/*', 'masters', 'masters/*', 'reports', 'reports/*', 'tax-reports', 'tax-reports/*', 'tax-returns', 'tax-returns/*', 'settings', 'settings/*', 'lapsing', 'lapsing/*')) {
             return $next($request);
         }
 
@@ -59,6 +59,7 @@ class EnsureActiveCompany
         $modules = match (true) {
             $request->routeIs('sheets.database.show') => ['sheets', 'books', 'reports', 'tax-reports', 'lapsing'],
             $request->routeIs('masters.accounts.catalog', 'masters.accounts.relief-catalog') => ['sheets', 'books', 'lapsing', 'masters', 'reports', 'tax-reports', 'settings'],
+            $request->routeIs('tax-returns.*') => ['tax-reports'],
             $request->routeIs('reports.form2307') => ['sheets', 'tax-reports'],
             $request->routeIs('reports.form2316', 'reports.sales.dat', 'reports.purchases.dat', 'reports.sawt.dat', 'reports.sawt.saved', 'reports.qap.dat', 'reports.qap.annual.dat') => ['tax-reports'],
             isset(TeamPermissions::TABS[$request->segment(1)]) => [$request->segment(1)],
@@ -66,7 +67,7 @@ class EnsureActiveCompany
         };
         abort_if($modules !== [] && array_intersect($modules, $allowed) === [], 403, 'Your company book owner has not enabled this module for your account.');
         $request->attributes->set('company_allowed_tabs', $allowed);
-        if ($request->isMethod('POST') && ($request->is('reports/*', 'tax-reports/*') || $request->routeIs('books.export'))) {
+        if ($request->isMethod('POST') && ($request->is('reports/*', 'tax-reports/*') || $request->routeIs('books.export', 'tax-returns.prepare'))) {
             $revision = (string) (CompanyLedger::query()->where('company_id', $company->id)->value('revision') ?? 0);
             abort_unless($request->header('X-Ledger-Revision') === $revision, 409, 'The company records changed or this page is outdated. Reload the latest records before exporting.');
         }

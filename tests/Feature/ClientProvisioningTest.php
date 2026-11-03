@@ -436,6 +436,29 @@ class ClientProvisioningTest extends TestCase
         $this->assertDatabaseCount('tax_preflight_reviews', 2);
     }
 
+    public function test_tax_return_archives_live_in_their_client_database_and_cannot_cross_books(): void
+    {
+        $owner = User::factory()->firm()->create(['must_change_password' => false]);
+        $first = $this->readyClient($owner);
+        $second = $this->readyClient($owner);
+        foreach ([$first, $second] as $company) {
+            $company->run(function () use ($company): void {
+                CompanySetting::query()->where('company_id', $company->id)->firstOrFail()->update(['profile' => ['company_name' => $company->name, 'full_name' => 'Example', 'entity_type' => 'corporation', 'tin' => '123456789', 'branch_code' => '00000', 'rdo' => '033']]);
+                CompanyLedger::factory()->create(['company_id' => $company->id, 'revision' => 1]);
+            });
+        }
+        $this->actingAs($owner)->withHeader('X-Ledger-Revision', '1');
+        $selection = ['form' => '0619-E', 'year' => 2026, 'period' => 10];
+        $preview = $this->getJson(route('tax-returns.preview', ['company_id' => $first->id, ...$selection]))->assertOk()->json();
+        $input = [...$selection, 'request_id' => (string) Str::uuid(), 'ledger_revision' => 1, 'source_hash' => $preview['source_hash'], 'additional_tax' => '0.00', 'credits' => '0.00', 'surcharge' => '0.00', 'interest' => '0.00', 'compromise' => '0.00', 'reviewed' => true, 'review_note' => 'Reviewed nil return sources.'];
+        $id = $this->postJson(route('tax-returns.prepare', ['company_id' => $first->id]), $input)->assertCreated()->json('id');
+        $this->assertSame(1, $first->run(fn (): int => DB::table('tax_return_preparations')->count()));
+        $this->assertSame(0, $second->run(fn (): int => DB::table('tax_return_preparations')->count()));
+        $this->assertSame(0, DB::connection(config('tenancy.database.central_connection'))->table('tax_return_preparations')->count());
+        $this->getJson(route('tax-returns.download', ['company_id' => $second->id, 'id' => $id]))->assertNotFound();
+        $this->get(route('tax-returns.show', ['company_id' => $first->id, 'id' => $id]))->assertOk()->assertSee('Preparation worksheet');
+    }
+
     private function newClient(?User $owner = null): Company
     {
         $owner ??= User::factory()->firm()->create();
