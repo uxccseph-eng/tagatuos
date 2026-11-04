@@ -22,6 +22,17 @@ class SaveMasterRecordRequest extends FormRequest
         return ['name_key' => 'employee name', 'tin_key' => 'employee TIN'];
     }
 
+    /** @return array<string, string> */
+    public function messages(): array
+    {
+        return [
+            'birth_date.date_format' => 'Enter the date of birth as DD/MM/YYYY, for example 15/01/1995.',
+            'hire_date.date_format' => 'Enter the hire date as DD/MM/YYYY, for example 04/11/2026.',
+            'end_date.date_format' => 'Enter the end date as DD/MM/YYYY, for example 30/11/2026.',
+            'end_date.after_or_equal' => 'The end date must be on or after the hire date.',
+        ];
+    }
+
     public function authorize(): bool
     {
         return $this->session()->get('preview_access') && $this->session()->has('company_setup');
@@ -65,6 +76,17 @@ class SaveMasterRecordRequest extends FormRequest
             $this->merge(['code' => strtoupper(trim($this->input('code')))]);
         }
         if ($this->route('registry') === 'employees') {
+            foreach (['birth_date', 'hire_date', 'end_date'] as $field) {
+                $value = $this->input($field);
+                if (! is_string($value)) {
+                    continue;
+                }
+                $value = trim($value);
+                if (preg_match('/^(\d{2})\/(\d{2})\/(\d{4})$/D', $value, $parts) && checkdate((int) $parts[2], (int) $parts[1], (int) $parts[3])) {
+                    $value = $parts[3].'-'.$parts[2].'-'.$parts[1];
+                }
+                $this->merge([$field => $value]);
+            }
             $name = Str::squish((string) $this->input('name'));
             $tin = preg_replace('/\D/', '', (string) $this->input('tin'));
             $this->merge(['name' => $name, 'name_key' => hash('sha256', Str::lower($name)), 'tin_key' => preg_match('/[1-9]/', $tin) ? $tin : null, 'classification' => $this->input('classification') ?: 'Regular']);

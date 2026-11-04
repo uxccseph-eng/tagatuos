@@ -60,7 +60,7 @@
             parties:[{code:'',name:'SAMPLE Supplier Corporation - REPLACE',entity_type:'corporation',classification:'Supplier',is_petty_cash:'No',tin:'REPLACE WITH ACTUAL SUPPLIER TIN',email:'supplier@example.com',phone:'',building:'',street:'',barangay:'Sample Barangay',city:'Quezon City',province:'Metro Manila',zip_code:'1100',address:'',description:'SAMPLE ONLY - regular supplier; street optional; use the actual registered address'},
                 {code:'',name:'',entity_type:'individual',last_name:'DELA CRUZ',first_name:'JUAN',middle_name:'SANTOS',classification:'Supplier',is_petty_cash:'No',tin:'REPLACE WITH ACTUAL SUPPLIER TIN',city:'Quezon City',province:'Metro Manila',description:'SAMPLE ONLY - individual supplier; first and last names required; replace all details'},
                 {code:'',name:'SAMPLE Petty Cash Payee - REPLACE',entity_type:'corporation',classification:'Supplier',is_petty_cash:'Yes',tin:'',description:'SAMPLE ONLY - petty cash supplier; TIN and address optional'}],
-            employees:[{code:'',name:'SAMPLE Employee - REPLACE',classification:'Regular',tin:'',email:'employee@example.com',phone:'',address:'Replace with actual employee address',birth_date:'1995-01-15',hire_date:'2026-10-01',end_date:'',sss_no:'',philhealth_no:'',pagibig_no:''}],
+            employees:[{code:'',name:'SAMPLE Employee - REPLACE',classification:'Regular',tin:'',email:'employee@example.com',phone:'',address:'Replace with actual employee address',birth_date:'15/01/1995',hire_date:'01/10/2026',end_date:'',sss_no:'',philhealth_no:'',pagibig_no:''}],
             'bank-accounts':[{name:'SAMPLE Operating Bank - REPLACE',bank:'SAMPLE Bank - REPLACE',account_number:'001234567890',gl_account:'REPLACE WITH ACTIVE CASH OR BANK ACCOUNT CODE',currency:'PHP'}],
             'tax-codes':[{code:'',name:'SAMPLE VAT 12% - REPLACE',kind:'VAT',rate:'12',atc:''}],
             'atc-codes':[{code:'REPLACE WITH ACTUAL CUSTOM ATC',name:'SAMPLE Custom Withholding - REPLACE',rate:'1'}]
@@ -69,7 +69,8 @@
         return samples[registry];
     }
     function template(registry,columns,withSamples=false){return csv([columns,...(withSamples?sampleRows(registry).map(row=>columns.map(column=>row[column]??'')):[])])+'\r\n';}
-    const api={guessMapping,source,mapRows,included,fillBlanks,csv,sampleRows,template};
+    function displayEmployeeDate(value){return String(value??'').replace(/^(\d{4})-(\d{2})-(\d{2})$/, '$3/$2/$1');}
+    const api={displayEmployeeDate,guessMapping,source,mapRows,included,fillBlanks,csv,sampleRows,template};
     if(typeof module!=='undefined'&&module.exports)module.exports=api;
     if(root)root.MasterImportData=api;
 })(typeof window!=='undefined'?window:null);

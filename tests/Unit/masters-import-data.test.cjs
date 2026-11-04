@@ -35,3 +35,11 @@ test('downloaded CSV protects formula cells and preserves commas quotes and line
     assert.ok(csv.startsWith('\uFEFF"\'=HYPERLINK(""x"")"'));
     for (const value of ['"\'+1"','"\'-1"','"\'@foo"','"Normal, value"','"Line\nTwo"']) assert.ok(csv.includes(value));
 });
+
+ test('employee sample dates and display use DD/MM/YYYY without interpreting slash dates as US dates', () => {
+    const tools = require('../../public/js/masters-import-data.js');
+    assert.equal(tools.sampleRows('employees')[0].hire_date, '01/10/2026');
+    assert.equal(tools.displayEmployeeDate('2026-11-04'), '04/11/2026');
+    assert.equal(tools.displayEmployeeDate('04/11/2026'), '04/11/2026');
+    assert.equal(tools.displayEmployeeDate(null), '');
+});

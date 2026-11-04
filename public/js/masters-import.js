@@ -6,7 +6,7 @@
     const guidance = {
         'chart-of-accounts':'Name and type are required. Type: Asset, Liability, Equity, Income or Expense. Blank normal balance and statement section use the type defaults. Flags accept Yes/No, True/False or 1/0. Control accounts need a subsidiary.',
         parties:'Classification: Customer, Supplier or Both. Regular parties require TIN and registered address; street is optional. Petty cash suppliers (is_petty_cash = Yes) may omit TIN and address. Individual parties need first and last names. Use Both instead of duplicating a customer who is also a supplier.',
-        employees:'Name is required. Classification defaults to Regular. Dates: YYYY-MM-DD. TIN and government IDs are optional.',
+        employees:'Name is required. Classification defaults to Regular. Dates: DD/MM/YYYY (for example 04/11/2026). Existing Excel dates are also accepted. TIN and government IDs are optional.',
         'bank-accounts':'Name and gl_account are required. Use an active cash/bank account code or name from this company. Currency defaults to PHP. Keep bank account numbers as text to preserve leading zeros.',
         'tax-codes':'Name, kind and rate are required. Kind: VAT, Exempt, Zero Rated, Percentage Tax or Withholding. Rate: 0–100, up to four decimal places. ATC is optional.',
         'atc-codes':'Use the actual ATC code, name and rate (0–100). Supplied reference codes cannot be replaced.'
@@ -143,7 +143,8 @@
             includeLabel.prepend(checkbox); includeCell.append(includeLabel); tr.append(includeCell, cell('td', !row.included ? 'Excluded' : rowIssues.length ? 'Needs correction' : previewToken ? 'Ready' : 'Needs preview'));
             config.columns.forEach(column => {
                 const td = document.createElement('td'), input = document.createElement('input'), errors = rowIssues.filter(issue => issue.field === column);
-                input.type = 'text'; input.maxLength = 4000; input.value = row.record[column]; input.disabled = busy || !row.included;
+                input.type = 'text'; input.maxLength = 4000; input.value = registry === 'employees' && ['birth_date','hire_date','end_date'].includes(column) ? tools.displayEmployeeDate(row.record[column]) : row.record[column]; input.disabled = busy || !row.included;
+                if (registry === 'employees' && ['birth_date','hire_date','end_date'].includes(column)) input.placeholder = 'DD/MM/YYYY';
                 input.setAttribute('aria-label', `Source row ${row.sourceRow}: ${labelFor(column)}`);
                 if (errors.length && row.included) input.setAttribute('aria-invalid', 'true');
                 input.addEventListener('change', () => {row.record[column] = input.value.trim(); invalidate(); message('Values changed. Validate again to update the checks.'); renderReview();});

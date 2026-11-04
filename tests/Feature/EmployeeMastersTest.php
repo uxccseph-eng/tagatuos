@@ -77,4 +77,39 @@ class EmployeeMastersTest extends TestCase
         $this->assertNull($duplicates['preview_token']);
         $this->assertDatabaseCount('employees', 2);
     }
+
+    public function test_employee_dates_accept_day_first_input_and_keep_iso_storage(): void
+    {
+        $this->withSession($this->workspace());
+        $record = $this->postJson('/masters/employees', ['name' => 'Day First Employee', 'birth_date' => '29/02/2000', 'hire_date' => '04/11/2026', 'end_date' => '30/11/2026'])->assertCreated()->assertJsonPath('record.birth_date', '2000-02-29')->assertJsonPath('record.hire_date', '2026-11-04')->assertJsonPath('record.end_date', '2026-11-30')->json('record');
+        $this->putJson('/masters/employees/'.$record['id'], ['code' => $record['code'], 'name' => $record['name'], 'hire_date' => '2026-01-02', 'end_date' => '03/01/2026'])->assertOk()->assertJsonPath('record.hire_date', '2026-01-02')->assertJsonPath('record.end_date', '2026-01-03');
+    }
+
+    public function test_employee_dates_reject_impossible_or_month_first_values_and_reversed_ranges(): void
+    {
+        $this->withSession($this->workspace());
+        foreach (['31/02/2026', '29/02/2025', '12/31/2026', '4/11/2026'] as $date) {
+            $this->postJson('/masters/employees', ['name' => 'Invalid Date Employee', 'hire_date' => $date])->assertUnprocessable()->assertJsonValidationErrors('hire_date')->assertJsonPath('errors.hire_date.0', 'Enter the hire date as DD/MM/YYYY, for example 04/11/2026.');
+        }
+        $this->postJson('/masters/employees', ['name' => 'Invalid Range Employee', 'hire_date' => '10/11/2026', 'end_date' => '09/11/2026'])->assertUnprocessable()->assertJsonValidationErrors('end_date');
+        $this->assertDatabaseCount('employees', 0);
+    }
+
+    public function test_employee_import_previews_and_saves_day_first_dates_without_swapping_month_and_day(): void
+    {
+        $this->withSession($this->workspace());
+        $rows = [['name' => 'Import Date Employee', 'birth_date' => '15/01/1995', 'hire_date' => '04/11/2026', 'end_date' => '30/11/2026'], ['name' => 'Excel Date Employee', 'hire_date' => '2026-10-01']];
+        $preview = $this->postJson('/masters/employees/import/preview', ['records' => $rows])->assertOk()->assertJsonPath('errors', [])->assertJsonPath('records.0.hire_date', '2026-11-04')->json();
+        $this->postJson('/masters/employees/import', ['records' => $rows, 'preview_token' => $preview['preview_token']])->assertCreated()->assertJsonPath('count', 2);
+        $this->assertDatabaseHas('employees', ['name' => 'Import Date Employee', 'birth_date' => '1995-01-15', 'hire_date' => '2026-11-04', 'end_date' => '2026-11-30']);
+    }
+
+    public function test_invalid_import_dates_return_day_first_guidance_and_save_nothing(): void
+    {
+        $this->withSession($this->workspace());
+        $result = $this->postJson('/masters/employees/import/preview', ['records' => [['name' => 'Invalid Import Date', 'hire_date' => '31/02/2026']]])->assertOk()->assertJsonPath('preview_token', null)->json();
+        $this->assertSame('hire_date', $result['errors'][0]['field']);
+        $this->assertStringContainsString('DD/MM/YYYY', $result['errors'][0]['message']);
+        $this->assertDatabaseCount('employees', 0);
+    }
 }
