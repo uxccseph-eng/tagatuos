@@ -140,7 +140,7 @@ class BirXmlExporterTest extends TestCase
         $url = route('tax-returns.xml', ['id' => $id, 'company_id' => $company->id]);
         $response = $this->get($url)->assertOk()->assertDownload('12345678900000-1601EQ-2026Q3.xml')->assertHeader('X-BIR-Validation', 'not-verified');
         $original = $response->streamedContent();
-        $worksheetId = $this->postJson(route('tax-returns.prepare', ['company_id' => $company->id]), [...$input, 'request_id' => (string) Str::uuid(), 'xml_requested' => false])->assertCreated()->json('id');
+        $worksheetId = $this->postJson(route('tax-returns.prepare', ['company_id' => $company->id]), [...$input, 'request_id' => (string) Str::uuid(), 'xml_requested' => false, 'amended' => true])->assertCreated()->json('id');
         $this->getJson(route('tax-returns.xml', ['id' => $worksheetId, 'company_id' => $company->id]))->assertUnprocessable();
         $company->run(function () use ($ledger, $company): void {
             $ledger->update(['state' => CompanyLedgerService::emptyState(), 'revision' => 2]);

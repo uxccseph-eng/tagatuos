@@ -9,3 +9,5 @@
 @media(min-width:1200px){#tax-returns-main{max-width:1320px}}@media(max-width:700px){.return-card,.returns-year-settings{padding:18px}.return-card .return-review-grid,.return-period-filing .return-review-grid{grid-template-columns:1fr}.return-card h2{font-size:17px}.return-card-top{flex-wrap:wrap}.return-proof-upload label{min-width:0;flex-basis:100%}.return-proof-upload input{max-width:100%}.returns-year-settings .return-review-grid{grid-template-columns:1fr}.return-version div{gap:12px}}
 
 #return-xml-monthly[hidden],#return-xml-payroll[hidden]{display:none}
+
+.return-filed-badge,.return-prepared-badge{display:inline-block!important;padding:3px 9px;border-radius:20px;font-size:10px!important;font-weight:700!important;vertical-align:middle}.return-filed-badge{color:#00735c!important;background:#00c99325;border:1px solid #00b88c55}.dark .return-filed-badge{color:#62efc5!important}.return-prepared-badge{color:var(--return-muted);background:#7a8b9e15;border:1px solid var(--return-line)}.return-delete{color:#c64d4d!important}#return-delete-error{color:#d95e5e;margin-top:12px}

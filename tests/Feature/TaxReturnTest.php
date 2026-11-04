@@ -139,7 +139,7 @@ class TaxReturnTest extends TestCase
         $url = route('tax-returns.filed', ['company_id' => $company->id, 'id' => $id]);
         $this->postJson($url, ['reference' => 'TR-123', 'filed_on' => '2026-11-01'])->assertUnprocessable();
         $this->postJson($url, ['reference' => 'TR-123', 'filed_on' => '2026-11-10', 'confirmed' => true])->assertUnprocessable();
-        $input = ['reference' => 'TR-123', 'filed_on' => '2026-11-01', 'confirmed' => true];
+        $input = ['reference' => 'TR-123', 'filed_on' => '2026-11-01', 'confirmed' => true, 'revision' => 1];
         $this->postJson($url, $input)->assertOk();
         $this->postJson($url, $input)->assertOk();
         $this->postJson($url, [...$input, 'reference' => 'DIFFERENT'])->assertConflict();

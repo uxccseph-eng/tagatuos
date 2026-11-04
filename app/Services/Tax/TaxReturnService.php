@@ -118,9 +118,11 @@ class TaxReturnService
                 $warnings[] = 'Review non-taxable compensation, benefit caps and minimum-wage-earner classifications separately; this summary uses actual saved payroll withholding.';
             }
             $info = $definition['category'] === 'Information return';
+            $original = DB::table('tax_return_preparations')->where('company_id', $company->id)->where('form', $input['form'])->where('period_from', $period['from'])->where('period_to', $period['to'])->where('original_slot', 1)->whereNull('deleted_at')->first(['id', 'revision']);
             $hash = hash('sha256', json_encode([$input['form'], $period, $profile, $sources, $definition, $gross, $withheld, $details, $vatLedger, $withholdingRows, $payrollLedger, $annualSettings, 'preparation-2026-11-xml-v2'], JSON_THROW_ON_ERROR));
 
             return [
+                'original_id' => $original?->id, 'original_revision' => (int) ($original?->revision ?? 0),
                 'annual_settings' => $annualSettings,
                 'form' => $input['form'], 'definition' => $definition, 'period' => [...$period, 'year' => (int) $input['year'], 'quarter' => (int) $input['period'], 'month' => (int) $input['period']],
                 'taxpayer' => array_intersect_key($profile, array_flip(['company_name', 'registered_name', 'tin', 'branch_code', 'rdo', 'entity_type', 'building', 'street', 'barangay', 'city', 'province', 'zip_code', 'contact_number', 'contact_email', 'agent_category', 'taxpayer_size', 'accounting_period', 'fiscal_end_month', 'line_of_business'])), 'ledger_revision' => (int) ($ledger?->revision ?? 0),
@@ -149,14 +151,25 @@ class TaxReturnService
             return $company->run(function () use ($company, $actorId, $input): array {
                 return DB::transaction(function () use ($company, $actorId, $input): array {
                     $payloadHash = hash('sha256', json_encode($input, JSON_THROW_ON_ERROR));
-                    $existing = DB::table('tax_return_preparations')->where('company_id', $company->id)->where('request_id', $input['request_id'])->first();
+                    $existing = DB::table('tax_return_save_requests')->where('company_id', $company->id)->where('request_id', $input['request_id'])->first();
                     if ($existing) {
                         abort_unless(hash_equals($existing->payload_hash, $payloadHash), 409, 'This save request was already used with different values.');
+                        $saved = DB::table('tax_return_preparations')->where('company_id', $company->id)->where('id', $existing->preparation_id)->firstOrFail();
+                        abort_if($saved->deleted_at !== null, 409, 'This preparation was deleted. Start a fresh preparation.');
 
-                        return ['id' => $existing->id, 'replayed' => true];
+                        return ['id' => $saved->id, 'replayed' => true, 'updated' => false];
                     }
                     $snapshot = $this->preview($company, $input);
                     abort_unless($snapshot['ledger_revision'] === (int) $input['ledger_revision'] && hash_equals($snapshot['source_hash'], $input['source_hash']), 409, 'Source records or company settings changed. Review the latest calculation before saving.');
+                    $original = null;
+                    if (empty($input['amended'])) {
+                        $original = DB::table('tax_return_preparations')->where('company_id', $company->id)->where('form', $input['form'])->where('period_from', $snapshot['period']['from'])->where('period_to', $snapshot['period']['to'])->where('original_slot', 1)->whereNull('deleted_at')->lockForUpdate()->first();
+                        $filed = $original?->status === 'filed' || DB::table('tax_return_filing_records')->where('company_id', $company->id)->where('form', $input['form'])->where('period_from', $snapshot['period']['from'])->where('period_to', $snapshot['period']['to'])->whereNotNull('filed_on')->exists();
+                        if ($filed) {
+                            throw ValidationException::withMessages(['amended' => 'The original return is marked Filed. Check Amended to prepare a separate correction.']);
+                        }
+                        abort_unless((int) ($input['original_id'] ?? 0) === (int) ($original?->id ?? 0) && (int) ($input['original_revision'] ?? 0) === (int) ($original?->revision ?? 0), 409, 'Another accountant changed the original preparation. Refresh sources and review its latest version.');
+                    }
                     if ($snapshot['issues'] !== []) {
                         throw ValidationException::withMessages(['settings' => $snapshot['issues']]);
                     }
@@ -216,16 +229,25 @@ class TaxReturnService
                         $snapshot['xml_available'] = true;
                     }
                     $snapshot['amended'] = (bool) ($input['amended'] ?? false);
-                    $id = DB::table('tax_return_preparations')->insertGetId([
+                    $values = [
+                        'amended' => $snapshot['amended'], 'original_slot' => $snapshot['amended'] ? null : 1, 'revision' => ($original?->revision ?? 0) + 1,
                         'settings_year' => $snapshot['annual_settings'] !== null ? (int) $input['year'] : null,
                         'year_settings_revision' => $snapshot['annual_settings']['revision'] ?? null,
                         'company_id' => $company->id, 'request_id' => $input['request_id'], 'prepared_by' => $actorId,
                         'form' => $input['form'], 'period_from' => $snapshot['period']['from'], 'period_to' => $snapshot['period']['to'],
                         'ledger_revision' => $snapshot['ledger_revision'], 'source_hash' => $snapshot['source_hash'], 'payload_hash' => $payloadHash,
-                        'snapshot' => json_encode($snapshot, JSON_THROW_ON_ERROR), 'status' => 'prepared', 'created_at' => now(), 'updated_at' => now(),
-                    ]);
+                        'snapshot' => json_encode($snapshot, JSON_THROW_ON_ERROR), 'status' => 'prepared', 'updated_at' => now(),
+                    ];
 
-                    return ['id' => $id, 'replayed' => false];
+                    if ($original) {
+                        $id = $original->id;
+                        DB::table('tax_return_preparations')->where('company_id', $company->id)->where('id', $id)->update($values);
+                    } else {
+                        $id = DB::table('tax_return_preparations')->insertGetId([...$values, 'created_at' => now()]);
+                    }
+                    DB::table('tax_return_save_requests')->insert(['company_id' => $company->id, 'request_id' => $input['request_id'], 'payload_hash' => $payloadHash, 'preparation_id' => $id, 'created_at' => now()]);
+
+                    return ['id' => $id, 'replayed' => false, 'updated' => $original !== null];
                 });
             });
         });

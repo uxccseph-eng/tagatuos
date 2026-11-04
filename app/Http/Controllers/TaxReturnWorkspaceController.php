@@ -6,7 +6,6 @@ use App\Models\Company;
 use App\Models\CompanySetting;
 use App\Services\Tax\TaxReturnCatalog;
 use App\Services\Tax\TaxReturnWorkspace;
-use App\TeamPermissions;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -22,14 +21,19 @@ class TaxReturnWorkspaceController extends Controller
     public function filed(Request $request, TaxReturnCatalog $catalog, TaxReturnWorkspace $workspace): JsonResponse
     {
         [$company, $input, $period] = $this->selection($request, $catalog);
-        $data = $request->validate(['reference' => ['nullable', 'string', 'max:150'], 'filed_on' => ['required', 'date_format:Y-m-d', 'after_or_equal:'.$period['to'], 'before_or_equal:'.CarbonImmutable::now('Asia/Manila')->toDateString()], 'confirmed' => ['accepted']]);
-        $this->mutate($request, $company, function () use ($company, $input, $period, $data, $workspace, $request): void {
+        $data = $request->validate(['reference' => ['nullable', 'string', 'max:150'], 'filed_on' => ['required', 'date_format:Y-m-d', 'after_or_equal:'.$period['to'], 'before_or_equal:'.CarbonImmutable::now('Asia/Manila')->toDateString()], 'confirmed' => ['accepted'], 'original_id' => ['nullable', 'integer', 'min:1'], 'original_revision' => ['nullable', 'integer', 'min:0']]);
+        $workspace->mutate($request, $company, function () use ($company, $input, $period, $data, $workspace, $request): void {
             $row = $workspace->filing($company, $input['form'], $period);
             $reference = trim((string) ($data['reference'] ?? ''));
             if ($row->filed_on !== null) {
                 abort_unless($row->filed_on === $data['filed_on'] && ($row->reference ?? '') === $reference, 409, 'A filing is already recorded for this form and period. Its reference cannot be overwritten.');
 
                 return;
+            }
+            $original = DB::table('tax_return_preparations')->where('company_id', $company->id)->where('form', $input['form'])->where('period_from', $period['from'])->where('period_to', $period['to'])->where('original_slot', 1)->whereNull('deleted_at')->lockForUpdate()->first();
+            abort_unless((int) ($data['original_id'] ?? 0) === (int) ($original?->id ?? 0) && (int) ($data['original_revision'] ?? 0) === (int) ($original?->revision ?? 0), 409, 'The original preparation changed. Reload and review it before recording this filing.');
+            if ($original) {
+                DB::table('tax_return_preparations')->where('company_id', $company->id)->where('id', $original->id)->update(['status' => 'filed', 'filing_reference' => $reference ?: null, 'filed_on' => $data['filed_on'], 'filed_by' => $request->user()->id, 'revision' => $original->revision + 1, 'updated_at' => now()]);
             }
             DB::table('tax_return_filing_records')->where('id', $row->id)->where('company_id', $company->id)->update(['reference' => $reference ?: null, 'filed_on' => $data['filed_on'], 'filed_by' => $request->user()->id, 'updated_at' => now()]);
         });
@@ -49,7 +53,7 @@ class TaxReturnWorkspaceController extends Controller
         $hash = hash_file('sha256', $file->getRealPath());
         $path = null;
         try {
-            $this->mutate($request, $company, function () use ($request, $company, $input, $period, $workspace, $file, $hash, $mime, &$path): void {
+            $workspace->mutate($request, $company, function () use ($request, $company, $input, $period, $workspace, $file, $hash, $mime, &$path): void {
                 $row = $workspace->filing($company, $input['form'], $period);
                 $proofs = DB::table('tax_return_proofs')->where('company_id', $company->id)->where('filing_id', $row->id);
                 if ((clone $proofs)->where('sha256', $hash)->exists()) {
@@ -86,7 +90,7 @@ class TaxReturnWorkspaceController extends Controller
         $data = $request->validate(['year' => ['required', 'integer', 'between:2023,2199'], 'revision' => ['required', 'integer', 'min:0'], 'regime' => ['required', Rule::in(['regular', 'special', 'exempt'])], 'deduction_method' => ['required', Rule::in(['itemized', 'osd'])], 'mcit_start_year' => ['nullable', 'integer', 'between:1900,2199'], 'president' => ['nullable', 'string', 'max:150'], 'treasurer' => ['nullable', 'string', 'max:150'], 'reviewed' => ['accepted']]);
         $company = $request->attributes->get('active_company');
         abort_unless(in_array('settings', $request->attributes->get('company_allowed_tabs', []), true), 403, 'Your role needs Settings access to change annual tax settings.');
-        $this->mutate($request, $company, function () use ($company, $data, $workspace, $request): void {
+        $workspace->mutate($request, $company, function () use ($company, $data, $workspace, $request): void {
             $current = $workspace->yearSettings($company, (int) $data['year']);
             abort_unless($current['revision'] === (int) $data['revision'], 409, 'Another accountant changed these annual settings. Reload and review them first.');
             $settings = [...$current['settings'], ...array_intersect_key($data, array_flip(['regime', 'deduction_method', 'mcit_start_year', 'president', 'treasurer']))];
@@ -112,18 +116,5 @@ class TaxReturnWorkspaceController extends Controller
         abort_unless($period['applicable'], 422, $period['reason']);
 
         return [$company, $input, $period];
-    }
-
-    private function mutate(Request $request, Company $company, callable $callback): mixed
-    {
-        return DB::connection(config('tenancy.database.central_connection'))->transaction(function () use ($request, $company, $callback): mixed {
-            $locked = Company::query()->lockForUpdate()->findOrFail($company->id);
-            abort_if($locked->deletionPending(), 409, 'This client is being deleted.');
-            $member = $locked->users()->where('users.id', $request->user()->id)->where('registration_status', 'approved')->wherePivot('is_suspended', false)->first();
-            $allowed = $member ? TeamPermissions::allowed($member->pivot->role, $member->pivot->allowed_tabs) : [];
-            abort_unless(in_array('tax-reports', $allowed, true) && (! $request->routeIs('tax-returns.year-settings') || in_array('settings', $allowed, true)), 403, 'Your current role does not allow this change.');
-
-            return DB::transaction($callback);
-        });
     }
 }

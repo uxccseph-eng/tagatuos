@@ -20,6 +20,8 @@ class PrepareTaxReturnRequest extends FormRequest
             'form' => ['required', Rule::in(array_keys(TaxReturnCatalog::forms()))],
             'year' => ['required', 'integer', 'between:2023,2199'],
             'period' => ['required', 'integer', 'between:1,12'],
+            'original_id' => ['sometimes', 'nullable', 'integer', 'min:1'],
+            'original_revision' => ['sometimes', 'integer', 'min:0'],
             'request_id' => ['required', 'uuid'],
             'ledger_revision' => ['required', 'integer', 'min:0'],
             'source_hash' => ['required', 'string', 'regex:/^[a-f0-9]{64}$/D'],

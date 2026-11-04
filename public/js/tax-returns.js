@@ -1,10 +1,11 @@
 (() => {
     const main=document.getElementById('tax-returns-main');if(!main)return;
-    const q=id=>document.getElementById(id),form=q('return-prepare-form');let preview=null,selection=null,requestId=null,busy=false,filingUrl=null,wasXml=false,previousCredits='',previousTax='';
+    const q=id=>document.getElementById(id),form=q('return-prepare-form');let preview=null,selection=null,requestId=null,busy=false,filingUrl=null,filingRevision=null,deleteSelection=null,wasXml=false,previousCredits='',previousTax='';
     const money=value=>new Intl.NumberFormat('en-PH',{style:'currency',currency:'PHP'}).format(value/100);
     const decimal=value=>(value<0?'-':'')+Math.floor(Math.abs(value)/100)+'.'+String(Math.abs(value)%100).padStart(2,'0');
     const cents=value=>{if(!/^[0-9]{1,9}(?:\.[0-9]{1,2})?$/.test(value))return null;const [whole,fraction='']=value.split('.');return Number(whole)*100+Number(fraction.padEnd(2,'0'));};
     function syncXml(){
+        q('return-save').textContent=form.elements.amended.checked?'Save amendment':(preview?.original_id?'Update original':'Save original');
         if(form.elements.amended.checked)form.elements.xml_requested.checked=false;
         const enabled=Boolean(preview?.xml_capable&&form.elements.xml_requested.checked&&!form.elements.amended.checked),vat=selection?.form==='2550Q',eq=selection?.form==='1601-EQ',payroll=selection?.form==='1601-C',monthly=['0619-E','1601-C'].includes(selection?.form);
         if(enabled&&!wasXml){previousCredits=form.elements.credits.value;previousTax=form.elements.reviewed_tax.value;}
@@ -89,7 +90,7 @@
     form.addEventListener('submit',async event=>{
         event.preventDefault();if(busy||!preview)return;busy=true;q('return-save').disabled=true;q('return-error').textContent='';
         try{
-            const input={...selection,request_id:requestId,ledger_revision:preview.ledger_revision,source_hash:preview.source_hash,review_note:form.elements.review_note.value.trim(),reviewed:form.elements.reviewed.checked,reviewed_tax:preview.manual?form.elements.reviewed_tax.value.trim():null};
+            const input={...selection,request_id:requestId,ledger_revision:preview.ledger_revision,source_hash:preview.source_hash,original_id:preview.original_id,original_revision:preview.original_revision,review_note:form.elements.review_note.value.trim(),reviewed:form.elements.reviewed.checked,reviewed_tax:preview.manual?form.elements.reviewed_tax.value.trim():null};
             for(const key of ['additional_tax','credits','surcharge','interest','compromise'])input[key]=form.elements[key].value.trim();
             input.amended=form.elements.amended.checked;
             input.xml_requested=Boolean(preview.xml_capable&&form.elements.xml_requested.checked);
@@ -98,7 +99,15 @@
         }catch(error){q('return-error').textContent=error.message;if(error.status===409){q('return-error').textContent+=' Use Refresh sources, review the updated totals, and confirm again.';preview=null;}}
         finally{busy=false;q('return-save').disabled=!preview||preview.issues.length>0;}
     });
-    document.querySelectorAll('[data-record-filing]').forEach(button=>button.addEventListener('click',()=>{if(busy)return;filingUrl=button.dataset.recordFiling;q('filing-form').reset();q('filing-label').textContent=button.dataset.filingLabel;q('filing-error').textContent='';q('filing-dialog').showModal();}));
+    document.querySelectorAll('[data-record-filing]').forEach(button=>button.addEventListener('click',()=>{if(busy)return;filingUrl=button.dataset.recordFiling;filingRevision=Number(button.dataset.revision);q('filing-form').reset();q('filing-label').textContent=button.dataset.filingLabel;q('filing-error').textContent='';q('filing-dialog').showModal();}));
+    for(const button of document.querySelectorAll('[data-delete-preparation]'))button.addEventListener('click',()=>{
+        if(busy)return;deleteSelection={url:button.dataset.deletePreparation,revision:Number(button.dataset.revision)};q('return-delete-label').textContent=button.dataset.deleteLabel;q('return-delete-error').textContent='';q('return-delete-dialog').showModal();
+    });
+    q('return-delete-form').addEventListener('submit',async event=>{
+        event.preventDefault();if(busy||!deleteSelection)return;busy=true;const button=event.submitter;button.disabled=true;
+        try{await request(deleteSelection.url,{confirmed:true,revision:deleteSelection.revision});location.hash='filing-archive';location.reload();}
+        catch(error){q('return-delete-error').textContent=error.message;}finally{busy=false;button.disabled=false;}
+    });
     function reloadCard(target){location.hash=target.closest('.return-card')?.id || 'year-settings-title';location.reload();}
     for(const cardForm of document.querySelectorAll('.return-period-filing,.return-proof-upload,#return-year-settings')){
         cardForm.addEventListener('submit',async event=>{
@@ -123,7 +132,7 @@
     if(selectedCard?.matches('.return-card'))selectedCard.querySelector('.return-card-archive').open=true;
     q('filing-form').addEventListener('submit',async event=>{
         event.preventDefault();if(busy||!filingUrl)return;busy=true;const button=event.submitter;button.disabled=true;
-        try{const data=new FormData(event.currentTarget);await request(filingUrl,{reference:String(data.get('reference')).trim(),filed_on:data.get('filed_on'),confirmed:data.get('confirmed')==='on'});location.hash='filing-archive';location.reload();}
+        try{const data=new FormData(event.currentTarget);await request(filingUrl,{reference:String(data.get('reference')).trim(),filed_on:data.get('filed_on'),confirmed:data.get('confirmed')==='on',revision:filingRevision});location.hash='filing-archive';location.reload();}
         catch(error){q('filing-error').textContent=error.message;}finally{busy=false;button.disabled=false;}
     });
 })();

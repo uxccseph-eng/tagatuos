@@ -230,6 +230,7 @@ Route::middleware(['auth', 'throttle:60,1'])->prefix('tax-returns')->name('tax-r
     Route::get('/{id}/print', [TaxReturnController::class, 'show'])->whereNumber('id')->name('show');
     Route::get('/{id}/download', [TaxReturnController::class, 'download'])->whereNumber('id')->name('download');
     Route::get('/{id}/xml', [TaxReturnController::class, 'xml'])->whereNumber('id')->name('xml');
+    Route::post('/{id}/delete', [TaxReturnController::class, 'destroy'])->whereNumber('id')->name('destroy');
     Route::post('/{id}/filed', [TaxReturnController::class, 'filed'])->whereNumber('id')->name('filed');
 });
 

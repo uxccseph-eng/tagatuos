@@ -40,15 +40,18 @@ class TaxReturnController extends Controller
         $proofs = DB::table('tax_return_proofs')->where('company_id', $company->id)->whereIn('filing_id', $filings->pluck('id'))->get(['id', 'filing_id', 'original_name', 'size', 'created_at'])->groupBy('filing_id');
         foreach ($cards as $form => &$card) {
             $card['filing'] = $filings->get($form.'|'.$card['from'].'|'.$card['to']);
-            $card['versions'] = DB::table('tax_return_preparations')->where('company_id', $company->id)->where('form', $form)->where('period_from', $card['from'])->where('period_to', $card['to'])->latest('id')->limit(5)->get(['id', 'status', 'created_at', 'filing_reference', 'filed_on', 'settings_year', 'year_settings_revision']);
+            $card['versions'] = $workspace->preparations($company)->where('form', $form)->where('period_from', $card['from'])->where('period_to', $card['to'])->latest('id')->limit(5)->get(['id', 'form', 'period_from', 'period_to', 'amended', 'revision', 'status', 'created_at', 'updated_at', 'filing_reference', 'filed_on', 'settings_year', 'year_settings_revision']);
+            $workspace->decorateArchive($company, $card['versions']);
+            $card['original'] = $workspace->preparations($company)->where('form', $form)->where('period_from', $card['from'])->where('period_to', $card['to'])->where('original_slot', 1)->first(['id', 'revision']);
             $card['proofs'] = $proofs->get($card['filing']?->id, collect());
             if ($card['filing']?->filed_on === null && ($legacy = $card['versions']->firstWhere('status', 'filed'))) {
                 $card['filing'] = (object) ['filed_on' => $legacy->filed_on, 'reference' => $legacy->filing_reference];
             }
         }
         unset($card);
-        $archive = DB::table('tax_return_preparations')->where('company_id', $company->id)->select(['id', 'form', 'period_from', 'period_to', 'created_at', 'status', 'filing_reference', 'filed_on', 'settings_year', 'year_settings_revision'])->orderByDesc('id')->paginate(15)->withQueryString();
+        $archive = $workspace->preparations($company)->select(['amended', 'revision', 'updated_at', 'id', 'form', 'period_from', 'period_to', 'created_at', 'status', 'filing_reference', 'filed_on', 'settings_year', 'year_settings_revision'])->orderByDesc('id')->paginate(15)->withQueryString();
 
+        $workspace->decorateArchive($company, $archive->getCollection());
         $archive->getCollection()->each(function (object $row) use ($company, $workspace): void {
             $row->settings_drifted = $row->settings_year !== null && (int) $row->year_settings_revision !== $workspace->yearSettings($company, (int) $row->settings_year)['revision'];
         });
@@ -67,7 +70,7 @@ class TaxReturnController extends Controller
     {
         $saved = $service->prepare($request->attributes->get('active_company'), $request->user()->id, $request->validated());
 
-        return response()->json(['message' => 'Preparation saved. This return has not been submitted to BIR.', ...$saved], $saved['replayed'] ? 200 : 201)->header('Cache-Control', 'no-store, private');
+        return response()->json(['message' => $saved['updated'] ? 'Original preparation updated in its existing archive entry.' : 'Preparation saved. This return has not been submitted to BIR.', ...$saved], ($saved['replayed'] || $saved['updated']) ? 200 : 201)->header('Cache-Control', 'no-store, private');
     }
 
     public function show(Request $request, int $id): Response
@@ -141,9 +144,9 @@ class TaxReturnController extends Controller
 
     public function filed(Request $request, int $id, TaxReturnWorkspace $workspace): JsonResponse
     {
-        $data = $request->validate(['reference' => ['required', 'string', 'max:150'], 'filed_on' => ['required', 'date_format:Y-m-d', 'before_or_equal:'.CarbonImmutable::now('Asia/Manila')->toDateString()], 'confirmed' => ['accepted']]);
-        DB::transaction(function () use ($request, $id, $data, $workspace): void {
-            $record = DB::table('tax_return_preparations')->where('company_id', $request->attributes->get('active_company')->id)->where('id', $id)->lockForUpdate()->first();
+        $data = $request->validate(['reference' => ['required', 'string', 'max:150'], 'filed_on' => ['required', 'date_format:Y-m-d', 'before_or_equal:'.CarbonImmutable::now('Asia/Manila')->toDateString()], 'confirmed' => ['accepted'], 'revision' => ['required', 'integer', 'min:1']]);
+        $workspace->mutate($request, $request->attributes->get('active_company'), function () use ($request, $id, $data, $workspace): void {
+            $record = DB::table('tax_return_preparations')->where('company_id', $request->attributes->get('active_company')->id)->where('id', $id)->whereNull('deleted_at')->lockForUpdate()->first();
             abort_unless($record, 404);
             abort_if($data['filed_on'] < $record->period_to, 422, 'The filing date must be on or after the reporting period ends.');
             if ($record->status === 'filed') {
@@ -151,17 +154,36 @@ class TaxReturnController extends Controller
 
                 return;
             }
-            $periodFiling = $workspace->filing($request->attributes->get('active_company'), $record->form, ['from' => $record->period_from, 'to' => $record->period_to]);
-            abort_if($periodFiling->filed_on !== null && ($periodFiling->filed_on !== $data['filed_on'] || $periodFiling->reference !== $data['reference']), 409, 'A different filing is already recorded for this form and period.');
-            DB::table('tax_return_filing_records')->where('company_id', $record->company_id)->where('id', $periodFiling->id)->update(['reference' => $data['reference'], 'filed_on' => $data['filed_on'], 'filed_by' => $request->user()->id, 'updated_at' => now()]);
-            DB::table('tax_return_preparations')->where('company_id', $record->company_id)->where('id', $record->id)->update(['status' => 'filed', 'filing_reference' => $data['reference'], 'filed_on' => $data['filed_on'], 'filed_by' => $request->user()->id, 'updated_at' => now()]);
+            abort_unless((int) $record->revision === (int) $data['revision'], 409, 'This preparation changed. Reload before marking it filed.');
+            if (! $record->amended) {
+                abort_unless((int) $record->original_slot === 1, 409, 'This original copy has been superseded. Use the current original preparation.');
+                $periodFiling = $workspace->filing($request->attributes->get('active_company'), $record->form, ['from' => $record->period_from, 'to' => $record->period_to]);
+                abort_if($periodFiling->filed_on !== null && ($periodFiling->filed_on !== $data['filed_on'] || $periodFiling->reference !== $data['reference']), 409, 'A different filing is already recorded for this form and period.');
+                DB::table('tax_return_filing_records')->where('company_id', $record->company_id)->where('id', $periodFiling->id)->update(['reference' => $data['reference'], 'filed_on' => $data['filed_on'], 'filed_by' => $request->user()->id, 'updated_at' => now()]);
+            }
+            DB::table('tax_return_preparations')->where('company_id', $record->company_id)->where('id', $record->id)->update(['revision' => $record->revision + 1, 'status' => 'filed', 'filing_reference' => $data['reference'], 'filed_on' => $data['filed_on'], 'filed_by' => $request->user()->id, 'updated_at' => now()]);
         });
 
         return response()->json(['message' => 'External filing reference recorded. This does not verify BIR acceptance or payment.'])->header('Cache-Control', 'no-store, private');
     }
 
+    public function destroy(Request $request, int $id, TaxReturnWorkspace $workspace): JsonResponse
+    {
+        $data = $request->validate(['confirmed' => ['accepted'], 'revision' => ['required', 'integer', 'min:1']]);
+        $company = $request->attributes->get('active_company');
+        $workspace->mutate($request, $company, function () use ($company, $id, $data, $workspace): void {
+            $record = DB::table('tax_return_preparations')->where('company_id', $company->id)->where('id', $id)->whereNull('deleted_at')->lockForUpdate()->firstOrFail();
+            $workspace->decorateArchive($company, [$record]);
+            abort_if($record->is_filed, 422, 'Filed preparations cannot be deleted. Prepare an amendment for a correction.');
+            abort_unless((int) $record->revision === (int) $data['revision'], 409, 'This preparation changed. Reload before deleting it.');
+            DB::table('tax_return_preparations')->where('company_id', $company->id)->where('id', $id)->update(['deleted_at' => now(), 'original_slot' => null, 'revision' => $record->revision + 1, 'updated_at' => now()]);
+        });
+
+        return response()->json(['message' => 'Preparation deleted. Book transactions and proof files are unchanged.'])->header('Cache-Control', 'no-store, private');
+    }
+
     private function record(Request $request, int $id): object
     {
-        return DB::table('tax_return_preparations')->where('company_id', $request->attributes->get('active_company')->id)->where('id', $id)->firstOrFail();
+        return DB::table('tax_return_preparations')->where('company_id', $request->attributes->get('active_company')->id)->where('id', $id)->whereNull('deleted_at')->firstOrFail();
     }
 }
