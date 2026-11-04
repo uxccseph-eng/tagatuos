@@ -56,6 +56,11 @@ class SaveSettingsRequest extends FormRequest
             'sheets' => [
                 'payroll' => ['required', 'boolean'], 'cwt' => ['required', 'boolean'],
                 'wtp' => ['required', 'boolean'], 'ppe' => ['required', 'boolean'],
+                'payroll_columns_premium' => ['sometimes', 'boolean'],
+                'payroll_columns_allowances' => ['sometimes', 'boolean'],
+                'payroll_columns_supplementary' => ['sometimes', 'boolean'],
+                'payroll_columns_non_taxable' => ['sometimes', 'boolean'],
+                'payroll_columns_government' => ['sometimes', 'boolean'],
                 'payroll_automation' => ['sometimes', 'boolean'],
                 'payroll_frequency' => ['sometimes', Rule::in(['monthly', 'semi_monthly', 'weekly'])],
                 'sales_hide_cwt' => ['sometimes', 'boolean'],

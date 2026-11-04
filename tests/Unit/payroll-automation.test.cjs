@@ -93,3 +93,10 @@ test('posted and manual payroll amounts are immutable and calculation does not m
     assert.deepEqual(run, before);
     for (const frozen of [draft({status: 'posted'}), draft({status: 'void'}), draft({automation: false})]) assert.equal(automation.calculate(frozen), frozen);
 });
+
+test('government payroll requires reviewed manual contributions', () => {
+    for (const field of ['gsisEe','gsisEr','pera']) {
+        const source = draft(); source.employees[0][field] = '100';
+        assert.throws(()=>automation.calculate(source), /manual/i);
+    }
+});

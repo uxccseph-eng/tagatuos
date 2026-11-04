@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\PayrollColumns;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -48,6 +49,13 @@ class PrintForm2316Request extends FormRequest
         ];
         foreach (['basic', 'allowance', 'de_minimis', 'benefits', 'taxable_benefits', 'contributions', 'withheld'] as $field) {
             $rules['records.*.'.$field] = $amount;
+        }
+
+        $rules['records.*.details'] = ['sometimes', 'array:'.implode(',', array_keys(array_filter(PayrollColumns::extras(), fn (array $field): bool => $field['kind'] === 'earning')))];
+        foreach (PayrollColumns::extras() as $field => $definition) {
+            if ($definition['kind'] === 'earning') {
+                $rules['records.*.details.'.$field] = ['sometimes', ...$amount];
+            }
         }
 
         return $rules;

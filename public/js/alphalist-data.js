@@ -34,10 +34,10 @@
                 if (!master) row.issues.push(candidates.length > 1 ? 'Employee name matches multiple Masters records.' : 'Employee is not linked to an employee in Masters.');
                 if (!/^(?:\d{9}|\d{12}|\d{13}|\d{14})$/.test(row.tin.replace(/\D/g, '')) || /^0+$/.test(row.tin.replace(/\D/g, ''))) row.issues.push('A valid employee TIN is needed in Masters.');
                 let values;
-                try { values = Object.fromEntries(payroll.amountFields.map(field => [field, payroll.cents(employee[field])])); }
+                try { values = Object.fromEntries(payroll.allAmountFields.map(field => [field, payroll.cents(employee[field])])); }
                 catch (error) { row.issues.push(reference + ': invalid monetary amount; totals are incomplete.'); row.incomplete = true; continue; }
-                const gross = values.basic + values.taxableAllowance + values.deMinimis + values.benefits;
-                const contributions = values.sssEe + values.phicEe + values.hdmfEe;
+                const gross = payroll.totals(employee).gross;
+                const contributions = values.sssEe + values.phicEe + values.hdmfEe + values.gsisEe + values.unionDues;
                 let taxable = null, exempt = null;
                 const benefitProvided = employee.taxableBenefits !== undefined && employee.taxableBenefits !== null && String(employee.taxableBenefits).trim() !== '';
                 let taxableBenefits = 0;
@@ -49,7 +49,7 @@
                     exempt = gross; taxable = 0;
                     row.issues.push(reference + ': verify the basis for the non-taxable classification.');
                 } else {
-                    taxable = values.basic + values.taxableAllowance + taxableBenefits - contributions;
+                    taxable = values.basic + values.taxableAllowance + payroll.taxableExtras(employee) + taxableBenefits - contributions;
                     if (taxable < 0) { taxable = null; row.issues.push(reference + ': employee contributions exceed taxable earnings.'); }
                     else exempt = gross - taxable;
                     row.exemptBenefits += values.benefits - taxableBenefits;
@@ -57,7 +57,7 @@
                 row.gross += gross; row.withheld += values.withholding;
                 row.exempt = row.exempt === null || exempt === null ? null : row.exempt + exempt;
                 row.taxable = row.taxable === null || taxable === null ? null : row.taxable + taxable;
-                row.lines.push({reference, date: run.date, gross, contributions, exempt, taxable, withheld: values.withholding, sourceId: String(run.id)+':'+run.employees.indexOf(employee), payType: employee.payType, basic: values.basic, allowance: values.taxableAllowance, deMinimis: values.deMinimis, benefits: values.benefits, taxableBenefits: values.benefits > 0 && !benefitProvided ? null : taxableBenefits});
+                row.lines.push({details:Object.fromEntries(payroll.extraFields.filter(field=>payroll.extraDefinitions[field].kind==='earning').map(field=>[field,values[field]])),reference, date: run.date, gross, contributions, exempt, taxable, withheld: values.withholding, sourceId: String(run.id)+':'+run.employees.indexOf(employee), payType: employee.payType, basic: values.basic, allowance: values.taxableAllowance, deMinimis: values.deMinimis, benefits: values.benefits, taxableBenefits: values.benefits > 0 && !benefitProvided ? null : taxableBenefits});
             }
         }
         const rows = [];
@@ -93,7 +93,7 @@
         if (!employee.employeeId) throw Error('Link this employee to Masters > Employees before printing Form 2316.');
         if (employee.incomplete || employee.mwe || employee.taxable === null || !employee.lines.length) throw Error('Review this employee’s payroll classification and taxable benefits before printing Form 2316.');
         const amount = value => { if (!Number.isSafeInteger(value) || value < 0) throw Error('Review incomplete payroll amounts before printing.'); return (value / 100).toFixed(2); };
-        return {year, records: employee.lines.map(line => ({source_id: line.sourceId, employee_id: employee.employeeId, status: 'posted', date: line.date, pay_type: line.payType, basic: amount(line.basic), allowance: amount(line.allowance), de_minimis: amount(line.deMinimis), benefits: amount(line.benefits), taxable_benefits: amount(line.taxableBenefits), contributions: amount(line.contributions), withheld: amount(line.withheld)}))};
+        return {year, records: employee.lines.map(line => ({source_id: line.sourceId, employee_id: employee.employeeId, status: 'posted', date: line.date, pay_type: line.payType, details:Object.fromEntries(Object.entries(line.details).map(([key,value])=>[key,amount(value)])),basic: amount(line.basic), allowance: amount(line.allowance), de_minimis: amount(line.deMinimis), benefits: amount(line.benefits), taxable_benefits: amount(line.taxableBenefits), contributions: amount(line.contributions), withheld: amount(line.withheld)}))};
     }
     const api = {annualTax, build, excelRows, certificatePayload};
     if (typeof module !== 'undefined' && module.exports) module.exports = api;

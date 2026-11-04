@@ -35,7 +35,10 @@
         const share = run.contributionShare;
         if (!['100', '50', '25', '20', '0', 'remaining'].includes(String(share))) throw new Error('Select a monthly contribution share.');
         const employees = run.employees.map(employee => {
-            const basic = amount(employee.basic), allowance = amount(employee.taxableAllowance);
+            if(amount(employee.gsisEe)||amount(employee.gsisEr)||amount(employee.pera))throw Error('Use Manual mode for GSIS / government payroll and enter reviewed actual contributions and tax.');
+            if(employee.payType==='Minimum Wage Earner'&&register.taxableExtras(employee,true)>0)throw Error('Review MWE eligibility with additional taxable compensation in Manual mode.');
+            if(register.extraSum(employee,'earning')>0&&(!String(employee.monthlyCompensation??'').trim()||!String(employee.monthlyFundSalary??'').trim()))throw Error('Enter reviewed monthly SSS compensation and Pag-IBIG fund salary bases when detailed earnings are entered.');
+            const basic = amount(employee.basic), allowance = amount(employee.taxableAllowance)+register.taxableExtras(employee,employee.payType==='Minimum Wage Earner');
             let taxableBenefits = 0;
             if (amount(employee.benefits) > 0) {
                 if (String(employee.taxableBenefits ?? '').trim() === '') throw new Error('Enter the taxable portion of 13th / other benefits, including 0.00 when fully exempt.');
@@ -60,7 +63,7 @@
                 const remaining = Math.max(0, contribution[field] - used[field]);
                 calculated[field] = formatted(share === 'remaining' ? remaining : Math.min(remaining, Math.round(contribution[field] * Number(share) / 100)));
             }
-            const deductible = ['sssEe', 'phicEe', 'hdmfEe'].reduce((sum, field) => sum + amount(calculated[field]), 0);
+            const deductible = ['sssEe', 'phicEe', 'hdmfEe', 'gsisEe', 'unionDues'].reduce((sum, field) => sum + amount(calculated[field]), 0);
             const taxable = employee.payType === 'Non-taxable' ? 0 : Math.max(0, (employee.payType === 'Minimum Wage Earner' ? 0 : basic) + allowance + taxableBenefits - deductible);
             calculated.withholding = formatted(withholding(taxable, run.frequency));
             return calculated;

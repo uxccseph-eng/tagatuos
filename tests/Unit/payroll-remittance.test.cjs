@@ -131,3 +131,9 @@ test('editing a generated draft cannot post changed amounts that disagree with i
     assert.equal(books.journalEntries()[0].status, 'draft');
     assert.equal(books.journalEntries()[0].id, draft.id);
 });
+
+test('government contributions and union dues remain separate remittance liabilities', () => {
+    const payroll = run(); payroll.employees = [{name:'Example',basic:'1000',pera:'25',gsisEe:'20',gsisEr:'30',unionDues:'5'}];
+    const liabilities = remittance.liabilities(payroll);
+    assert.deepEqual(liabilities.map(line=>[line.key,line.amount]), [['salary',100000],['gsis',5000],['union',500]]);
+});

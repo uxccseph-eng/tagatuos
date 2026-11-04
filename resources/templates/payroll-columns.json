@@ -1,0 +1,135 @@
+{
+  "premium": {
+    "label": "Premium pay — Holiday, Overtime, Night Diff, Hazard",
+    "fields": {
+      "holidayPay": {
+        "label": "Holiday pay",
+        "kind": "earning",
+        "tax": "premium",
+        "bir_item": 51
+      },
+      "overtimePay": {
+        "label": "Overtime pay",
+        "kind": "earning",
+        "tax": "premium",
+        "bir_item": 50
+      },
+      "nightDifferential": {
+        "label": "Night differential",
+        "kind": "earning",
+        "tax": "premium",
+        "bir_item": 51
+      },
+      "hazardPay": {
+        "label": "Hazard pay",
+        "kind": "earning",
+        "tax": "premium",
+        "bir_item": 49
+      }
+    }
+  },
+  "allowances": {
+    "label": "Allowances — Representation, Transportation, COLA, Housing, Others (44)",
+    "fields": {
+      "representationAllowance": {
+        "label": "Representation allowance",
+        "kind": "earning",
+        "tax": "taxable",
+        "bir_item": 40
+      },
+      "transportationAllowance": {
+        "label": "Transportation allowance",
+        "kind": "earning",
+        "tax": "taxable",
+        "bir_item": 41
+      },
+      "cola": {
+        "label": "COLA",
+        "kind": "earning",
+        "tax": "taxable",
+        "bir_item": 42
+      },
+      "housingAllowance": {
+        "label": "Housing allowance",
+        "kind": "earning",
+        "tax": "taxable",
+        "bir_item": 43
+      },
+      "otherAllowance": {
+        "label": "Other allowances (44)",
+        "kind": "earning",
+        "tax": "taxable",
+        "bir_item": 44
+      }
+    }
+  },
+  "supplementary": {
+    "label": "Supplementary — Commission, Profit Sharing, Director’s Fees, Others (51)",
+    "fields": {
+      "commission": {
+        "label": "Commission",
+        "kind": "earning",
+        "tax": "taxable",
+        "bir_item": 45
+      },
+      "profitSharing": {
+        "label": "Profit sharing",
+        "kind": "earning",
+        "tax": "taxable",
+        "bir_item": 46
+      },
+      "directorsFees": {
+        "label": "Director’s fees",
+        "kind": "earning",
+        "tax": "taxable",
+        "bir_item": 47
+      },
+      "otherSupplementary": {
+        "label": "Other supplementary (51)",
+        "kind": "earning",
+        "tax": "taxable",
+        "bir_item": 51
+      }
+    }
+  },
+  "non_taxable": {
+    "label": "Other non-taxable compensation",
+    "fields": {
+      "otherNonTaxable": {
+        "label": "Other eligible non-taxable compensation",
+        "kind": "earning",
+        "tax": "exempt",
+        "bir_item": 37
+      }
+    }
+  },
+  "government": {
+    "label": "GSIS, Union Dues, PERA",
+    "fields": {
+      "gsisEe": {
+        "label": "GSIS — employee",
+        "kind": "deduction",
+        "tax": "",
+        "bir_item": 36
+      },
+      "gsisEr": {
+        "label": "GSIS — employer",
+        "kind": "employer",
+        "tax": "",
+        "bir_item": 0
+      },
+      "unionDues": {
+        "label": "Union dues",
+        "kind": "deduction",
+        "tax": "",
+        "bir_item": 36
+      },
+      "pera": {
+        "label": "Eligible government PERA",
+        "kind": "earning",
+        "tax": "exempt",
+        "bir_item": 37
+      }
+    }
+  }
+}

@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Employee;
+use App\PayrollColumns;
 use App\Tin;
 use Carbon\CarbonImmutable;
 use Illuminate\Validation\ValidationException;
@@ -55,24 +56,47 @@ class Form2316Service
             foreach (['basic', 'allowance', 'de_minimis', 'benefits', 'taxable_benefits', 'contributions', 'withheld'] as $field) {
                 $values[$field] = $this->cents($record[$field]);
             }
-            if ($values['taxable_benefits'] > $values['benefits'] || $values['contributions'] > $values['basic'] + $values['allowance']) {
+            $details = [];
+            foreach (PayrollColumns::extras() as $field => $definition) {
+                if ($definition['kind'] === 'earning') {
+                    $details[$field] = $this->cents($record['details'][$field] ?? '0.00');
+                }
+            }
+            $regularExtras = PayrollColumns::sum($details, PayrollColumns::taxableExtras());
+            if ($values['taxable_benefits'] > $values['benefits'] || $values['contributions'] > $values['basic'] + $values['allowance'] + $regularExtras) {
                 throw ValidationException::withMessages(['records.'.$index => 'Review benefits and employee contributions in Payroll before printing.']);
             }
-            $gross = $values['basic'] + $values['allowance'] + $values['de_minimis'] + $values['benefits'];
+            $gross = $values['basic'] + $values['allowance'] + $values['de_minimis'] + $values['benefits'] + array_sum($details);
             $amounts[19] += $gross;
-            $amounts[35] += $values['de_minimis'];
-            $amounts[36] += $values['contributions'];
+            $parts = array_fill_keys(range(29, 51), 0);
+            $parts[35] = $values['de_minimis'];
+            $parts[36] = $values['contributions'];
             if ($record['pay_type'] === 'Non-taxable') {
-                $deductBasic = min($values['basic'], $values['contributions']);
-                $amounts[29] += $values['basic'] - $deductBasic;
-                $amounts[34] += $values['benefits'];
-                $amounts[37] += $values['allowance'] - ($values['contributions'] - $deductBasic);
+                $parts[29] = $values['basic'];
+                $parts[34] = $values['benefits'];
+                $parts[37] = $values['allowance'] + array_sum($details);
+                $deductFrom = [29, 37];
             } else {
-                $deductBasic = min($values['basic'], $values['contributions']);
-                $amounts[39] += $values['basic'] - $deductBasic;
-                $amounts[44] += $values['allowance'] - ($values['contributions'] - $deductBasic);
-                $amounts[34] += $values['benefits'] - $values['taxable_benefits'];
-                $amounts[48] += $values['taxable_benefits'];
+                $parts[39] = $values['basic'];
+                $parts[44] = $values['allowance'];
+                $parts[34] = $values['benefits'] - $values['taxable_benefits'];
+                $parts[48] = $values['taxable_benefits'];
+                foreach ($details as $field => $value) {
+                    $parts[PayrollColumns::extras()[$field]['bir_item']] += $value;
+                }
+                $deductFrom = [39, 44, 40, 41, 42, 43, 45, 46, 47, 49, 50, 51];
+            }
+            $remaining = $values['contributions'];
+            foreach ($deductFrom as $item) {
+                $deduction = min($parts[$item], $remaining);
+                $parts[$item] -= $deduction;
+                $remaining -= $deduction;
+            }
+            if ($remaining !== 0) {
+                throw ValidationException::withMessages(['records.'.$index => 'Employee contributions exceed the compensation available for deduction.']);
+            }
+            foreach ($parts as $item => $value) {
+                $amounts[$item] += $value;
             }
             $recordedWithheld += $values['withheld'];
         }

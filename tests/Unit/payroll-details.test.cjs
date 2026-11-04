@@ -38,3 +38,12 @@ test('attachments enforce document types, per-file and total limits, count and d
     assert.throws(() => details.validateAttachment(file, Array.from({length: 5}, () => ({name: 'other', size: 1}))), /five/);
     assert.throws(() => details.validateAttachment(file, [{name: 'other', size: 2000000}]), /2 MB/);
 });
+
+ test('detailed earnings and government liabilities balance without display preferences', () => {
+    const result = details.journal({employees: [{basic:'1000', holidayPay:'100', otherNonTaxable:'50', pera:'25', gsisEe:'20', gsisEr:'30', unionDues:'5', withholding:'10'}]});
+    assert.equal(result.debit, 120500);
+    assert.equal(result.credit, result.debit);
+    assert.deepEqual(result.lines.find(line=>line[0]==='GSIS Payable'), ['GSIS Payable',0,5000]);
+    assert.deepEqual(result.lines.find(line=>line[0]==='Union Dues Payable'), ['Union Dues Payable',0,500]);
+    assert.deepEqual(result.lines.find(line=>line[0]==='Salaries Payable'), ['Salaries Payable',0,114000]);
+});

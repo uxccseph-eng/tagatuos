@@ -3,9 +3,9 @@
     const payroll=typeof module!=='undefined'&&module.exports?require('./payroll-register.js'):root.PayrollRegister;
     const automation=typeof module!=='undefined'&&module.exports?require('./payroll-automation.js'):root.PayrollAutomation;
     const importer=typeof module!=='undefined'&&module.exports?require('./sheet-import.js'):root.SheetImport;
-    const headers=[...payroll.importHeaders,'employee_code','taxable_benefits','review_basis'];
+    const headers=[...payroll.importHeaders,...payroll.extraFields,'employee_code','taxable_benefits','review_basis'];
     function template(withSamples=false){
-        const sample={pay_date:'2026-10-31',run_name:'SAMPLE Monthly Payroll - REPLACE',period_start:'2026-10-01',period_end:'2026-10-31',employee:'REPLACE WITH EMPLOYEE NAME',employee_code:'REPLACE WITH EMPLOYEE CODE',pay_type:'Taxable',basic:'20000.00',taxableAllowance:'0.00',deMinimis:'0.00',benefits:'0.00',sssEe:'0.00',phicEe:'0.00',hdmfEe:'0.00',withholding:'0.00',sssEr:'0.00',phicEr:'0.00',hdmfEr:'0.00',taxable_benefits:'0.00',review_basis:'regular'};
+        const sample={...Object.fromEntries(payroll.extraFields.map(field=>[field,'0.00'])),pay_date:'2026-10-31',run_name:'SAMPLE Monthly Payroll - REPLACE',period_start:'2026-10-01',period_end:'2026-10-31',employee:'REPLACE WITH EMPLOYEE NAME',employee_code:'REPLACE WITH EMPLOYEE CODE',pay_type:'Taxable',basic:'20000.00',taxableAllowance:'0.00',deMinimis:'0.00',benefits:'0.00',sssEe:'0.00',phicEe:'0.00',hdmfEe:'0.00',withholding:'0.00',sssEr:'0.00',phicEr:'0.00',hdmfEr:'0.00',taxable_benefits:'0.00',review_basis:'regular'};
         return '\uFEFF'+[headers,...(withSamples?[headers.map(field=>sample[field]??'')]:[])].map(row=>row.map(value=>'"'+String(value).replace(/"/g,'""')+'"').join(',')).join('\r\n')+'\r\n';
     }
     const normalize=value=>String(value??'').trim().replace(/\s+/g,' ').toLowerCase();
@@ -17,6 +17,7 @@
         return money(payroll.cents(text.replaceAll(',','')));
     }
     const aliases={pay_date:['pay date','payment date'],run_name:['run name','payroll name'],period_start:['period start','start date'],period_end:['period end','end date'],employee:['employee name','full name','name'],employee_code:['employee code','employee id','staff code'],pay_type:['pay type','tax classification'],basic:['basic salary','basic pay'],taxableAllowance:['taxable allowance','taxable allowances'],deMinimis:['de minimis','de minimis benefits'],benefits:['benefits','total benefits'],sssEe:['sss employee','employee sss'],phicEe:['philhealth employee','employee philhealth'],hdmfEe:['pag ibig employee','employee pag ibig'],withholding:['tax deducted','withholding tax','tax withheld','wtax'],sssEr:['sss employer','employer sss'],phicEr:['philhealth employer','employer philhealth'],hdmfEr:['pag ibig employer','employer pag ibig'],taxable_benefits:['taxable benefits'],review_basis:['review basis']};
+    for(const [field,definition] of Object.entries(payroll.extraDefinitions))aliases[field]=[definition.label];
     function guessMapping(sourceHeaders){
         const names=sourceHeaders.map(headerKey),mapping={},used=new Set();
         for(const field of headers){const matches=names.flatMap((name,index)=>name&&[field,...(aliases[field]||[])].map(headerKey).includes(name)?[index]:[]);mapping[field]=matches.length===1&&!used.has(matches[0])?matches[0]:null;if(mapping[field]!==null)used.add(mapping[field]);}
@@ -39,14 +40,15 @@
     }
     function compare(employee,frequency,date){
         if(!['monthly','semi_monthly','weekly'].includes(frequency)||date<'2023-01-01')throw Error('Choose a payroll frequency and pay date from January 2023.');
+        payroll.totals(employee);
         for(const field of payroll.amountFields){if(String(employee[field]??'').trim()==='')throw Error('Enter actual '+field+', including 0.00 when zero.');payroll.cents(employee[field]);}
         if(!['Taxable','Non-taxable','Minimum Wage Earner'].includes(employee.payType))throw Error('Choose Taxable, Non-taxable or Minimum Wage Earner.');
         const benefits=payroll.cents(employee.benefits);let taxableBenefits=0;
         if(benefits>0){if(String(employee.taxableBenefits??'').trim()==='')throw Error('Enter the taxable portion of benefits, including 0.00 when exempt.');taxableBenefits=payroll.cents(employee.taxableBenefits);if(taxableBenefits>benefits)throw Error('Taxable benefits cannot exceed total benefits.');}
         const basis=employee.reviewBasis||'regular';if(!['regular','year_end','final_pay','other'].includes(basis))throw Error('Review basis must be regular, year_end, final_pay or other.');
-        const taxable=employee.payType==='Non-taxable'?0:Math.max(0,(employee.payType==='Minimum Wage Earner'?0:payroll.cents(employee.basic))+payroll.cents(employee.taxableAllowance)+taxableBenefits-['sssEe','phicEe','hdmfEe'].reduce((sum,key)=>sum+payroll.cents(employee[key]),0));
+        const taxable=employee.payType==='Non-taxable'?0:Math.max(0,(employee.payType==='Minimum Wage Earner'?0:payroll.cents(employee.basic))+payroll.cents(employee.taxableAllowance)+payroll.taxableExtras(employee,employee.payType==='Minimum Wage Earner')+taxableBenefits-['sssEe','phicEe','hdmfEe','gsisEe','unionDues'].reduce((sum,key)=>sum+payroll.cents(employee[key]),0));
         const reference=automation.withholding(taxable,frequency),actual=payroll.cents(employee.withholding),difference=actual-reference;
-        return {reference,actual,difference,needsReview:difference!==0||date.slice(5,7)==='12'||basis!=='regular'||employee.payType!=='Taxable'};
+        return {reference,actual,difference,needsReview:difference!==0||date.slice(5,7)==='12'||basis!=='regular'||employee.payType!=='Taxable'||['gsisEe','gsisEr','pera','otherNonTaxable'].some(field=>payroll.cents(employee[field])>0)};
     }
     function preview(rows,{employees,records=[],frequency='monthly',id='preview'}){
         const errors=[],checks=[],included=rows.filter(row=>!row.skip),people=employees.filter(person=>!person.archived),seen=new Set();let first=null;
@@ -62,7 +64,7 @@
             if(matches.length!==1)throw Error('Match this employee to one active record in Masters. Use employee_code for ambiguous names.');
             const person=matches[0];if(value.employee_code&&value.employee&&normalize(value.employee)!==normalize(person.name)&&normalize(value.employee)!==normalize(person.code))throw Error('Employee name and code identify different records.');
             if(seen.has(String(person.id)))throw Error('This employee appears more than once in the batch.');seen.add(String(person.id));
-            const employee={employeeId:person.id,name:person.name,payType:value.pay_type,...Object.fromEntries(payroll.amountFields.map(field=>[field,amountText(value[field])])),taxableBenefits:amountText(value.taxable_benefits),reviewBasis:value.review_basis||'regular'};
+            const employee={employeeId:person.id,name:person.name,payType:value.pay_type,...Object.fromEntries(payroll.allAmountFields.map(field=>[field,amountText(payroll.extraFields.includes(field)?(value[field]||'0.00'):value[field])])),taxableBenefits:amountText(value.taxable_benefits),reviewBasis:value.review_basis||'regular'};
             const amounts=payroll.totals(employee);if(amounts.gross<=0||amounts.net<0)throw Error('Earnings must be positive and cover actual deductions.');
             const comparison=compare(employee,frequency,meta[0]);
             employee.withholdingReview={version:'BIR-2023-periodic-v1',reference:comparison.reference,difference:comparison.difference,acknowledged:!!row.acknowledged,note:row.note||''};
@@ -73,7 +75,7 @@
         if(records.some(other=>other.status==='draft'))errors.push({row:0,message:'Finish or delete the existing draft before importing payroll.'});
         return {errors,checks,run,reviewCount:checks.filter(check=>!check.reviewed).length,totalActual:checks.reduce((sum,item)=>sum+item.actual,0),totalReference:checks.reduce((sum,item)=>sum+item.reference,0)};
     }
-    function signature(run){return JSON.stringify([run.date,run.periodStart,run.periodEnd,run.frequency,run.employees.map(employee=>[employee.employeeId,employee.payType,...payroll.amountFields.map(field=>payroll.cents(employee[field])),employee.taxableBenefits,employee.reviewBasis]).sort((a,b)=>String(a[0]).localeCompare(String(b[0])))]);}
+    function signature(run){return JSON.stringify([run.date,run.periodStart,run.periodEnd,run.frequency,run.employees.map(employee=>[employee.employeeId,employee.payType,...payroll.allAmountFields.map(field=>payroll.cents(employee[field])),employee.taxableBenefits,employee.reviewBasis]).sort((a,b)=>String(a[0]).localeCompare(String(b[0])))]);}
     function cumulative(records,year,employees=[]){
         const totals=new Map(),names=new Map();
         for(const employee of [...employees,...records.flatMap(run=>run.employees)]){

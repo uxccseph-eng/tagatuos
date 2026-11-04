@@ -7,6 +7,7 @@ use App\Models\Company;
 use App\Models\Employee;
 use App\Models\Party;
 use App\Models\TaxCode;
+use App\PayrollColumns;
 use Illuminate\Validation\ValidationException;
 
 class LedgerPostingService
@@ -160,7 +161,7 @@ class LedgerPostingService
                     }
                 }
             }
-            $sums = array_fill_keys(['basic', 'taxableAllowance', 'deMinimis', 'benefits', 'sssEe', 'phicEe', 'hdmfEe', 'withholding', 'sssEr', 'phicEr', 'hdmfEr'], 0);
+            $sums = array_fill_keys([...PayrollColumns::CORE, ...array_keys(PayrollColumns::extras())], 0);
             $names = [];
             if (empty($run['employees']) || count($run['employees']) > 1000) {
                 $this->fail('A payroll run needs between 1 and 1000 employees.');
@@ -179,14 +180,14 @@ class LedgerPostingService
                     $values[$field] = $this->decimal($employee[$field] ?? '', 2);
                     $sums[$field] += $values[$field];
                 }
-                $gross = $values['basic'] + $values['taxableAllowance'] + $values['deMinimis'] + $values['benefits'];
-                if ($gross <= 0 || $gross < $values['sssEe'] + $values['phicEe'] + $values['hdmfEe'] + $values['withholding']) {
+                $gross = PayrollColumns::sum($values, PayrollColumns::fields('earning'));
+                if ($gross <= 0 || $gross < PayrollColumns::sum($values, PayrollColumns::fields('deduction'))) {
                     $this->fail('Employee earnings must be positive and cover deductions.');
                 }
             }
-            $gross = $sums['basic'] + $sums['taxableAllowance'] + $sums['deMinimis'] + $sums['benefits'];
-            $net = $gross - $sums['sssEe'] - $sums['phicEe'] - $sums['hdmfEe'] - $sums['withholding'];
-            $lines = [$line('7210', $sums['basic'] + $sums['taxableAllowance'], 0), $line('7220', $sums['benefits'], 0), $line('7230', $sums['deMinimis'], 0), $line('7240', $sums['sssEr'], 0), $line('7250', $sums['phicEr'], 0), $line('7260', $sums['hdmfEr'], 0), $line('2310', 0, $sums['sssEe'] + $sums['sssEr']), $line('2320', 0, $sums['phicEe'] + $sums['phicEr']), $line('2330', 0, $sums['hdmfEe'] + $sums['hdmfEr']), $line('2350', 0, $sums['withholding']), $line('2340', 0, $net)];
+            $gross = PayrollColumns::sum($sums, PayrollColumns::fields('earning'));
+            $net = $gross - PayrollColumns::sum($sums, PayrollColumns::fields('deduction'));
+            $lines = [$line('7210', $sums['basic'] + $sums['taxableAllowance'] + PayrollColumns::sum($sums, PayrollColumns::taxableExtras()), 0), $line('7220', $sums['benefits'], 0), $line('7230', $sums['deMinimis'] + $sums['otherNonTaxable'] + $sums['pera'], 0), $line('7240', $sums['sssEr'], 0), $line('7250', $sums['phicEr'], 0), $line('7260', $sums['hdmfEr'], 0), $line('2310', 0, $sums['sssEe'] + $sums['sssEr']), $line('2320', 0, $sums['phicEe'] + $sums['phicEr']), $line('2330', 0, $sums['hdmfEe'] + $sums['hdmfEr']), $line('2350', 0, $sums['withholding']), $line('2340', 0, $net), $line('7270', $sums['gsisEr'], 0), $line('2360', 0, $sums['gsisEe'] + $sums['gsisEr']), $line('2370', 0, $sums['unionDues'])];
             $vouchers[] = $this->voucher($run, 'payroll', $lines);
         }
         $this->validateSettlements($state);
@@ -392,7 +393,7 @@ class LedgerPostingService
     private function validateRemittance(array $record, array $journals, array $payroll): void
     {
         $expected = [];
-        $codes = ['salary' => '2340', 'sss' => '2310', 'phic' => '2320', 'hdmf' => '2330', 'withholding' => '2350'];
+        $codes = ['salary' => '2340', 'sss' => '2310', 'phic' => '2320', 'hdmf' => '2330', 'withholding' => '2350', 'gsis' => '2360', 'union' => '2370'];
         $seen = [];
         foreach ($record['payrollAllocations'] ?? [] as $allocation) {
             $run = $this->find($payroll, 'id', $allocation['runId'] ?? '');
@@ -406,7 +407,9 @@ class LedgerPostingService
                 $liabilities['phic'] += $v('phicEe') + $v('phicEr');
                 $liabilities['hdmf'] += $v('hdmfEe') + $v('hdmfEr');
                 $liabilities['withholding'] += $v('withholding');
-                $liabilities['salary'] += $v('basic') + $v('taxableAllowance') + $v('benefits') + $v('deMinimis') - $v('sssEe') - $v('phicEe') - $v('hdmfEe') - $v('withholding');
+                $liabilities['gsis'] += $v('gsisEe') + $v('gsisEr');
+                $liabilities['union'] += $v('unionDues');
+                $liabilities['salary'] += array_sum(array_map($v, PayrollColumns::fields('earning'))) - array_sum(array_map($v, PayrollColumns::fields('deduction')));
             }
             foreach ($allocation['amounts'] ?? [] as $key => $amount) {
                 $pair = $run['id'].':'.$key;

@@ -4,15 +4,18 @@
     function journal(run) {
         const sum = field => run.employees.reduce((total, employee) => total + payroll.cents(employee[field]), 0);
         const lines = [
-            ['Salaries & Wages', sum('basic') + sum('taxableAllowance'), 0],
+            ['Salaries & Wages', sum('basic') + sum('taxableAllowance') + payroll.taxableExtraFields().reduce((total,field)=>total+sum(field),0), 0],
             ['13th Month & Other Benefits', sum('benefits'), 0],
-            ['De Minimis & Non-Taxable Benefits', sum('deMinimis'), 0],
+            ['De Minimis & Non-Taxable Benefits', sum('deMinimis') + sum('otherNonTaxable') + sum('pera'), 0],
             ['SSS Contributions Expense', sum('sssEr'), 0],
             ['PhilHealth Contributions Expense', sum('phicEr'), 0],
             ['Pag-IBIG Contributions Expense', sum('hdmfEr'), 0],
             ['SSS Payable', 0, sum('sssEe') + sum('sssEr')],
             ['PhilHealth Payable', 0, sum('phicEe') + sum('phicEr')],
             ['Pag-IBIG Payable', 0, sum('hdmfEe') + sum('hdmfEr')],
+            ['GSIS Contributions Expense', sum('gsisEr'), 0],
+            ['GSIS Payable', 0, sum('gsisEe')+sum('gsisEr')],
+            ['Union Dues Payable', 0, sum('unionDues')],
             ['Withholding Tax Payable', 0, sum('withholding')],
             ['Salaries Payable', 0, payroll.runTotals(run).net],
         ].filter(([, debit, credit]) => debit || credit);

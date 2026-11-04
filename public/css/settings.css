@@ -3,3 +3,5 @@
 #sales-header.settings-shell-header{position:fixed;top:0;left:288px;right:0;height:64px;z-index:40;padding:0 28px;background:#111824ed;border-bottom:1px solid #293340;backdrop-filter:blur(18px)}html:not(.dark) #sales-header.settings-shell-header{background:#ffffffed;border-color:#dce3eb}.settings-page{padding-top:90px}@media(max-width:1023px){#sales-header.settings-shell-header{left:0;padding:0 18px}.settings-shell-header #settings-menu{display:inline-flex}body.settings-menu-open #sales-sidebar{transform:translateX(0);visibility:visible;box-shadow:0 0 0 100vmax #0009}}
 
 .settings-field textarea{resize:vertical;min-height:110px;line-height:1.7}.settings-disclosures{display:grid;gap:22px}.settings-registration-fields{border:0;padding:0;margin:20px 0 0;min-width:0}.settings-registration-fields:disabled{opacity:.5}
+
+.settings-payroll-column{display:flex;align-items:flex-start;gap:10px;padding:9px 0;font-size:12px;line-height:1.6;cursor:pointer}.settings-payroll-column input[type=checkbox]{accent-color:var(--st-green);margin-top:3px;flex-shrink:0}

@@ -34,6 +34,23 @@ class Form2316Test extends TestCase
         return ['year' => 2026, 'reviewed' => true, 'use_default_signatory' => true, 'employee_name' => $employee->name, 'employer_type' => 'main', 'has_previous' => false, 'previous_taxable' => '0.00', 'previous_withheld' => '0.00', 'adjusted_withheld' => '10200.00', 'pera_credit' => '0.00', 'records' => [$row, [...$row, 'source_id' => 'payroll-2:0', 'date' => '2026-12-15']]];
     }
 
+    public function test_detailed_payroll_columns_map_to_their_2316_lines_without_double_counting(): void
+    {
+        $employee = $this->employee();
+        $data = $this->payload($employee);
+        $data['records'] = [[...$data['records'][0], 'basic' => '1000.00', 'allowance' => '0.00', 'de_minimis' => '0.00', 'benefits' => '0.00', 'taxable_benefits' => '0.00', 'contributions' => '25.00', 'withheld' => '0.00', 'details' => ['representationAllowance' => '100.00', 'overtimePay' => '50.00', 'commission' => '75.00', 'otherNonTaxable' => '20.00', 'pera' => '30.00']]];
+        $data['adjusted_withheld'] = '0.00';
+        $view = app(Form2316Service::class)->prepare($data, $this->company(), $employee);
+        $this->assertSame(127500, $view['amounts'][19]);
+        $this->assertSame(10000, $view['amounts'][40]);
+        $this->assertSame(5000, $view['amounts'][50]);
+        $this->assertSame(7500, $view['amounts'][45]);
+        $this->assertSame(5000, $view['amounts'][37]);
+        $this->assertSame(2500, $view['amounts'][36]);
+        $this->assertSame(0, $view['amounts'][27]);
+        $this->assertSame($view['amounts'][19], $view['amounts'][20] + $view['amounts'][21]);
+    }
+
     public function test_annual_amounts_reconcile_and_apply_the_benefit_limit_without_changing_records(): void
     {
         $employee = $this->employee();

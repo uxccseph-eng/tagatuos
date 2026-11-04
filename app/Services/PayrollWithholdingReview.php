@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\PayrollColumns;
 use Illuminate\Validation\ValidationException;
 
 class PayrollWithholdingReview
@@ -37,6 +38,9 @@ class PayrollWithholdingReview
         foreach (['basic', 'taxableAllowance', 'deMinimis', 'benefits', 'sssEe', 'phicEe', 'hdmfEe', 'withholding', 'sssEr', 'phicEr', 'hdmfEr'] as $field) {
             $values[$field] = $this->cents($employee[$field] ?? null);
         }
+        foreach (PayrollColumns::extras() as $field => $_) {
+            $values[$field] = $this->cents(trim((string) ($employee[$field] ?? '')) === '' ? '0.00' : $employee[$field]);
+        }
         $benefits = $values['benefits'] > 0 ? $this->cents($employee['taxableBenefits'] ?? null) : 0;
         if ($benefits > $values['benefits']) {
             $this->fail('Taxable benefits cannot exceed total benefits.');
@@ -45,7 +49,7 @@ class PayrollWithholdingReview
         if (! in_array($basis, ['regular', 'year_end', 'final_pay', 'other'], true)) {
             $this->fail('Choose a valid payroll review basis.');
         }
-        $taxable = $employee['payType'] === 'Non-taxable' ? 0 : max(0, ($employee['payType'] === 'Minimum Wage Earner' ? 0 : $values['basic']) + $values['taxableAllowance'] + $benefits - $values['sssEe'] - $values['phicEe'] - $values['hdmfEe']);
+        $taxable = $employee['payType'] === 'Non-taxable' ? 0 : max(0, ($employee['payType'] === 'Minimum Wage Earner' ? 0 : $values['basic']) + $values['taxableAllowance'] + PayrollColumns::sum($values, PayrollColumns::taxableExtras($employee['payType'] === 'Minimum Wage Earner')) + $benefits - $values['sssEe'] - $values['phicEe'] - $values['hdmfEe'] - $values['gsisEe'] - $values['unionDues']);
         $reference = 0;
         foreach (array_reverse(self::TABLES[$frequency]) as [$floor, $fixed, $rate]) {
             if ($taxable > $floor) {
@@ -55,7 +59,7 @@ class PayrollWithholdingReview
         }
         $difference = $values['withholding'] - $reference;
 
-        return ['reference' => $reference, 'actual' => $values['withholding'], 'difference' => $difference, 'needs_review' => $difference !== 0 || substr($date, 5, 2) === '12' || $basis !== 'regular' || $employee['payType'] !== 'Taxable'];
+        return ['reference' => $reference, 'actual' => $values['withholding'], 'difference' => $difference, 'needs_review' => $difference !== 0 || substr($date, 5, 2) === '12' || $basis !== 'regular' || $employee['payType'] !== 'Taxable' || $values['gsisEe'] > 0 || $values['gsisEr'] > 0 || $values['pera'] > 0 || $values['otherNonTaxable'] > 0];
     }
 
     /** @param array<string, mixed> $run */

@@ -4,8 +4,8 @@ window.PayrollRemittanceDialog = {
         const dialog = document.getElementById('payroll-remittance'), form = dialog.querySelector('form');
         const find = selector => dialog.querySelector(selector), api = window.PayrollRemittance;
         const money = amount => new Intl.NumberFormat('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2}).format(amount / 100);
-        const labels = {salary: 'Salaries Payable', withholding: 'WHT Payable - Compensation', sss: 'SSS Payable', phic: 'PhilHealth Payable', hdmf: 'Pag-IBIG Payable'};
-        const patterns = {salary: /salar(?:y|ies).*payable|payable.*salar/i, sss: /sss.*payable|payable.*sss/i, phic: /(?:philhealth|phic).*payable|payable.*(?:philhealth|phic)/i, hdmf: /(?:pag.?ibig|hdmf).*payable|payable.*(?:pag.?ibig|hdmf)/i, withholding: /(?:compensation|payroll).*withholding.*payable|withholding.*(?:compensation|payroll).*payable|withholding tax payable/i};
+        const labels = {salary: 'Salaries Payable', withholding: 'WHT Payable - Compensation', sss: 'SSS Payable', phic: 'PhilHealth Payable', hdmf: 'Pag-IBIG Payable', gsis:'GSIS Payable', union:'Union Dues Payable'};
+        const patterns = {gsis:/gsis.*payable|payable.*gsis/i, union:/union.*payable|payable.*union/i, salary: /salar(?:y|ies).*payable|payable.*salar/i, sss: /sss.*payable|payable.*sss/i, phic: /(?:philhealth|phic).*payable|payable.*(?:philhealth|phic)/i, hdmf: /(?:pag.?ibig|hdmf).*payable|payable.*(?:pag.?ibig|hdmf)/i, withholding: /(?:compensation|payroll).*withholding.*payable|withholding.*(?:compensation|payroll).*payable|withholding tax payable/i};
         let selectedRuns = new Set(), selectedLiabilities = new Set(), accounts = {}, pendingId = null, totals = {};
         const selected = () => runs().filter(run => run.status === 'posted' && selectedRuns.has(String(run.id)));
         function selectAccount(choices, value, label) {

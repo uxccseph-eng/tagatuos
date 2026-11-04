@@ -4,6 +4,15 @@
     const deductions = ['sssEe', 'phicEe', 'hdmfEe', 'withholding'];
     const contributions = ['sssEr', 'phicEr', 'hdmfEr'];
     const amountFields = [...earnings, ...deductions, ...contributions];
+    const columnGroups=typeof module!=='undefined'&&module.exports?require('../../resources/templates/payroll-columns.json'):JSON.parse(document.getElementById('payroll-column-schema').textContent);
+    const extraDefinitions=Object.assign({},...Object.values(columnGroups).map(group=>group.fields));
+    const extraFields=Object.keys(extraDefinitions),allAmountFields=[...amountFields,...extraFields];
+    const fieldsOf=kind=>extraFields.filter(field=>extraDefinitions[field].kind===kind);
+    const earningFields=[...earnings,...fieldsOf('earning')],deductionFields=[...deductions,...fieldsOf('deduction')],employerFields=[...contributions,...fieldsOf('employer')];
+    const taxableExtraFields=(mwe=false)=>fieldsOf('earning').filter(field=>extraDefinitions[field].tax==='taxable'||(!mwe&&extraDefinitions[field].tax==='premium'));
+    const extraSum=(employee,kind)=>fieldsOf(kind).reduce((sum,field)=>sum+cents(employee[field]),0);
+    const taxableExtras=(employee,mwe=false)=>taxableExtraFields(mwe).reduce((sum,field)=>sum+cents(employee[field]),0);
+
     function cents(value) {
         const text = String(value ?? '').trim();
         if (text === '') return 0;
@@ -13,8 +22,8 @@
     }
     function totals(employee) {
         const sum = fields => fields.reduce((total, field) => total + cents(employee[field]), 0);
-        const gross = sum(earnings);
-        return {gross, net: gross - sum(deductions), cost: gross + sum(contributions)};
+        const gross = sum(earningFields);
+        return {gross, net: gross - sum(deductionFields), cost: gross + sum(employerFields)};
     }
     function runTotals(run) {
         return run.employees.reduce((total, employee) => {
@@ -83,13 +92,13 @@
     const importHeaders = ['pay_date', 'run_name', 'period_start', 'period_end', 'employee', 'pay_type', ...amountFields];
     function importRun(rows, records) {
         if (rows.length < 2 || rows.length > 501) throw new Error('Include between 1 and 500 employee rows.');
-        if (JSON.stringify(rows[0]) !== JSON.stringify(importHeaders)) throw new Error('Use the downloaded template headers without changes.');
+        if (![importHeaders,[...importHeaders,...extraFields]].some(headers=>JSON.stringify(rows[0])===JSON.stringify(headers))) throw new Error('Use the downloaded template headers without changes.');
         const first = rows[1];
         const run = {...createRun([], {date: first[0], from: first[2], to: first[3]}), name: first[1], draftTouched: true};
         run.employees = rows.slice(1).map((row, index) => {
-            if (row.length !== importHeaders.length || row.slice(0, 4).some((value, position) => value !== first[position])) throw new Error(`Row ${index + 2}: all rows must belong to the same payroll run.`);
+            if (row.length !== rows[0].length || row.slice(0, 4).some((value, position) => value !== first[position])) throw new Error(`Row ${index + 2}: all rows must belong to the same payroll run.`);
             if (!['Taxable', 'Non-taxable', 'Minimum Wage Earner'].includes(row[5])) throw new Error(`Row ${index + 2}: choose a valid pay type.`);
-            return {name: row[4], payType: row[5], ...Object.fromEntries(amountFields.map((field, position) => [field, row[position + 6]]))};
+            return {name: row[4], payType: row[5], ...Object.fromEntries(allAmountFields.map(field=>[field,rows[0].includes(field)?row[rows[0].indexOf(field)]:'0.00']))};
         });
         const message = error(run);
         if (message) throw new Error(message);
@@ -97,7 +106,7 @@
         if (records.some(item => item.status === 'draft')) throw new Error('Finish or delete the existing draft before importing.');
         return run;
     }
-    const api = {amountFields, cents, totals, runTotals, validDate, error, createRun, renumber, reopenForEditing, post, importHeaders, importRun};
+    const api = {amountFields,allAmountFields,columnGroups,extraDefinitions,extraFields,earningFields,deductionFields,employerFields,taxableExtraFields,taxableExtras,extraSum, cents, totals, runTotals, validDate, error, createRun, renumber, reopenForEditing, post, importHeaders, importRun};
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     else root.PayrollRegister = api;
 })(globalThis);

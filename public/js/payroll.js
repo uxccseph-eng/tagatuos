@@ -10,6 +10,8 @@
     const escape = value => String(value ?? '').replace(/[&<>"']/g, character => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[character]));
     const clone = value => JSON.parse(JSON.stringify(value));
     const labels = ['Basic', 'Taxable Allow', 'De Minimis', '13th & Other Benefits', 'SSS-EE', 'PHIC-EE', 'HDMF-EE', 'WTax (actual)', 'SSS-ER', 'PHIC-ER', 'HDMF-ER'];
+    const fieldLabels=Object.fromEntries(api.amountFields.map((field,i)=>[field,labels[i]]));for(const [field,definition] of Object.entries(api.extraDefinitions))fieldLabels[field]=definition.label;
+    const visibleAmountFields=[...api.amountFields,...Object.entries(api.columnGroups).flatMap(([group,definition])=>preferences['payroll_columns_'+group]?Object.keys(definition.fields):[])];
     const selected = new Set();
     let details = null, remittanceDialog = null, payrollImportDialog = null;
     let records = [], status = 'all', descending = false, voidAction = null, storageAvailable = true;
@@ -80,8 +82,8 @@
                 <td data-flag title="${escape(flag)}">${flag ? (run.status === 'void' ? 'Voided' : 'Review') : '—'}</td>
                 <td class="payroll-actions"><button type="button" class="payroll-more-button" data-action="more" aria-label="More options for ${run.number}" title="More options" aria-haspopup="menu" aria-expanded="false"><span class="material-symbols-outlined" aria-hidden="true">more_horiz</span></button></td>
             </tr><tr class="payroll-detail" data-run="${run.id}"><td colspan="12"><section class="payroll-employees" aria-label="Employees for ${run.number}">
-                <h2>Employee breakdown · ${run.number}</h2><p class="payroll-calculation-error" data-calculation-error role="alert">${escape(run.automationError || '')}</p><div class="payroll-employee-scroll"><table aria-label="Employees for ${run.number}"><thead><tr><th>Employee</th><th>Pay Type</th>${labels.map(label => `<th>${label}</th>`).join('')}${additionalFields.map(field => `<th>${salaryBaseLabels[field]}</th>`).join('')}${run.clientPayrollImport ? '<th>Periodic reference tax</th><th>Actual minus reference</th><th>Review note</th>' : ''}<th>Net Pay</th><th>Employee actions</th></tr></thead>
-                <tbody>${run.employees.map((employee, index) => employeeRow(employee, index, disabled, run.automation, additionalFields, run.clientPayrollImport)).join('') || `<tr><td colspan="${15 + additionalFields.length + (run.clientPayrollImport ? 3 : 0)}" class="payroll-empty">No employees yet. Add an employee to begin.</td></tr>`}</tbody></table></div>
+                <h2>Employee breakdown · ${run.number}</h2><p class="payroll-calculation-error" data-calculation-error role="alert">${escape(run.automationError || '')}</p><div class="payroll-employee-scroll"><table aria-label="Employees for ${run.number}"><thead><tr><th>Employee</th><th>Pay Type</th>${visibleAmountFields.map(field => `<th>${fieldLabels[field]}</th>`).join('')}${additionalFields.map(field => `<th>${salaryBaseLabels[field]}</th>`).join('')}${run.clientPayrollImport ? '<th>Periodic reference tax</th><th>Actual minus reference</th><th>Review note</th>' : ''}<th>Net Pay</th><th>Employee actions</th></tr></thead>
+                <tbody>${run.employees.map((employee, index) => employeeRow(employee, index, disabled, run.automation, additionalFields, run.clientPayrollImport)).join('') || `<tr><td colspan="${4 + visibleAmountFields.length + additionalFields.length + (run.clientPayrollImport ? 3 : 0)}" class="payroll-empty">No employees yet. Add an employee to begin.</td></tr>`}</tbody></table></div>
                 ${disabled ? '' : button('employee', 'Add employee', 'person_add')}<div class="payroll-totals" data-totals>${totalsMarkup(run)}</div>
             </section></td></tr>`;
         }).join('') : '<tr><td colspan="12" class="payroll-empty">No payroll runs in this working period. Select Add run to begin.</td></tr>';
@@ -103,7 +105,7 @@
         try { net = money(api.totals(employee).net); } catch (exception) { /* Invalid input remains visible for correction. */ }
         return `<tr data-employee="${index}"><td><input class="employee-name" data-employee-field="name" aria-label="Employee name" list="payroll-employee-options" value="${escape(employee.name)}" maxlength="150" placeholder="Search employee name" ${disabled ? 'disabled' : ''}></td>
             <td><select data-employee-field="payType" aria-label="Pay Type" ${disabled ? 'disabled' : ''}>${['Taxable', 'Non-taxable', 'Minimum Wage Earner'].map(type => `<option ${employee.payType === type ? 'selected' : ''}>${type}</option>`).join('')}</select></td>
-            ${api.amountFields.map((field, position) => `<td><input class="employee-amount" data-employee-field="${field}" aria-label="${labels[position]}" type="text" inputmode="decimal" value="${escape(employee[field] ?? '')}" ${disabled ? 'disabled' : ''} ${automatic && [...automation.fields, 'withholding'].includes(field) ? 'readonly aria-readonly="true"' : ''} placeholder="0.00"></td>`).join('')}
+            ${visibleAmountFields.map((field, position) => `<td><input class="employee-amount" data-employee-field="${field}" aria-label="${fieldLabels[field]}" type="text" inputmode="decimal" value="${escape(employee[field] ?? '')}" ${disabled ? 'disabled' : ''} ${automatic && [...automation.fields, 'withholding'].includes(field) ? 'readonly aria-readonly="true"' : ''} placeholder="0.00"></td>`).join('')}
             ${additionalFields.map(field => `<td><input class="employee-amount" data-employee-field="${field}" aria-label="${salaryBaseLabels[field]}" inputmode="decimal" value="${escape(employee[field] ?? '')}" ${disabled ? 'disabled' : ''} placeholder="${field === 'taxableBenefits' ? 'Review taxable portion' : 'Monthly salary base'}"></td>`).join('')}
             ${imported ? `<td class="payroll-money">${employee.withholdingReview ? money(employee.withholdingReview.reference) : '—'}</td><td class="payroll-money">${employee.withholdingReview ? money(employee.withholdingReview.difference) : '—'}</td><td title="${escape(employee.withholdingReview?.note || '')}">${escape(employee.withholdingReview?.note || 'No difference / regular payroll')}</td>` : ''}
             <td class="payroll-money" data-employee-net>${net}</td><td>${disabled ? '—' : button('remove-employee', 'Remove', 'person_remove')}</td></tr>`;
@@ -245,7 +247,7 @@
             case 'remove-employee': {
                 if (run.status !== 'draft') return;
                 const next = clone(records), edited = next.find(item => item.id === run.id);
-                if (action.dataset.action === 'employee') edited.employees.push({name: '', payType: 'Taxable', ...Object.fromEntries(api.amountFields.map(field => [field, '']))});
+                if (action.dataset.action === 'employee') edited.employees.push({name: '', payType: 'Taxable', ...Object.fromEntries(api.allAmountFields.map(field => [field, '']))});
                 else edited.employees.splice(Number(action.closest('[data-employee]').dataset.employee), 1);
                 Object.assign(edited, calculateDraft(edited, next));
                 edited.draftTouched = true;
@@ -288,9 +290,9 @@
     }
     function exportCsv() {
         const csvCell = value => `"${String(value ?? '').replace(/^\s*[=+@\-\t\r]/, character => `'${character}`).replace(/"/g, '""')}"`;
-        const rows = [['Txn No', 'Status', 'Pay Date', 'Run Name', 'Period Start', 'Period End', 'Employee', 'Pay Type', ...labels, 'Net Pay', 'Frequency', 'Calculation', 'Contribution Share', 'Monthly Basic', 'Monthly SSS Compensation', 'Monthly HDMF Fund Salary', 'Taxable Benefits', 'Rate Version', 'Periodic Reference Tax', 'Actual Minus Reference', 'Review Note']];
+        const rows = [['Txn No', 'Status', 'Pay Date', 'Run Name', 'Period Start', 'Period End', 'Employee', 'Pay Type', ...api.allAmountFields.map(field=>fieldLabels[field]), 'Net Pay', 'Frequency', 'Calculation', 'Contribution Share', 'Monthly Basic', 'Monthly SSS Compensation', 'Monthly HDMF Fund Salary', 'Taxable Benefits', 'Rate Version', 'Periodic Reference Tax', 'Actual Minus Reference', 'Review Note']];
         try {
-            for (const run of visible()) for (const employee of run.employees) rows.push([run.number, run.status, run.date, run.name, run.periodStart, run.periodEnd, employee.name, employee.payType, ...api.amountFields.map(field => (api.cents(employee[field]) / 100).toFixed(2)), (api.totals(employee).net / 100).toFixed(2), run.frequency || 'monthly', run.automation ? 'Automatic' : 'Manual', run.contributionShare ?? '', employee.monthlyBasic ?? '', employee.monthlyCompensation ?? '', employee.monthlyFundSalary ?? '', employee.taxableBenefits ?? '', run.rateVersion || '', employee.withholdingReview ? money(employee.withholdingReview.reference) : '', employee.withholdingReview ? money(employee.withholdingReview.difference) : '', employee.withholdingReview?.note || '']);
+            for (const run of visible()) for (const employee of run.employees) rows.push([run.number, run.status, run.date, run.name, run.periodStart, run.periodEnd, employee.name, employee.payType, ...api.allAmountFields.map(field => (api.cents(employee[field]) / 100).toFixed(2)), (api.totals(employee).net / 100).toFixed(2), run.frequency || 'monthly', run.automation ? 'Automatic' : 'Manual', run.contributionShare ?? '', employee.monthlyBasic ?? '', employee.monthlyCompensation ?? '', employee.monthlyFundSalary ?? '', employee.taxableBenefits ?? '', run.rateVersion || '', employee.withholdingReview ? money(employee.withholdingReview.reference) : '', employee.withholdingReview ? money(employee.withholdingReview.difference) : '', employee.withholdingReview?.note || '']);
             download(rows.map(row => row.map(csvCell).join(',')).join('\r\n'), 'payroll.csv'); announce('Visible payroll runs exported.');
         } catch (exception) { announce('Correct invalid amounts before exporting.'); }
     }

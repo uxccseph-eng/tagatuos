@@ -103,3 +103,12 @@ test('deleting a void payroll compacts later numbers and keeps drafts unnumbered
  assert.equal(result[0].status,'archived');assert.equal(result[0].number,'PYRJ-000001');assert.equal(result[1].number,'PYRJ-000001');assert.equal(result[2].number,'');
  const posted=payroll.post(result,['three']);assert.equal(posted[2].number,'PYRJ-000002');
 });
+
+test('detailed earnings and government deductions count even without visibility preferences', () => {
+    const person={basic:'1000.00',holidayPay:'100.00',pera:'25.00',gsisEe:'20.00',unionDues:'5.00',gsisEr:'30.00'};
+    assert.deepEqual(payroll.totals(person),{gross:112500,net:110000,cost:115500});
+    assert.equal(payroll.taxableExtras(person),10000);
+    assert.equal(payroll.taxableExtras({...person,payType:'Minimum Wage Earner'},true),0);
+    assert.deepEqual(payroll.totals({...person,holidayPay:''}),{gross:102500,net:100000,cost:105500});
+    assert.throws(()=>payroll.totals({...person,holidayPay:'-1.00'}));
+});

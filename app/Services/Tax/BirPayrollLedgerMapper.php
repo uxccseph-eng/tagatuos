@@ -2,6 +2,8 @@
 
 namespace App\Services\Tax;
 
+use App\PayrollColumns;
+
 class BirPayrollLedgerMapper
 {
     /** @param iterable<array<string, mixed>> $runs
@@ -47,8 +49,15 @@ class BirPayrollLedgerMapper
                         $row[$key] = 0;
                     }
                 }
-                $gross = $row['basic'] + $row['taxableAllowance'] + $row['deMinimis'] + $row['benefits'];
-                $mandatory = $row['sssEe'] + $row['phicEe'] + $row['hdmfEe'];
+                foreach (PayrollColumns::extras() as $field => $_) {
+                    $row[$field] = $this->money(trim((string) ($employee[$field] ?? '')) === '' ? '0.00' : $employee[$field]);
+                    if ($row[$field] === null) {
+                        $issues['amount_'.$field] = 'A detailed payroll amount is invalid: '.$field;
+                        $row[$field] = 0;
+                    }
+                }
+                $gross = PayrollColumns::sum($row, PayrollColumns::fields('earning'));
+                $mandatory = $row['sssEe'] + $row['phicEe'] + $row['hdmfEe'] + $row['gsisEe'] + $row['unionDues'];
                 $exemptBenefits = 0;
                 if ($row['benefits'] > 0) {
                     $taxableBenefits = $this->money($employee['taxableBenefits'] ?? null);
@@ -65,12 +74,16 @@ class BirPayrollLedgerMapper
                 $values['exempt_benefits'] += $exemptBenefits;
                 if (($employee['payType'] ?? '') === 'Minimum Wage Earner') {
                     $values['minimum_wage'] += $row['basic'];
-                    $warnings['mwe'] = 'Review MWE eligibility and Item 16 premiums separately; Payroll has no separate holiday/overtime/night/hazard-pay bucket.';
+                    $values['mwe_premium'] += PayrollColumns::sum($row, array_keys(PayrollColumns::groups()['premium']['fields']));
+                    $warnings['mwe'] = 'Review MWE eligibility and the recorded Item 16 premium-pay amounts.';
                 } elseif (($employee['payType'] ?? '') === 'Non-taxable') {
                     $values['other_exempt'] += max(0, $gross - $row['deMinimis'] - $mandatory - $exemptBenefits);
                     $warnings['non_taxable'] = 'Review the basis for Non-taxable payroll rows and describe Item 20.';
                 } elseif (($employee['payType'] ?? '') !== 'Taxable') {
                     $warnings['pay_type'] = 'Some payroll rows lack a pay classification. Review the compensation buckets explicitly.';
+                }
+                if (($employee['payType'] ?? '') !== 'Non-taxable') {
+                    $values['other_exempt'] += $row['otherNonTaxable'] + $row['pera'];
                 }
             }
         }

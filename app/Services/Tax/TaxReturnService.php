@@ -6,6 +6,7 @@ use App\Models\Company;
 use App\Models\CompanyLedger;
 use App\Models\CompanySetting;
 use App\Models\TaxCode;
+use App\PayrollColumns;
 use App\TeamPermissions;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -52,8 +53,9 @@ class TaxReturnService
                         throw ValidationException::withMessages(['sources' => 'A posted payroll source is missing its employee details.']);
                     }
                     foreach ($record['employees'] ?? [] as $employee) {
-                        foreach (['basic', 'taxableAllowance', 'deMinimis', 'benefits'] as $field) {
-                            $value = $this->money($employee[$field] ?? '0');
+                        foreach (PayrollColumns::fields('earning') as $field) {
+                            $raw = $employee[$field] ?? '0';
+                            $value = $this->money(! in_array($field, PayrollColumns::CORE, true) && $raw === '' ? '0' : $raw);
                             $gross += $value;
                             $details[$field] = ($details[$field] ?? 0) + $value;
                         }

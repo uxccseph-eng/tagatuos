@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\SaveSheetImportProfileRequest;
 use App\Models\Company;
 use App\Models\User;
+use App\PayrollColumns;
 use App\Services\CompanyBookService;
 use App\Services\SheetImportWorkbookReader;
 use App\TeamPermissions;
@@ -63,7 +64,7 @@ class SheetImportController extends Controller
         $headers = $this->headers($data['headers']);
         $mapping = $data['mapping'];
         $indices = array_values(array_filter($mapping, fn ($value): bool => $value !== null));
-        if (array_diff(array_keys($mapping), self::COLUMNS[$data['sheet']]) || count($indices) !== count(array_unique($indices)) || count($indices) === 0 || max($indices) >= count($headers)) {
+        if (array_diff(array_keys($mapping), [...self::COLUMNS[$data['sheet']], ...($data['sheet'] === 'payroll' ? array_keys(PayrollColumns::extras()) : [])]) || count($indices) !== count(array_unique($indices)) || count($indices) === 0 || max($indices) >= count($headers)) {
             throw ValidationException::withMessages(['mapping' => 'Map supported fields to different available source columns.']);
         }
         $version = DB::transaction(function () use ($request, $company, $data, $headers, $mapping): int {

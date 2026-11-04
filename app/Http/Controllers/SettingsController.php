@@ -6,6 +6,7 @@ use App\Http\Requests\SaveSettingsRequest;
 use App\Models\ChartAccount;
 use App\Models\CompanySetting;
 use App\Models\TaxCode;
+use App\PayrollColumns;
 use App\SecRegistrationRules;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -53,7 +54,7 @@ class SettingsController extends Controller
             }
             $values['payroll_automation'] = (bool) ($values['payroll_automation'] ?? false);
             $values['payroll_frequency'] = $values['payroll_frequency'] ?? 'monthly';
-            foreach (['sales_hide_cwt', 'sales_hide_vat_cwt', 'purchase_hide_wvat'] as $key) {
+            foreach (['sales_hide_cwt', 'sales_hide_vat_cwt', 'purchase_hide_wvat', ...array_map(fn (string $group): string => 'payroll_columns_'.$group, array_keys(PayrollColumns::groups()))] as $key) {
                 if (array_key_exists($key, $values)) {
                     $values[$key] = (bool) $values[$key];
                 }

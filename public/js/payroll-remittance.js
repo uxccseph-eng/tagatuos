@@ -10,11 +10,13 @@
             {key: 'sss', label: 'SSS Payable', amount: sum(['sssEe', 'sssEr'])},
             {key: 'phic', label: 'PhilHealth Payable', amount: sum(['phicEe', 'phicEr'])},
             {key: 'hdmf', label: 'Pag-IBIG Payable', amount: sum(['hdmfEe', 'hdmfEr'])},
+            {key:'gsis',label:'GSIS Payable',amount:sum(['gsisEe','gsisEr'])},
+            {key:'union',label:'Union Dues Payable',amount:sum(['unionDues'])},
             {key: 'withholding', label: 'Withholding Tax Payable', amount: sum(['withholding'])},
         ].filter(line => line.amount > 0);
     }
     function allocations(entry) {
-        return entry.payrollAllocations || [{runId: entry.payrollRunId, amounts: Object.fromEntries(['salary', 'sss', 'phic', 'hdmf', 'withholding'].map(key => [key, null]))}];
+        return entry.payrollAllocations || [{runId: entry.payrollRunId, amounts: Object.fromEntries(['salary', 'sss', 'phic', 'hdmf', 'withholding', 'gsis', 'union'].map(key => [key, null]))}];
     }
     function linked(runId, ledger) {
         return ledger.journalEntries().filter(entry => entry.origin === 'payroll-remittance' && allocations(entry).some(item => item.runId === runId));
@@ -46,14 +48,14 @@
             const pending = linked(run.id, ledger).find(entry => entry.status === 'draft' && entry.id !== existingId);
             if (pending) throw new Error(`Continue remittance draft ${pending.number} before generating another for ${run.number}.`);
         }
-        const keys = choices.liabilities || ['salary', 'sss', 'phic', 'hdmf', 'withholding'];
-        if (!keys.length || keys.some(key => !['salary', 'sss', 'phic', 'hdmf', 'withholding'].includes(key))) throw new Error('Select at least one liability to remit.');
+        const keys = choices.liabilities || ['salary', 'sss', 'phic', 'hdmf', 'withholding', 'gsis', 'union'];
+        if (!keys.length || keys.some(key => !['salary', 'sss', 'phic', 'hdmf', 'withholding', 'gsis', 'union'].includes(key))) throw new Error('Select at least one liability to remit.');
         const payrollAllocations = runs.map(run => ({runId: run.id, runNumber: run.number, amounts: Object.fromEntries(remaining(run, ledger).filter(item => keys.includes(item.key) && item.amount > 0).map(item => [item.key, item.amount]))})).filter(item => Object.keys(item.amounts).length);
         if (!payrollAllocations.length) throw new Error('The selected liabilities are already remitted or have no outstanding amount.');
         const accounts = catalog.filter(account => !account.archived);
         const bank = accounts.find(account => account.code === choices.bank && account.is_cash_bank && account.type === 'Asset');
         if (!bank && (status === 'posted' || choices.bank)) throw new Error('Select an active cash / bank account from Masters.');
-        const labels = {salary: 'Salaries Payable', sss: 'SSS Payable', phic: 'PhilHealth Payable', hdmf: 'Pag-IBIG Payable', withholding: 'WHT Payable - Compensation'};
+        const labels = {salary: 'Salaries Payable', sss: 'SSS Payable', phic: 'PhilHealth Payable', hdmf: 'Pag-IBIG Payable', withholding: 'WHT Payable - Compensation', gsis:'GSIS Payable', union:'Union Dues Payable'};
         const lines = [];
         for (const key of Object.keys(labels)) {
             const amount = payrollAllocations.reduce((sum, item) => sum + (item.amounts[key] || 0), 0);
