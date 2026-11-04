@@ -17,7 +17,7 @@
         @forelse($card['versions'] as $version)
             <div class="return-version"><span>#{{ $version->id }} · {{ $version->status === 'filed' ? 'External filing recorded' : 'Prepared' }} · {{ \Carbon\CarbonImmutable::parse($version->created_at)->timezone('Asia/Manila')->format('d M Y H:i') }}</span>
                 @if($version->settings_year !== null && (int) $version->year_settings_revision !== $annualSettings['revision'])<strong class="return-reason">Annual settings changed — review and regenerate</strong>@endif
-                <div><a href="{{ route('tax-returns.show', ['id' => $version->id, 'company_id' => $company['company_id']]) }}" target="_blank" rel="noopener">View / Print</a><a href="{{ route('tax-returns.download', ['id' => $version->id, 'company_id' => $company['company_id']]) }}">Worksheet CSV</a>@if(in_array($form, ['2550Q', '1601-EQ'], true))<button type="button" data-xml-download="{{ route('tax-returns.xml', ['id' => $version->id, 'company_id' => $company['company_id']]) }}">eBIRForms XML</button>@endif</div>
+                <div><a href="{{ route('tax-returns.show', ['id' => $version->id, 'company_id' => $company['company_id']]) }}" target="_blank" rel="noopener">View / Print</a><a href="{{ route('tax-returns.download', ['id' => $version->id, 'company_id' => $company['company_id']]) }}">Worksheet CSV</a>@if(in_array($form, ['2550Q', '1601-EQ', '0619-E', '1601-C'], true))<button type="button" data-xml-download="{{ route('tax-returns.xml', ['id' => $version->id, 'company_id' => $company['company_id']]) }}">eBIRForms XML</button>@endif</div>
             </div>
         @empty<p>No prepared version for this period.</p>@endforelse
         @if($card['applicable'] || $card['filing'] !== null)

@@ -69,11 +69,20 @@ abstract class BaseBirExporter
         if ($prepared['schema'] !== $this->schema() || array_keys($prepared['fields']) !== array_keys($layout['fields'])) {
             throw new \LogicException('The archived XML layout does not match this exporter version.');
         }
-        if (! preg_match('/^[0-9]{14}-(?:2550Qv2024-[0-9]{6}|1601EQ-[0-9]{4})Q[1-4]\.xml$/D', $prepared['filename'])) {
+        $filenamePattern = match ($this->form()) {
+            '2550Q' => '/^[0-9]{14}-2550Qv2024-[0-9]{6}Q[1-4]\.xml$/D',
+            '1601-EQ' => '/^[0-9]{14}-1601EQ-[0-9]{4}Q[1-4]\.xml$/D',
+            '0619-E' => '/^[0-9]{14}-0619E-(?:0[1-9]|1[0-2])[0-9]{4}\.xml$/D',
+            '1601-C' => '/^[0-9]{14}-1601Cv2018-(?:0[1-9]|1[0-2])[0-9]{4}\.xml$/D',
+            default => throw new \LogicException('No filename pattern is defined for this exporter.'),
+        };
+        if (! preg_match($filenamePattern, $prepared['filename'])) {
             throw new \LogicException('The archived XML filename is invalid.');
         }
-        if (($prepared['fields']['txtFinalFlag'] ?? null) !== '1' || ($prepared['fields']['txtEnroll'] ?? null) !== 'Y' || ($prepared['fields']['ebirOnlineSecret'] ?? '') !== '') {
-            throw new \LogicException('The archived file has invalid eBIRForms control fields.');
+        foreach (['txtFinalFlag' => '1', 'txtEnroll' => 'Y', 'ebirOnlineSecret' => ''] as $control => $expected) {
+            if (array_key_exists($control, $layout['fields']) && ($prepared['fields'][$control] ?? null) !== $expected) {
+                throw new \LogicException('The archived file has invalid eBIRForms control fields.');
+            }
         }
         foreach ($prepared['fields'] as $key => $value) {
             if (! is_string($value) || preg_match('/[<>=\x00-\x1F\x7F]/', $value)) {
@@ -130,6 +139,18 @@ abstract class BaseBirExporter
      */
     private function period(array $period, array $profile): array
     {
+        if (in_array($this->form(), ['0619-E', '1601-C'], true)) {
+            Validator::make($period, ['from' => ['required', 'date_format:Y-m-d'], 'to' => ['required', 'date_format:Y-m-d', 'after_or_equal:from'], 'year' => ['required', 'integer', 'between:2023,2199'], 'month' => ['required', 'integer', 'between:1,12']])->validate();
+            $start = CarbonImmutable::create((int) $period['year'], (int) $period['month'], 1)->startOfMonth();
+            if ($period['from'] !== $start->toDateString() || $period['to'] !== $start->endOfMonth()->toDateString()) {
+                $this->fail('period', 'Monthly XML requires a complete calendar month.');
+            }
+            if ($this->form() === '0619-E' && (int) $period['month'] % 3 === 0) {
+                $this->fail('period', 'Use 1601-EQ for the third month of each quarter.');
+            }
+
+            return [...$period, 'fiscal' => false, 'year_end_month' => 12];
+        }
         Validator::make($period, ['from' => ['required', 'date_format:Y-m-d'], 'to' => ['required', 'date_format:Y-m-d', 'after_or_equal:from'], 'year' => ['required', 'integer', 'between:2023,2199'], 'quarter' => ['required', 'integer', 'between:1,4']])->validate();
         $fiscal = $this->form() === '2550Q' && ($profile['accounting_period'] ?? 'calendar') === 'fiscal';
         $endMonth = $fiscal ? (int) ($profile['fiscal_end_month'] ?? 0) : 12;
@@ -142,6 +163,30 @@ abstract class BaseBirExporter
         }
 
         return [...$period, 'fiscal' => $fiscal, 'year_end_month' => $endMonth];
+    }
+
+    /** @param array<string, mixed> $profile
+     * @return array<string, string>
+     */
+    protected function monthlyProfile(string $prefix, array $profile): array
+    {
+        if (! in_array($profile['agent_category'] ?? '', ['private', 'government'], true)) {
+            $this->fail('taxpayer.agent_category', 'Select Private or Government in the company BIR settings.');
+        }
+        $fields = [$prefix.'txtMonth' => '', $prefix.'txtYear' => '', $prefix.'txtBranchCode' => $profile['branch_code'], $prefix.'txtRDOCode' => strtoupper($profile['rdo']), $prefix.'txtTaxpayerName' => $this->text($profile['name'], true), $prefix.'txtAddress' => $this->text($profile['address'], true), $prefix.'txtZipCode' => $profile['zip_code'], $prefix.'txtTelNum' => $this->text($profile['contact_number']), 'txtEmail' => $this->text($profile['contact_email'])];
+        foreach (range(1, 3) as $part) {
+            $fields[$prefix.'txtTIN'.$part] = substr($profile['tin'], ($part - 1) * 3, 3);
+        }
+
+        return $fields;
+    }
+
+    /** @param array<string, mixed> $calculation */
+    protected function assertOriginalMonthlyCalculation(array $calculation, int $withheld): void
+    {
+        if (($calculation['tax'] ?? null) !== $withheld || $this->cents($calculation, 'additional_tax') !== 0 || $this->cents($calculation, 'credits') !== 0) {
+            $this->fail('calculation', 'Original monthly XML must match posted withholding. Prior-payment credits and prior-month tax adjustments need a separately verified amended or adjustment schedule.');
+        }
     }
 
     protected function text(mixed $value, bool $encoded = false): string

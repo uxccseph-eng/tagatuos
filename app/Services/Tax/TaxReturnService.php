@@ -30,6 +30,7 @@ class TaxReturnService
             $details = [];
             $withholdingRows = [];
             $vatLedger = $input['form'] === '2550Q' ? $this->vatMapper->map($ledger?->state['sales'] ?? [], $ledger?->state['purchases'] ?? [], $period) : null;
+            $payrollLedger = $input['form'] === '1601-C' ? app(BirPayrollLedgerMapper::class)->map($ledger?->payroll ?? [], $period) : null;
             $records = match ($definition['source']) {
                 'payroll' => $ledger?->payroll ?? [],
                 'expanded' => $ledger?->state['wtpCertificates'] ?? [],
@@ -117,19 +118,20 @@ class TaxReturnService
                 $warnings[] = 'Review non-taxable compensation, benefit caps and minimum-wage-earner classifications separately; this summary uses actual saved payroll withholding.';
             }
             $info = $definition['category'] === 'Information return';
-            $hash = hash('sha256', json_encode([$input['form'], $period, $profile, $sources, $definition, $gross, $withheld, $details, $vatLedger, $withholdingRows, $annualSettings, 'preparation-2026-11-xml-v1'], JSON_THROW_ON_ERROR));
+            $hash = hash('sha256', json_encode([$input['form'], $period, $profile, $sources, $definition, $gross, $withheld, $details, $vatLedger, $withholdingRows, $payrollLedger, $annualSettings, 'preparation-2026-11-xml-v2'], JSON_THROW_ON_ERROR));
 
             return [
                 'annual_settings' => $annualSettings,
-                'form' => $input['form'], 'definition' => $definition, 'period' => [...$period, 'year' => (int) $input['year'], 'quarter' => (int) $input['period']],
-                'taxpayer' => array_intersect_key($profile, array_flip(['company_name', 'registered_name', 'tin', 'branch_code', 'rdo', 'entity_type', 'building', 'street', 'barangay', 'city', 'province', 'zip_code', 'contact_number', 'contact_email', 'agent_category', 'taxpayer_size', 'accounting_period', 'fiscal_end_month'])), 'ledger_revision' => (int) ($ledger?->revision ?? 0),
+                'form' => $input['form'], 'definition' => $definition, 'period' => [...$period, 'year' => (int) $input['year'], 'quarter' => (int) $input['period'], 'month' => (int) $input['period']],
+                'taxpayer' => array_intersect_key($profile, array_flip(['company_name', 'registered_name', 'tin', 'branch_code', 'rdo', 'entity_type', 'building', 'street', 'barangay', 'city', 'province', 'zip_code', 'contact_number', 'contact_email', 'agent_category', 'taxpayer_size', 'accounting_period', 'fiscal_end_month', 'line_of_business'])), 'ledger_revision' => (int) ($ledger?->revision ?? 0),
                 'source_hash' => $hash, 'source_count' => count($sources),
                 'sources' => array_map(fn (array $row): array => array_diff_key($row, ['record' => true]), $sources),
                 'source_totals' => ['gross' => $gross, 'withheld' => $withheld, 'details' => $details],
                 'tax_before_credits' => $manual ? null : ($info ? 0 : $withheld),
                 'manual' => $manual, 'information_return' => $info, 'issues' => $issues, 'warnings' => $warnings,
-                'rules_version' => 'preparation-2026-11-xml-v1', 'xml_available' => false,
-                'xml_capable' => in_array($input['form'], ['2550Q', '1601-EQ'], true), 'xml_vat_ledger' => $vatLedger, 'withholding_rows' => $withholdingRows,
+                'rules_version' => 'preparation-2026-11-xml-v2', 'xml_available' => false,
+                'xml_payroll_ledger' => $payrollLedger,
+                'xml_capable' => in_array($input['form'], ['2550Q', '1601-EQ', '0619-E', '1601-C'], true), 'xml_vat_ledger' => $vatLedger, 'withholding_rows' => $withholdingRows,
             ];
         });
     }
@@ -179,6 +181,9 @@ class TaxReturnService
                         if (! empty($input['amended'])) {
                             throw ValidationException::withMessages(['amended' => 'Amended XML exports require a separately verified layout. Save a reviewed worksheet instead.']);
                         }
+                        if ($snapshot['xml_payroll_ledger']['issues'] ?? []) {
+                            throw ValidationException::withMessages(['bir_xml.payroll' => $snapshot['xml_payroll_ledger']['issues']]);
+                        }
                         if ($snapshot['xml_vat_ledger']['issues'] ?? []) {
                             throw ValidationException::withMessages(['bir_xml.sources' => $snapshot['xml_vat_ledger']['issues']]);
                         }
@@ -186,9 +191,27 @@ class TaxReturnService
                         foreach (['carryover_input', 'remittance_month1', 'remittance_month2', 'prior_overremittance'] as $key) {
                             $options[$key] = $this->money($input['xml_'.$key] ?? '0');
                         }
+                        $payroll = $snapshot['xml_payroll_ledger']['values'] ?? [];
+                        if ($input['form'] === '1601-C') {
+                            foreach (['minimum_wage', 'mwe_premium', 'exempt_benefits', 'de_minimis', 'mandatory_contributions', 'other_exempt', 'no_withholding_compensation'] as $key) {
+                                if (! array_key_exists('xml_payroll_'.$key, $input)) {
+                                    throw ValidationException::withMessages(['xml_payroll_'.$key => 'Review each compensation bucket, including zero.']);
+                                }
+                                $payroll[$key] = $this->money($input['xml_payroll_'.$key]);
+                            }
+                            if ($payroll['total_compensation'] !== $snapshot['source_totals']['gross'] || $payroll['tax_withheld'] !== $tax) {
+                                throw ValidationException::withMessages(['bir_xml.payroll' => 'The posted compensation or actual withholding does not reconcile.']);
+                            }
+                        }
+                        if (in_array($input['form'], ['0619-E', '1601-C'], true)) {
+                            $snapshot['taxpayer']['line_of_business'] = $input['xml_line_of_business'] ?? ($snapshot['taxpayer']['line_of_business'] ?? '');
+                        }
+                        $options['payroll_reviewed'] = (bool) ($input['xml_payroll_reviewed'] ?? false);
+                        $options['payroll_other_description'] = $input['xml_payroll_other_description'] ?? '';
+                        $snapshot['xml_payroll_review'] = $input['form'] === '1601-C' ? ['values' => $payroll, 'other_description' => $options['payroll_other_description']] : null;
                         $snapshot['bir_xml'] = $this->exporters->make($input['form'])->prepare([
                             'taxpayer' => $snapshot['taxpayer'], 'period' => $snapshot['period'], 'vat' => $snapshot['xml_vat_ledger']['values'] ?? [],
-                            'withholding' => $snapshot['withholding_rows'], 'options' => $options, 'calculation' => $snapshot['calculation'], 'prepared_at' => now('Asia/Manila')->toDateString(),
+                            'payroll' => $payroll, 'withholding' => $snapshot['withholding_rows'], 'options' => $options, 'calculation' => $snapshot['calculation'], 'prepared_at' => now('Asia/Manila')->toDateString(),
                         ]);
                         $snapshot['xml_available'] = true;
                     }
