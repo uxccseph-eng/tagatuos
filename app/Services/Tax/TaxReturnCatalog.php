@@ -22,6 +22,9 @@ class TaxReturnCatalog
             '1702Q' => ['label' => 'Quarterly Corporate Income Tax', 'frequency' => 'quarterly', 'category' => 'Income tax', 'source' => 'manual', 'description' => 'Confirm RCIT / MCIT, cumulative taxable income and tax credits. First three taxable quarters only.'],
             '1604-C' => ['label' => 'Annual Compensation Information Return', 'frequency' => 'annual', 'category' => 'Information return', 'source' => 'payroll', 'description' => 'Annual posted payroll summary for reconciliation; employee 2316 and alphalist review remain separate.'],
             '1604-E' => ['label' => 'Annual Expanded Withholding Information Return', 'frequency' => 'annual', 'category' => 'Information return', 'source' => 'expanded', 'description' => 'Annual issued 2307 totals. This information return does not create another tax payable.'],
+            '1604-F' => ['label' => 'Annual Final Withholding Information Return', 'frequency' => 'annual', 'category' => 'Information return', 'source' => 'manual', 'description' => 'Review the annual final withholding remittance summary separately. Payee alphalists require their own DAT file.'],
+            '1702-EX' => ['label' => 'Annual Corporate Income Tax (exempt)', 'frequency' => 'annual', 'category' => 'Income tax', 'source' => 'manual', 'description' => 'For an eligible exempt non-individual taxpayer. Enter a separately reviewed computation and reconcile creditable withholding.'],
+            '1702-MX' => ['label' => 'Annual Corporate Income Tax (mixed / special rates)', 'frequency' => 'annual', 'category' => 'Income tax', 'source' => 'manual', 'description' => 'Review regular, exempt and special-rate activities separately. Enter the tax due from that reviewed computation.'],
             '1701' => ['label' => 'Annual Individual Income Tax', 'frequency' => 'annual', 'category' => 'Income tax', 'source' => 'manual', 'description' => 'Review the applicable individual annual form, deductions and tax credits before preparation.'],
             '1702-RT' => ['label' => 'Annual Corporate Income Tax', 'frequency' => 'annual', 'category' => 'Income tax', 'source' => 'manual', 'description' => 'Confirm that regular-rate Form 1702-RT applies; exempt / mixed-rate returns need their own forms.'],
         ];
@@ -35,7 +38,7 @@ class TaxReturnCatalog
         $definition = self::forms()[$form] ?? throw ValidationException::withMessages(['form' => 'Choose a supported tax return.']);
         $frequency = $definition['frequency'];
         $endMonth = ($profile['accounting_period'] ?? 'calendar') === 'fiscal' ? (int) ($profile['fiscal_end_month'] ?? 12) : 12;
-        $taxable = in_array($form, ['1702Q', '1702-RT', '2550Q'], true);
+        $taxable = in_array($form, ['1702Q', '1702-RT', '1702-EX', '1702-MX', '2550Q'], true);
         $yearEnd = CarbonImmutable::create($year, $taxable ? $endMonth : 12, 1, 0, 0, 0, 'Asia/Manila')->endOfMonth();
         $start = $yearEnd->subMonthsNoOverflow(11)->startOfMonth();
         if ($frequency === 'monthly') {
@@ -67,7 +70,7 @@ class TaxReturnCatalog
             $reason = 'The fourth quarter is covered by the annual income tax return.';
         }
         $individual = ($profile['entity_type'] ?? 'corporation') === 'individual';
-        if ((in_array($form, ['1701', '1701Q'], true) && ! $individual) || (in_array($form, ['1702Q', '1702-RT'], true) && $individual)) {
+        if ((in_array($form, ['1701', '1701Q'], true) && ! $individual) || (in_array($form, ['1702Q', '1702-RT', '1702-EX', '1702-MX'], true) && $individual)) {
             $reason = 'This form does not match the taxpayer type in company settings.';
         }
         if (($form === '2550Q' && ($profile['vat_type'] ?? '') !== 'vat') || ($form === '2551Q' && ($profile['vat_type'] ?? '') !== 'non_vat')) {

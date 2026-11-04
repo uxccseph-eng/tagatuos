@@ -40,6 +40,7 @@ use App\Http\Controllers\SystemDashboardController;
 use App\Http\Controllers\TaxPreflightController;
 use App\Http\Controllers\TaxReportsController;
 use App\Http\Controllers\TaxReturnController;
+use App\Http\Controllers\TaxReturnWorkspaceController;
 use App\Http\Controllers\TeamController;
 use App\Http\Controllers\WorkspacePreviewController;
 use App\Http\Controllers\WtpController;
@@ -221,6 +222,10 @@ Route::post('/reports/form-2307/{supplierId}', [Form2307Controller::class, 'prin
 Route::middleware(['auth', 'throttle:60,1'])->prefix('tax-returns')->name('tax-returns.')->group(function (): void {
     Route::get('/', [TaxReturnController::class, 'index'])->name('index');
     Route::get('/preview', [TaxReturnController::class, 'preview'])->name('preview');
+    Route::post('/period-filed', [TaxReturnWorkspaceController::class, 'filed'])->name('period-filed');
+    Route::post('/proofs', [TaxReturnWorkspaceController::class, 'upload'])->name('proofs.upload');
+    Route::get('/proofs/{id}', [TaxReturnWorkspaceController::class, 'proof'])->whereNumber('id')->name('proofs.download');
+    Route::post('/year-settings', [TaxReturnWorkspaceController::class, 'yearSettings'])->name('year-settings');
     Route::post('/prepare', [TaxReturnController::class, 'prepare'])->name('prepare');
     Route::get('/{id}/print', [TaxReturnController::class, 'show'])->whereNumber('id')->name('show');
     Route::get('/{id}/download', [TaxReturnController::class, 'download'])->whereNumber('id')->name('download');

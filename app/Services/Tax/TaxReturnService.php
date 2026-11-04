@@ -100,9 +100,12 @@ class TaxReturnService
             if (trim((string) ($profile['company_name'] ?? '')) === '' || ! preg_match('/^(?:[0-9]{3}|[0-9]{2}[A-Z])$/iD', (string) ($profile['rdo'] ?? '')) || ($profile['rdo'] ?? '') === '000') {
                 $issues[] = 'Complete the registered name and RDO in company settings.';
             }
-            $manual = $definition['source'] === 'manual';
+            $annualSettings = $definition['category'] === 'Income tax' ? app(TaxReturnWorkspace::class)->yearSettings($company, (int) $input['year']) : null;
+            $manual = $definition['source'] === 'manual' && $definition['category'] !== 'Information return';
             $warnings = ['Confirm the form and filing obligations against the company Certificate of Registration.', 'This is a preparation worksheet. No eBIRForms XML validation, electronic submission or payment has occurred.'];
-            if ($manual) {
+            if ($definition['source'] === 'manual' && $definition['category'] === 'Information return') {
+                $warnings[] = 'The annual final withholding summary is not automatically computed. Reconcile your remittance schedule separately and describe the review in the note. Zero automatic source totals do not establish a nil return.';
+            } elseif ($manual) {
                 $warnings[] = 'Automatic tax computation is unavailable for this form. Enter the tax due from a separately reviewed computation; it will not be inferred as zero.';
             } elseif ($sources === []) {
                 $warnings[] = 'No posted source records found. Confirm a nil return is appropriate before saving.';
@@ -114,9 +117,10 @@ class TaxReturnService
                 $warnings[] = 'Review non-taxable compensation, benefit caps and minimum-wage-earner classifications separately; this summary uses actual saved payroll withholding.';
             }
             $info = $definition['category'] === 'Information return';
-            $hash = hash('sha256', json_encode([$input['form'], $period, $profile, $sources, $definition, $gross, $withheld, $details, $vatLedger, $withholdingRows, 'preparation-2026-11-xml-v1'], JSON_THROW_ON_ERROR));
+            $hash = hash('sha256', json_encode([$input['form'], $period, $profile, $sources, $definition, $gross, $withheld, $details, $vatLedger, $withholdingRows, $annualSettings, 'preparation-2026-11-xml-v1'], JSON_THROW_ON_ERROR));
 
             return [
+                'annual_settings' => $annualSettings,
                 'form' => $input['form'], 'definition' => $definition, 'period' => [...$period, 'year' => (int) $input['year'], 'quarter' => (int) $input['period']],
                 'taxpayer' => array_intersect_key($profile, array_flip(['company_name', 'registered_name', 'tin', 'branch_code', 'rdo', 'entity_type', 'building', 'street', 'barangay', 'city', 'province', 'zip_code', 'contact_number', 'contact_email', 'agent_category', 'taxpayer_size', 'accounting_period', 'fiscal_end_month'])), 'ledger_revision' => (int) ($ledger?->revision ?? 0),
                 'source_hash' => $hash, 'source_count' => count($sources),
@@ -172,6 +176,9 @@ class TaxReturnService
                     $snapshot['calculation'] = ['tax' => $tax, ...$adjustments, 'credit_balance' => max(0, -$net), 'payable' => max(0, $net)];
                     $snapshot['review_note'] = $input['review_note'];
                     if ($input['xml_requested'] ?? false) {
+                        if (! empty($input['amended'])) {
+                            throw ValidationException::withMessages(['amended' => 'Amended XML exports require a separately verified layout. Save a reviewed worksheet instead.']);
+                        }
                         if ($snapshot['xml_vat_ledger']['issues'] ?? []) {
                             throw ValidationException::withMessages(['bir_xml.sources' => $snapshot['xml_vat_ledger']['issues']]);
                         }
@@ -185,7 +192,10 @@ class TaxReturnService
                         ]);
                         $snapshot['xml_available'] = true;
                     }
+                    $snapshot['amended'] = (bool) ($input['amended'] ?? false);
                     $id = DB::table('tax_return_preparations')->insertGetId([
+                        'settings_year' => $snapshot['annual_settings'] !== null ? (int) $input['year'] : null,
+                        'year_settings_revision' => $snapshot['annual_settings']['revision'] ?? null,
                         'company_id' => $company->id, 'request_id' => $input['request_id'], 'prepared_by' => $actorId,
                         'form' => $input['form'], 'period_from' => $snapshot['period']['from'], 'period_to' => $snapshot['period']['to'],
                         'ledger_revision' => $snapshot['ledger_revision'], 'source_hash' => $snapshot['source_hash'], 'payload_hash' => $payloadHash,

@@ -24,6 +24,7 @@ class PrepareTaxReturnRequest extends FormRequest
             'ledger_revision' => ['required', 'integer', 'min:0'],
             'source_hash' => ['required', 'string', 'regex:/^[a-f0-9]{64}$/D'],
             'reviewed_tax' => ['nullable', 'string', 'regex:/^-?[0-9]{1,9}(?:\.[0-9]{1,2})?$/D'],
+            'amended' => ['sometimes', 'boolean'],
             'xml_requested' => ['sometimes', 'boolean'],
             'xml_vat_reviewed' => ['sometimes', 'boolean'],
             'xml_carryover_input' => ['sometimes', 'string', 'regex:/^[0-9]{1,9}(?:\.[0-9]{1,2})?$/D'],

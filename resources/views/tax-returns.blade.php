@@ -22,21 +22,14 @@
         </label><button class="returns-button" type="submit">Apply</button>
     </form>
     <p class="returns-caption">Corporate income tax and VAT use the fiscal year ending in the selected year, when configured. Withholding uses calendar periods. Standard due dates below exclude eFPS schedules, holidays and BIR extensions; confirm the actual deadline before filing.</p>
+    @if($frequency !== 'monthly') @include('tax-return-year-settings') @endif
     <section class="return-cards" aria-label="Available tax returns">
-        @foreach($cards as $form => $card)
-            <article class="return-card"><div class="return-card-top"><span class="return-category">{{ $card['category'] }}</span><span class="return-badge">{{ $card['source'] === 'manual' ? 'Reviewed input' : 'From saved records' }}</span></div>
-                <h2>{{ $form }} <span>— {{ $card['title'] }}</span></h2><p>{{ $card['description'] }}</p><small>{{ $card['label'] }}</small>
-                <div class="return-period">{{ $card['from'] }} → {{ $card['to'] }}</div>
-                <p class="return-due">{{ $card['due'] ? 'Standard due '.$card['due'] : 'Confirm deadline with BIR' }}</p>
-                @if(!$card['applicable'])<p class="return-reason">{{ $card['reason'] }}</p>@endif
-                <div class="return-actions"><button type="button" class="returns-primary" data-prepare-return="{{ $form }}" @disabled(!$card['applicable'])>Prepare worksheet</button><a href="#filing-archive">Filing archive</a></div>
-            </article>
-        @endforeach
+        @foreach($cards as $form => $card) @include('tax-return-card') @endforeach
     </section>
     <section class="returns-archive" id="filing-archive"><h2>Filing archive</h2><p>Prepared versions remain unchanged when source entries are edited. “External filing recorded” is your team’s record, not verification from BIR.</p>
         <div class="returns-table-scroll"><table><thead><tr><th>Version / Form</th><th>Reporting period</th><th>Saved</th><th>Status / Reference</th><th>Actions</th></tr></thead><tbody>
             @forelse($archive as $row)
-                <tr><td>#{{ $row->id }} · {{ $row->form }}</td><td>{{ $row->period_from }} → {{ $row->period_to }}</td><td>{{ \Carbon\CarbonImmutable::parse($row->created_at)->timezone('Asia/Manila')->format('d M Y H:i') }}</td><td>{{ $row->status === 'filed' ? 'External filing recorded' : 'Prepared only' }}<small>{{ $row->filing_reference }}</small></td><td><a target="_blank" rel="noopener" href="{{ route('tax-returns.show', ['id' => $row->id, 'company_id' => $company['company_id']]) }}">View / Print</a><a href="{{ route('tax-returns.download', ['id' => $row->id, 'company_id' => $company['company_id']]) }}">Worksheet CSV</a>
+                <tr><td>#{{ $row->id }} · {{ $row->form }}</td><td>{{ $row->period_from }} → {{ $row->period_to }}</td><td>{{ \Carbon\CarbonImmutable::parse($row->created_at)->timezone('Asia/Manila')->format('d M Y H:i') }}</td><td>{{ $row->status === 'filed' ? 'External filing recorded' : 'Prepared only' }}<small>{{ $row->filing_reference }}</small>@if($row->settings_drifted)<strong class="return-reason">Annual settings changed — review and regenerate</strong>@endif</td><td><a target="_blank" rel="noopener" href="{{ route('tax-returns.show', ['id' => $row->id, 'company_id' => $company['company_id']]) }}">View / Print</a><a href="{{ route('tax-returns.download', ['id' => $row->id, 'company_id' => $company['company_id']]) }}">Worksheet CSV</a>
                     @if(in_array($row->form, ['2550Q', '1601-EQ'], true))<button type="button" data-xml-download="{{ route('tax-returns.xml', ['id' => $row->id, 'company_id' => $company['company_id']]) }}">eBIRForms XML</button>@endif
 
                     @if($row->status !== 'filed')<button type="button" data-record-filing="{{ route('tax-returns.filed', ['id' => $row->id, 'company_id' => $company['company_id']]) }}" data-filing-label="{{ $row->form }} · {{ $row->period_to }}">Record external filing</button>@endif
@@ -48,7 +41,7 @@
     <p id="returns-status" role="status" aria-live="polite"></p>
 </main></div>
 <dialog id="return-dialog" aria-labelledby="return-title"><form id="return-prepare-form"><header><div><p class="returns-eyebrow">REVIEW PREPARATION</p><h2 id="return-title">Tax return worksheet</h2><p id="return-period"></p></div><button type="button" data-close-dialog aria-label="Close preparation">×</button></header>
-    <div class="return-dialog-body"><p id="return-summary"></p><div id="return-breakdown" class="returns-table-scroll"></div><ul id="return-warnings"></ul><div class="return-review-grid">
+    <div class="return-dialog-body"><label class="return-check"><input type="checkbox" name="amended"> Amended return worksheet (XML unavailable)</label><p id="return-summary"></p><div id="return-breakdown" class="returns-table-scroll"></div><ul id="return-warnings"></ul><div class="return-review-grid">
         <label id="reviewed-tax-label">Tax due from reviewed computation (₱)<input name="reviewed_tax" inputmode="decimal" pattern="[0-9]+(\.[0-9]{1,2})?" placeholder="Enter the reviewed amount"></label>
         <label>Additional tax (₱)<input name="additional_tax" value="0.00" inputmode="decimal" required></label><label>Payments / credits (₱)<input name="credits" value="0.00" inputmode="decimal" required></label>
         <label>Surcharge (₱)<input name="surcharge" value="0.00" inputmode="decimal" required></label><label>Interest (₱)<input name="interest" value="0.00" inputmode="decimal" required></label><label>Compromise (₱)<input name="compromise" value="0.00" inputmode="decimal" required></label>

@@ -55,7 +55,7 @@ class TaxReturnTest extends TestCase
     {
         [$company] = $this->book();
         foreach (['monthly', 'quarterly', 'annual'] as $frequency) {
-            $this->get(route('tax-returns.index', ['company_id' => $company->id, 'frequency' => $frequency, 'year' => 2026, 'period' => 1]))->assertOk()->assertSee('Filing archive')->assertSee('Prepare worksheet')->assertSee('XML unavailable');
+            $this->get(route('tax-returns.index', ['company_id' => $company->id, 'frequency' => $frequency, 'year' => 2026, 'period' => 1]))->assertOk()->assertSee('Filing archive')->assertSee('Generate')->assertSee('XML unavailable');
         }
         $this->get(route('sheets.sales', ['company_id' => $company->id]))->assertOk()->assertSee(route('tax-returns.index', ['company_id' => $company->id]));
     }

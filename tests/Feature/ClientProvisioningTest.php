@@ -480,6 +480,26 @@ class ClientProvisioningTest extends TestCase
         return $company;
     }
 
+    public function test_tax_filing_proofs_and_annual_settings_remain_in_the_selected_database(): void
+    {
+        $owner = User::factory()->firm()->create(['must_change_password' => false]);
+        $first = $this->readyClient($owner);
+        $second = $this->readyClient($owner);
+        $this->actingAs($owner);
+        $selection = ['form' => '1601-C', 'year' => 2026, 'period' => 1];
+        $this->post(route('tax-returns.proofs.upload', ['company_id' => $first->id]), [...$selection, 'file' => UploadedFile::fake()->createWithContent('receipt.pdf', "%PDF-1.4\nDemo receipt\n%%EOF")], ['Accept' => 'application/json'])->assertCreated();
+        $this->assertSame(1, $first->run(fn (): int => DB::table('tax_return_proofs')->count()));
+        $this->assertSame(0, $second->run(fn (): int => DB::table('tax_return_proofs')->count()));
+        $this->assertSame(0, DB::connection(config('tenancy.database.central_connection'))->table('tax_return_proofs')->count());
+        $proof = $first->run(fn (): object => DB::table('tax_return_proofs')->sole());
+        $this->getJson(route('tax-returns.proofs.download', ['company_id' => $second->id, 'id' => $proof->id]))->assertNotFound();
+        $this->get(route('tax-returns.proofs.download', ['company_id' => $first->id, 'id' => $proof->id]))->assertOk()->assertDownload('receipt.pdf');
+        $this->postJson(route('tax-returns.year-settings', ['company_id' => $first->id]), ['year' => 2026, 'revision' => 0, 'regime' => 'regular', 'deduction_method' => 'itemized', 'mcit_start_year' => null, 'president' => 'Example Officer', 'treasurer' => 'Example Treasurer', 'reviewed' => true])->assertOk();
+        $this->assertSame(1, $first->run(fn (): int => DB::table('tax_return_year_settings')->count()));
+        $this->assertSame(0, $second->run(fn (): int => DB::table('tax_return_year_settings')->count()));
+        $this->assertSame(0, DB::connection(config('tenancy.database.central_connection'))->table('tax_return_year_settings')->count());
+    }
+
     private function readyClient(?User $owner = null): Company
     {
         $company = $this->newClient($owner);
