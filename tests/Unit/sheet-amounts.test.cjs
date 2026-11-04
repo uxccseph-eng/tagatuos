@@ -12,6 +12,56 @@ test('amount display groups thousands without rounding or losing partial decimal
     }
 });
 
+test('pasted spaces are normalized without rounding amounts or accepting excess precision', () => {
+    for (const value of ['212,245.45 ', ' 212,245.45', '\u00a0212,245.45\u00a0', '212245.45\r\n']) {
+        assert.equal(amounts.format(value), '212,245.45');
+        assert.equal(amounts.error(amounts.format(value), '0.01', '999999999.99'), '');
+    }
+    assert.equal(amounts.format('.5'), '0.5');
+    assert.match(amounts.error('212,245.456'), /two decimal places/);
+    assert.match(amounts.error('0.00', '0.01'), /minimum/);
+    assert.match(amounts.error('1,000.00', null, '999.99'), /maximum/);
+});
+
+function browserAmounts(names = ['Purchases']) {
+    const listeners = new Map();
+    const fields = names.map(name => ({
+        name, type:'text', inputMode:'decimal', value:'', min:'0.01', max:'999999999.99', message:'', selectionStart:0, selectionEnd:0,
+        get validity() { return {customError:!!this.message}; },
+        get validationMessage() { return this.message; },
+        matches() { return true; }, hasAttribute(name) { return ['min','max'].includes(name); },
+        setCustomValidity(message) { this.message=message; },
+        setSelectionRange(start,end) { this.selectionStart=start; this.selectionEnd=end; },
+    }));
+    const form={querySelectorAll:()=>fields};fields.forEach(field=>field.form=form);
+    const document={activeElement:null,documentElement:{},querySelectorAll:()=>fields,addEventListener(type,callback,capture=false){if(!listeners.has(type))listeners.set(type,[]);listeners.get(type).push({callback,capture});}};
+    const context={document,window:{},MutationObserver:class {observe() {}}};vm.createContext(context);
+    vm.runInContext(fs.readFileSync(path.join(__dirname,'../../public/js/sheet-amounts.js'),'utf8'),context);
+    const fire=(type,target,extra={})=>{
+        const event={target,isComposing:false,...extra};
+        for(const capture of [true,false])for(const item of listeners.get(type)||[])if(Boolean(item.capture)===capture)item.callback(event);
+    };
+    return {fields,form,document,fire,api:context.window.SheetAmounts};
+}
+
+test('every sheet clears its numeric error on correction and before a post click', () => {
+    const browser=browserAmounts(['Sales','Collections','Purchases','Payments','CWT','WTP','Payroll','Journal','PPE']);
+    for(const field of browser.fields) {
+        field.value='212245.456';browser.fire('input',field);assert.match(field.message,/two decimal/);
+        field.value='212,245.45 ';browser.fire('change',field);assert.equal(field.value,'212,245.45');assert.equal(field.message,'');
+        field.value='100.123';browser.fire('input',field);assert.notEqual(field.message,'');
+        field.value='212245.45';const button={type:'submit',form:browser.form};browser.fire('click',{closest:()=>button});assert.equal(field.message,'');
+    }
+});
+
+test('format refresh preserves business-specific errors and unfinished decimal typing', () => {
+    const browser=browserAmounts(['First','Second']),field=browser.fields[1];
+    field.value='1000.';browser.api.refresh();assert.equal(field.value,'1,000.');
+    browser.fire('focusout',field);assert.equal(field.value,'1,000.00');
+    field.setCustomValidity('The amount exceeds the unpaid invoice balance.');browser.api.refresh();assert.match(field.message,/unpaid invoice/);
+    field.setCustomValidity('');browser.document.activeElement=field;field.value='.5';field.selectionStart=field.selectionEnd=2;browser.fire('input',field);assert.equal(field.value,'0.5');assert.equal(field.selectionStart,3);
+});
+
 test('formatting and caret positions preserve the underlying amount', () => {
     const value = '1234567.89', formatted = amounts.format(value);
     assert.equal(amounts.raw(formatted), value);
