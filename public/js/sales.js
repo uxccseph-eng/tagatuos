@@ -438,7 +438,7 @@ function saveEntryDrawer(posted=false) {
     const entry = {...editingEntry,id:editingEntry?.id || nextNumber, number:editingEntry?.number || nextSaleNumber(), date:entryFields.Date.value || workingPeriod+'-01',customer:entryFields.Customer.value,gross:gross || 0,tax:entryFields['Tax type'].value,account:entryFields['Revenue account'].value,cwt:entryFields['Income withholding'].value,vatCwt:entryFields['VAT withholding'].value,terms:entryFields.Terms.value,reference:entryFields['Invoice reference'].value.trim(),classification:entryFields.Classification.value,bank:entryFields['Deposit account'].value,memo:entryFields.Description.value.trim(),notes:entryFields.Particulars.value.trim(),status:posted?'posted':'draft'};
     if(posted||editingEntry?.status==='posted'){const error=window.SheetMasters.withholdingError(entry,true);if(error){announce(error);return;}}
     entry.attachments = [...entryAttachments];
-    entry.settlement = entryFields['Settlement amount'].value;
+    entry.settlement = entryFields['Settlement amount'].value.replace(/,/g, '');
     if(editingEntry?.voidAudit) entry.voidAudit=editingEntry.voidAudit;
     if(editingEntry?.previousStatus) entry.previousStatus=editingEntry.previousStatus;
     if(editingEntry && !posted) entry.status = editingEntry.status;

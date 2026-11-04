@@ -190,7 +190,7 @@
         if (!run || run.status !== 'draft') return;
         if (field.dataset.employeeField) {
             const index = Number(field.closest('[data-employee]').dataset.employee);
-            run.employees[index][field.dataset.employeeField] = field.value;
+            run.employees[index][field.dataset.employeeField] = field.inputMode === 'decimal' ? field.value.replace(/,/g, '') : field.value;
         } else {
             run[field.dataset.field] = field.dataset.field === 'automation' ? field.value === '1' : field.value;
             if (field.dataset.field === 'frequency') run.contributionShare = {monthly: '100', semi_monthly: '50', weekly: '25'}[field.value];

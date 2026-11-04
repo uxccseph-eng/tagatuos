@@ -4,7 +4,7 @@
     const fields=Object.fromEntries([...drawer.querySelectorAll('[data-journal-field]')].map(field=>[field.dataset.journalField,field]));
     const accounts=ledger.journalAccounts();
     const money=value=>new Intl.NumberFormat('en-PH',{style:'currency',currency:'PHP'}).format((value || 0)/100);
-    const cents=value=>{if(!String(value).trim())return 0;if(!/^\d{1,9}(\.\d{0,2})?$/.test(String(value)))return null;const [whole,fraction='']=String(value).split('.');return Number(whole)*100+Number(fraction.padEnd(2,'0'));};
+    const cents=value=>{value=String(value).replace(/,/g,'');if(!String(value).trim())return 0;if(!/^\d{1,9}(\.\d{0,2})?$/.test(String(value)))return null;const [whole,fraction='']=String(value).split('.');return Number(whole)*100+Number(fraction.padEnd(2,'0'));};
     let records=ledger.journalEntries(),period=window.WorkingPeriod.current().from.slice(0,7),status='all',descending=false,grouped=false,working=null,original=null,editing=false;
     const selected=new Set(),expanded=new Set();
     const announce=message=>{element('journal-status').textContent=message;if(drawer.open)element('journal-entry-message').textContent=message;};

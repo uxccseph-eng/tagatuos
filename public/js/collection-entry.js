@@ -106,7 +106,7 @@ window.CollectionEntryDrawer = class {
     }
     invoice(){return this.ledger.invoices().find(invoice=>invoice.number===this.fields.invoice.value);}
     amount(){
-        const value=this.fields.amount.value;
+        const value=this.fields.amount.value.replace(/,/g,'');
         if(!/^\d{1,10}(\.\d{1,2})?$/.test(value))return null;
         const [whole,fraction='']=value.split('.');return Number(whole)*100+Number(fraction.padEnd(2,'0'));
     }

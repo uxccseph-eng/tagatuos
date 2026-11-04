@@ -57,7 +57,7 @@
     }
     form.addEventListener('submit',async event=>{
         event.preventDefault();if(busy||!form.reportValidity())return;busy=true;el('ppe-save').disabled=true;el('ppe-error').textContent='';
-        const data=Object.fromEntries(new FormData(form));for(const key of Object.keys(data))data[key]=data[key].trim();
+        const data=Object.fromEntries(new FormData(form));for(const key of Object.keys(data))data[key]=['cost','residual'].includes(key)?data[key].replace(/,/g,'').trim():data[key].trim();
         try{const asset=await request(main.dataset.storeUrl+(editing?'/'+editing.id:''),editing?'PUT':'POST',data);records=records.filter(item=>item.id!==asset.id);records.push(asset);dirty=false;editor.close();render();announce(asset.code+' saved. No journal entry was posted.');}
         catch(error){el('ppe-error').textContent=error.message;}finally{busy=false;el('ppe-save').disabled=false;}
     });

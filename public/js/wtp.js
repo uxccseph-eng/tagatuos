@@ -6,7 +6,7 @@
     const fields=Object.fromEntries([...drawer.querySelectorAll('[data-wtp-field]')].map(field=>[field.dataset.wtpField,field]));
     const clone=value=>JSON.parse(JSON.stringify(value));
     const money=value=>new Intl.NumberFormat('en-PH',{style:'currency',currency:'PHP'}).format((value || 0)/100);
-    const cents=value=>{const text=String(value).trim();if(!/^\d{1,9}(\.\d{0,2})?$/.test(text))return 0;const [whole,fraction='']=text.split('.');return Number(whole)*100+Number(fraction.padEnd(2,'0'));};
+    const cents=value=>{const text=String(value).replace(/,/g,'').trim();if(!/^\d{1,9}(\.\d{0,2})?$/.test(text))return 0;const [whole,fraction='']=text.split('.');return Number(whole)*100+Number(fraction.padEnd(2,'0'));};
     const atcCode=(record,key)=>key==='ewt'?ledger.wtpAtc(record):key==='wvat'?ledger.wtpVatAtc(record):record[key+'Code'];
     function lockAtcField(field,record,key,editable=true){
         field.disabled=!editable||Boolean(record.billId);

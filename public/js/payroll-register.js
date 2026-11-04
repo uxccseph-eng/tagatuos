@@ -14,7 +14,7 @@
     const taxableExtras=(employee,mwe=false)=>taxableExtraFields(mwe).reduce((sum,field)=>sum+cents(employee[field]),0);
 
     function cents(value) {
-        const text = String(value ?? '').trim();
+        const text = String(value ?? '').replace(/,/g, '').trim();
         if (text === '') return 0;
         if (!/^\d{1,9}(\.\d{0,2})?$/.test(text)) throw new Error('Use a non-negative amount with up to two decimal places.');
         const [whole, fraction = ''] = text.split('.');

@@ -7,7 +7,7 @@
     const fields=Object.fromEntries([...drawer.querySelectorAll('[data-purchase-field]')].map(field=>[field.dataset.purchaseField,field]));
     const clone=value=>JSON.parse(JSON.stringify(value));
     const money=value=>new Intl.NumberFormat('en-PH',{style:'currency',currency:'PHP'}).format((value || 0)/100);
-    const cents=value=>{const text=String(value).trim();if(!/^\d{1,9}(\.\d{0,2})?$/.test(text))return 0;const [whole,fraction='']=text.split('.');return Number(whole)*100+Number(fraction.padEnd(2,'0'));};
+    const cents=value=>{const text=String(value).replace(/,/g,'').trim();if(!/^\d{1,9}(\.\d{0,2})?$/.test(text))return 0;const [whole,fraction='']=text.split('.');return Number(whole)*100+Number(fraction.padEnd(2,'0'));};
     const ewtLabel=(rate,code)=>code?code+' · '+Number(rate)+'%':Number(rate || 0)+'%';
     const fieldValue=(record,key)=>key==='wvat'&&!record.wvatCode&&(record.wvat===''||record.wvat==null)?0:record[key];
     let records=ledger.purchases(),period=window.WorkingPeriod.current().from.slice(0,7),status='all',descending=false,grouped=false,working=null,original=null,editing=false;
