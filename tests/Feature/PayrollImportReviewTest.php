@@ -7,6 +7,7 @@ use App\Models\Company;
 use App\Models\CompanySetting;
 use App\Models\Employee;
 use App\Models\User;
+use App\PayrollColumns;
 use App\Services\CompanyLedgerService;
 use App\Services\PayrollWithholdingReview;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -47,6 +48,32 @@ class PayrollImportReviewTest extends TestCase
             $this->assertSame('1000.00', $run['employees'][0]['withholding']);
             $this->assertArrayNotHasKey('acknowledged', $run['employees'][0]['withholdingReview']);
         }
+    }
+
+    public function test_import_posts_calculated_government_amounts_while_preserving_actual_withholding(): void
+    {
+        [$company, $user, $employee] = $this->book();
+        $this->actingAs($user)->withSession(['active_company_id' => $company->id])->withHeader('X-Company-ID', (string) $company->id);
+        $run = $this->payrollRun($employee->id);
+        $run['employees'][0] = [...$run['employees'][0], 'sssEr' => '3030.00', 'phicEr' => '750.00', 'hdmfEr' => '200.00', 'contributionSources' => ['sssEe' => 'calculated', 'sssEr' => 'calculated', 'phicEe' => 'calculated', 'phicEr' => 'calculated', 'hdmfEe' => 'calculated', 'hdmfEr' => 'calculated']];
+        $this->postJson(route('sheets.database.save'), ['state' => CompanyLedgerService::emptyState(), 'payroll' => [$run], 'revision' => 0, 'request_id' => (string) Str::uuid()])->assertOk()->assertJsonPath('payroll.0.employees.0.withholding', '1000.00')->assertJsonPath('payroll.0.employees.0.contributionSources.sssEe', 'calculated');
+        $this->assertDatabaseHas('journal_entry_lines', ['credit' => '4530.0000']);
+        $this->assertDatabaseHas('journal_entry_lines', ['credit' => '1500.0000']);
+        $this->assertDatabaseHas('journal_entry_lines', ['credit' => '26550.0000']);
+    }
+
+    public function test_full_payroll_mapping_saves_optional_calculation_bases_and_detailed_columns(): void
+    {
+        [$company, $user] = $this->book();
+        $this->actingAs($user)->withSession(['active_company_id' => $company->id])->withHeader('X-Company-ID', (string) $company->id);
+        $keys = [...PayrollColumns::CORE, ...array_keys(PayrollColumns::extras()), 'employee', 'pay_date', 'period_start', 'period_end', 'monthlyBasic', 'monthlyCompensation', 'monthlyFundSalary', 'contribution_share'];
+        $mapping = array_fill_keys($keys, null);
+        $mapping['employee'] = 0;
+        $mapping['basic'] = 1;
+        $mapping['monthlyBasic'] = 2;
+        $payload = ['sheet' => 'payroll', 'headers' => ['Employee', 'Basic', 'Monthly Basic'], 'mapping' => $mapping, 'version' => 0];
+        $this->putJson(route('sheets.import.mapping.save'), $payload)->assertOk()->assertJsonPath('version', 1);
+        $this->postJson(route('sheets.import.mapping'), ['sheet' => 'payroll', 'headers' => $payload['headers']])->assertOk()->assertJsonPath('mapping.monthlyBasic', 2);
     }
 
     public function test_tampered_reference_wrong_employee_and_automatic_mode_are_rejected(): void

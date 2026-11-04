@@ -324,6 +324,11 @@
     new window.DraftLeaveGuard({hasChanges: () => records.some(run => run.status === 'draft' && run.draftTouched), discard: () => {
         if (!store(records.filter(run => run.status !== 'draft'))) throw new Error('Could not discard payroll draft.');
     }});
+    let taxReconciliation = null;
+    element('payroll-tax-reconciliation')?.addEventListener('click',()=>{
+        taxReconciliation ||= window.PayrollTaxReconciliationUI.mount({records:()=>records,employees:JSON.parse(element('payroll-reconciliation-employees').textContent)});
+        taxReconciliation.open();
+    });
     function openImport() {
         if(window.PayrollImportUI&&window.PayrollImport){
             payrollImportDialog ||= window.PayrollImportUI.mount({records:()=>records,employees:JSON.parse(element('payroll-import-employees').textContent),config:JSON.parse(element('payroll-import-config').textContent),postRun:async run=>{

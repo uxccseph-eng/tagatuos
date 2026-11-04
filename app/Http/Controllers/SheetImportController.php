@@ -31,7 +31,7 @@ class SheetImportController extends Controller
     private const COLUMNS = [
         'sales' => ['Date', 'Customer', 'Gross Amount', 'Tax Type', 'Revenue Account', 'Income Withholding ATC', 'VAT Withholding ATC', 'Terms', 'Invoice Reference', 'Classification', 'Deposit Account', 'Description', 'Particulars'],
         'purchases' => ['Date', 'Supplier', 'Supplier TIN', 'Gross Amount', 'Tax Type', 'Account', 'Income Withholding ATC', 'VAT Withholding ATC', 'Terms', 'Invoice Reference', 'Bank', 'Description', 'Notes'],
-        'payroll' => ['pay_date', 'run_name', 'period_start', 'period_end', 'employee', 'pay_type', 'basic', 'taxableAllowance', 'deMinimis', 'benefits', 'sssEe', 'phicEe', 'hdmfEe', 'withholding', 'sssEr', 'phicEr', 'hdmfEr', 'employee_code', 'taxable_benefits', 'review_basis'],
+        'payroll' => ['pay_date', 'run_name', 'period_start', 'period_end', 'employee', 'pay_type', 'basic', 'taxableAllowance', 'deMinimis', 'benefits', 'sssEe', 'phicEe', 'hdmfEe', 'withholding', 'sssEr', 'phicEr', 'hdmfEr', 'employee_code', 'taxable_benefits', 'review_basis', 'monthlyBasic', 'monthlyCompensation', 'monthlyFundSalary', 'contribution_share'],
     ];
 
     public function workbook(Request $request, SheetImportWorkbookReader $reader): JsonResponse

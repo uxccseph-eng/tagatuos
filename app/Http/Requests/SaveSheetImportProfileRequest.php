@@ -26,7 +26,7 @@ class SaveSheetImportProfileRequest extends FormRequest
             'sheet' => ['required', 'in:sales,purchases,payroll'],
             'headers' => ['required', 'array', 'list', 'min:1', 'max:100'],
             'headers.*' => ['nullable', 'string', 'max:150'],
-            'mapping' => ['required', 'array', 'min:1', 'max:20'],
+            'mapping' => ['required', 'array', 'min:1', 'max:100'],
             'mapping.*' => ['nullable', 'integer', 'between:0,99'],
             'version' => ['required', 'integer', 'min:0'],
         ];

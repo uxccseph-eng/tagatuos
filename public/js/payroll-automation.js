@@ -70,7 +70,40 @@
         });
         return {...run, employees, automationError: '', rateVersion: 'PH-2025-SSS-PHIC-HDMF-BIR2023'};
     }
-    const api = {withholding, monthlyContributions, calculate, fields};
+    function fillImportedContributions(employee, {frequency, date, id, records = [], share = null, periodStart = null, periodEnd = null}) {
+        const missing = fields.filter(field => String(employee[field] ?? '').trim() === '');
+        const result = {...employee, contributionSources: Object.fromEntries(fields.map(field => [field, missing.includes(field) ? 'calculated' : 'provided']))};
+        if (!missing.length) return result;
+        if (!register.validDate(date) || date < '2025-01-01' || date > '2026-12-31') throw Error('Automatic import contributions support 2025–2026. Supply actual contributions for other years.');
+        if (amount(employee.gsisEe) || amount(employee.gsisEr) || amount(employee.pera)) throw Error('Supply all actual contribution amounts, including zero, for government / GSIS payroll.');
+        const lastDay = register.validDate(date) ? new Date(Date.UTC(Number(date.slice(0,4)), Number(date.slice(5,7)), 0)).toISOString().slice(0,10) : '';
+        const fullMonth = !periodStart || (periodStart === date.slice(0,7)+'-01' && periodEnd === lastDay);
+        const monthly = frequency === 'monthly' && fullMonth;
+        const basic = amount(employee.basic), allowance = amount(employee.taxableAllowance);
+        const detailed = register.extraSum(employee, 'earning') + amount(employee.benefits) > 0;
+        const base = (field, fallback) => String(employee[field] ?? '').trim() ? amount(employee[field]) : monthly ? fallback : 0;
+        const monthlyBasic = base('monthlyBasic', basic);
+        const compensation = base('monthlyCompensation', detailed ? 0 : basic + allowance);
+        const fundSalary = base('monthlyFundSalary', detailed ? 0 : basic + allowance);
+        const contribution = monthlyContributions(monthlyBasic, compensation, fundSalary);
+        const selectedShare = String(employee.contributionShare || share || (monthly ? '100' : ''));
+        if (!['100', '50', '25', '20', '0', 'remaining'].includes(selectedShare)) throw Error('Select the share of monthly contributions for this payroll.');
+        const used = Object.fromEntries(fields.map(field => [field, 0]));
+        for (const run of records) {
+            if (run.id === id || run.status !== 'posted' || run.date.slice(0, 7) !== date.slice(0, 7)) continue;
+            for (const paid of run.employees.filter(item => employee.employeeId && item.employeeId ? String(item.employeeId) === String(employee.employeeId) : nameKey(item.name) === nameKey(employee.name))) {
+                if (run.date > date) throw Error('Later payroll already exists in this month. Supply actual contributions for a backdated import.');
+                for (const field of fields) used[field] += amount(paid[field]);
+            }
+        }
+        for (const field of missing) {
+            const remaining = Math.max(0, contribution[field] - used[field]);
+            result[field] = formatted(selectedShare === 'remaining' ? remaining : Math.min(remaining, Math.round(contribution[field] * Number(selectedShare) / 100)));
+        }
+        result.contributionCalculation = {version: 'PH-2025-2026', monthlyBasic: formatted(monthlyBasic), monthlyCompensation: formatted(compensation), monthlyFundSalary: formatted(fundSalary), share: selectedShare};
+        return result;
+    }
+    const api = {withholding, monthlyContributions, calculate, fields, fillImportedContributions};
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     else root.PayrollAutomation = api;
 })(globalThis);

@@ -15,3 +15,29 @@ test('missing actual amounts, benefits classification, invalid dates and over-de
 test('frequency changes affect only the comparison and existing runs and drafts block repeated import',()=>{const list=rows(),original=JSON.stringify(list);for(const frequency of ['monthly','semi_monthly','weekly']){const result=engine.preview(list,{...context,frequency});assert.equal(result.run.employees[0].withholding,'1000.00');}assert.equal(JSON.stringify(list),original);const run=engine.preview(list,context).run;assert.match(engine.preview(list,{...context,records:[{...run,status:'posted'}]}).errors[0].message,/already exists/);assert.match(engine.preview(list,{...context,records:[{...run,date:'2026-09-01'}]}).errors[0].message,/existing draft/);});
 test('skipped errors stay excluded and signatures keep actuals independent from review acknowledgements',()=>{const list=rows();list.push({row:3,values:{},skip:true});const first=engine.preview(list,context);list[0].note='Reviewed';list[0].acknowledged=true;assert.equal(engine.signature(first.run),engine.signature(engine.preview(list,context).run));list[0].values.withholding='1100.00';assert.notEqual(engine.signature(first.run),engine.signature(engine.preview(list,context).run));});
 test('annual review keeps actual tax from older payroll without inventing missing reference amounts',()=>{const run=engine.preview(rows(),context).run;const totals=engine.cumulative([{...run,status:'posted'},{...run,clientPayrollImport:false,status:'posted'},{...run,status:'void'}],2026);assert.equal(totals[0].actual,200000);assert.equal(totals[0].reference,100755);assert.equal(totals[0].uncompared,1);});
+
+test('simple seven-column template computes blank monthly contributions and preserves actual tax',()=>{
+ const headers=engine.simpleHeaders, values={pay_date:'2026-10-31',period_start:'2026-10-01',period_end:'2026-10-31',employee:'Sample Employee',basic:'30000.00',withholding:'1000.00'};
+ const result=engine.preview(engine.rowsFromMatrix([headers,headers.map(key=>values[key]||'')]),context);
+ assert.deepEqual(result.errors,[]);const employee=result.run.employees[0];
+ assert.equal(employee.payType,'Taxable');assert.equal(employee.sssEe,'1500.00');assert.equal(employee.sssEr,'3030.00');assert.equal(employee.phicEe,'750.00');assert.equal(employee.hdmfEe,'200.00');assert.equal(employee.withholding,'1000.00');assert.equal(employee.contributionSources.sssEe,'calculated');assert.equal(result.checks[0].reference,100755);
+ assert.equal(engine.template(true).split('\r\n')[0].split(',').length,7);
+});
+test('provided zero and client contributions are preserved while only missing amounts calculate',()=>{
+ const result=engine.preview(rows({sssEe:'0.00',phicEe:'450.00',hdmfEe:'',sssEr:'',phicEr:'',hdmfEr:''}),context);
+ assert.deepEqual(result.errors,[]);const employee=result.run.employees[0];assert.equal(employee.sssEe,'0.00');assert.equal(employee.phicEe,'450.00');assert.equal(employee.hdmfEe,'200.00');assert.equal(employee.withholding,'1000.00');assert.equal(employee.contributionSources.sssEe,'provided');
+});
+test('blank contributions respect monthly caps and non-monthly bases without replacing tax',()=>{
+ const changes={sssEe:'',phicEe:'',hdmfEe:'',sssEr:'',phicEr:'',hdmfEr:''};
+ const weekly=engine.preview(rows(changes),{...context,frequency:'weekly',contributionShare:'25'});assert.ok(weekly.errors.length);
+ const actual=engine.preview(rows({...changes,monthlyBasic:'30000.00',monthlyCompensation:'30000.00',monthlyFundSalary:'30000.00'}),{...context,frequency:'weekly',contributionShare:'25'});assert.deepEqual(actual.errors,[]);assert.equal(actual.run.employees[0].sssEe,'375.00');assert.equal(actual.run.employees[0].withholding,'1000.00');
+ const paid={...engine.preview(rows(),context).run,status:'posted',id:'old',date:'2026-10-15',periodStart:'2026-10-01',periodEnd:'2026-10-15'};
+ const capped=engine.preview(rows(changes),{...context,records:[paid]});assert.deepEqual(capped.errors,[]);assert.equal(capped.run.employees[0].sssEe,'0.00');assert.equal(capped.run.employees[0].phicEe,'0.00');
+});
+
+test('automatic contribution inputs cannot guess government, detailed earnings or part-month salary bases',()=>{
+ const missing={sssEe:'',phicEe:'',hdmfEe:'',sssEr:'',phicEr:'',hdmfEr:''};
+ for(const changes of [{...missing,pera:'100.00'},{...missing,holidayPay:'100.00'},{...missing,period_start:'2026-10-15'}])assert.ok(engine.preview(rows(changes),context).errors.length);
+ const later={...engine.preview(rows(),context).run,id:'later',status:'posted',date:'2026-10-31',periodStart:'2026-10-16'};
+ assert.ok(engine.preview(rows(missing),{...context,records:[later]}).errors.length);
+});

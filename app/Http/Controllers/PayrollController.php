@@ -23,10 +23,11 @@ class PayrollController extends Controller
             return to_route('company.setup');
         }
 
-        $employees = Schema::hasTable('employees')
-            ? Employee::query()->where('workspace_key', ChartAccount::workspaceKey($company))->where('archived', false)->orderBy('name')->get(['id', 'code', 'name', 'classification'])
-            : [];
+        $reconciliationEmployees = Schema::hasTable('employees')
+            ? Employee::query()->where('workspace_key', ChartAccount::workspaceKey($company))->orderBy('name')->get(['id', 'code', 'name', 'classification', 'archived'])
+            : collect();
+        $employees = $reconciliationEmployees->where('archived', false)->values();
 
-        return view('payroll', ['company' => $company, 'employees' => $employees]);
+        return view('payroll', ['company' => $company, 'employees' => $employees, 'reconciliationEmployees' => $reconciliationEmployees]);
     }
 }

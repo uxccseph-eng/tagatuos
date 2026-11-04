@@ -32,7 +32,7 @@ class EmployeeMastersTest extends TestCase
         $this->get('/sheets/payroll')->assertOk()->assertSee('Sample Employee');
         $this->putJson('/masters/employees/'.$record['id'], ['code' => $record['code'], 'name' => 'Updated Employee', 'classification' => 'Probationary'])->assertOk()->assertJsonPath('record.name', 'Updated Employee');
         $this->postJson('/masters/employees/'.$record['id'].'/archive')->assertOk()->assertJsonPath('record.archived', true);
-        $this->get('/sheets/payroll')->assertOk()->assertDontSee('Updated Employee');
+        $this->get('/sheets/payroll')->assertOk()->assertDontSee('value="Updated Employee"', false)->assertSee('payroll-reconciliation-employees');
         $this->postJson('/masters/employees/'.$record['id'].'/restore')->assertOk()->assertJsonPath('record.archived', false);
         $this->get('/sheets/payroll')->assertOk()->assertSee('Updated Employee');
     }
