@@ -67,13 +67,13 @@
             const employee={employeeId:person.id,name:person.name,payType:value.pay_type,...Object.fromEntries(payroll.allAmountFields.map(field=>[field,amountText(payroll.extraFields.includes(field)?(value[field]||'0.00'):value[field])])),taxableBenefits:amountText(value.taxable_benefits),reviewBasis:value.review_basis||'regular'};
             const amounts=payroll.totals(employee);if(amounts.gross<=0||amounts.net<0)throw Error('Earnings must be positive and cover actual deductions.');
             const comparison=compare(employee,frequency,meta[0]);
-            employee.withholdingReview={version:'BIR-2023-periodic-v1',reference:comparison.reference,difference:comparison.difference,acknowledged:!!row.acknowledged,note:row.note||''};
-            matched.push(employee);checks.push({row:row.row,employee,...comparison,net:amounts.net,reviewed:!comparison.needsReview||(row.acknowledged&&String(row.note||'').trim().length>=3&&row.note.length<=1000)});
+            employee.withholdingReview={version:'BIR-2023-periodic-v1',reference:comparison.reference,difference:comparison.difference};
+            matched.push(employee);checks.push({row:row.row,employee,...comparison,net:amounts.net});
         }catch(error){errors.push({row:row.row,message:error.message});}}
         let run=first?{id,number:'',date:first[0],name:first[1],periodStart:first[2],periodEnd:first[3],status:'draft',draftTouched:true,automation:false,frequency,clientPayrollImport:true,importReviewVersion:1,employees:matched}:null;
         if(run&&records.some(other=>other.status!=='void'&&other.status!=='archived'&&other.date===run.date&&other.periodStart===run.periodStart&&other.periodEnd===run.periodEnd))errors.push({row:0,message:'A payroll run already exists for this pay date and period.'});
         if(records.some(other=>other.status==='draft'))errors.push({row:0,message:'Finish or delete the existing draft before importing payroll.'});
-        return {errors,checks,run,reviewCount:checks.filter(check=>!check.reviewed).length,totalActual:checks.reduce((sum,item)=>sum+item.actual,0),totalReference:checks.reduce((sum,item)=>sum+item.reference,0)};
+        return {errors,checks,run,reviewCount:0,totalActual:checks.reduce((sum,item)=>sum+item.actual,0),totalReference:checks.reduce((sum,item)=>sum+item.reference,0)};
     }
     function signature(run){return JSON.stringify([run.date,run.periodStart,run.periodEnd,run.frequency,run.employees.map(employee=>[employee.employeeId,employee.payType,...payroll.allAmountFields.map(field=>payroll.cents(employee[field])),employee.taxableBenefits,employee.reviewBasis]).sort((a,b)=>String(a[0]).localeCompare(String(b[0])))]);}
     function cumulative(records,year,employees=[]){

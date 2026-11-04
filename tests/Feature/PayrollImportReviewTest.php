@@ -17,18 +17,12 @@ class PayrollImportReviewTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_server_keeps_actual_withholding_and_recomputes_review_before_atomic_posting(): void
+    public function test_server_posts_actual_withholding_without_acknowledgement_or_explanation(): void
     {
         [$company, $user, $employee] = $this->book();
         $run = $this->payrollRun($employee->id);
         $this->actingAs($user)->withSession(['active_company_id' => $company->id])->withHeader('X-Company-ID', (string) $company->id);
         $payload = ['state' => CompanyLedgerService::emptyState(), 'payroll' => [$run], 'revision' => 0, 'request_id' => (string) Str::uuid()];
-        $this->postJson(route('sheets.database.save'), $payload)->assertUnprocessable();
-        $this->assertDatabaseCount('journal_entries', 0);
-        $this->assertDatabaseCount('sheet_import_batches', 0);
-        $run['employees'][0]['withholdingReview']['acknowledged'] = true;
-        $run['employees'][0]['withholdingReview']['note'] = 'Client confirmed actual deduction; annual calculation to be reviewed.';
-        $payload['payroll'] = [$run];
         $this->postJson(route('sheets.database.save'), $payload)->assertOk()->assertJsonPath('payroll.0.employees.0.withholding', '1000.00');
         $this->assertDatabaseHas('journal_entry_lines', ['credit' => '1000.0000']);
         $this->assertDatabaseHas('journal_entry_lines', ['credit' => '26550.0000']);
@@ -37,6 +31,22 @@ class PayrollImportReviewTest extends TestCase
         $changed = $run;
         $changed['employees'][0]['withholding'] = '1007.55';
         $this->postJson(route('sheets.database.save'), [...$payload, 'payroll' => [$changed], 'revision' => 1, 'request_id' => (string) Str::uuid()])->assertUnprocessable();
+    }
+
+    public function test_special_payroll_and_december_do_not_require_review_notes_or_acknowledgements(): void
+    {
+        $service = app(PayrollWithholdingReview::class);
+        foreach (['Taxable', 'Non-taxable', 'Minimum Wage Earner'] as $payType) {
+            $run = $this->payrollRun(1);
+            $run['date'] = '2026-12-30';
+            $run['employees'][0]['payType'] = $payType;
+            $run['employees'][0]['reviewBasis'] = 'final_pay';
+            $comparison = $service->compare($run['employees'][0], 'monthly', $run['date']);
+            $run['employees'][0]['withholdingReview'] = ['version' => 'BIR-2023-periodic-v1', 'reference' => $comparison['reference'], 'difference' => $comparison['difference']];
+            $service->validate($run);
+            $this->assertSame('1000.00', $run['employees'][0]['withholding']);
+            $this->assertArrayNotHasKey('acknowledged', $run['employees'][0]['withholdingReview']);
+        }
     }
 
     public function test_tampered_reference_wrong_employee_and_automatic_mode_are_rejected(): void

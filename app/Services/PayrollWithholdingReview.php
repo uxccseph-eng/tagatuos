@@ -72,11 +72,9 @@ class PayrollWithholdingReview
             $result = $this->compare($employee, $run['frequency'] ?? '', $run['date']);
             $review = $employee['withholdingReview'] ?? [];
             if (($review['reference'] ?? null) !== $result['reference'] || ($review['difference'] ?? null) !== $result['difference'] || ($review['version'] ?? null) !== 'BIR-2023-periodic-v1') {
-                $this->fail('The payroll comparison is missing or out of date. Review the imported rows again.');
+                $this->fail('The payroll comparison is missing or out of date. Recheck the imported data.');
             }
-            if ($result['needs_review'] && (($review['acknowledged'] ?? null) !== true || ! is_string($review['note'] ?? null) || mb_strlen(trim($review['note'])) < 3 || mb_strlen($review['note']) > 1000)) {
-                $this->fail('Review each withholding difference or special payroll basis and record an explanation before posting.');
-            }
+
         }
     }
 
