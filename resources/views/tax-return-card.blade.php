@@ -13,7 +13,7 @@
         </div>@else<p class="returns-caption">Information returns summarize the year; they do not create another tax payment.</p>@endif
     </details>
     <div class="return-actions"><button type="button" class="returns-primary" data-prepare-return="{{ $form }}" @disabled(!$card['applicable'])>Generate {{ $frequency === 'monthly' ? \Carbon\CarbonImmutable::parse($card['from'])->format('F Y') : ($frequency === 'quarterly' ? 'Q'.$period.' '.$year : $year) }}</button><span class="returns-caption">Review before saving</span></div>
-    <details class="return-card-archive" @if($card['versions']->isNotEmpty()) open @endif><summary>Filing archive <span>{{ $card['versions']->count() ? '· latest '.$card['versions']->count() : '' }}</span></summary>
+    <details class="return-card-archive" @if($card['versions']->isNotEmpty() || $card['filing'] !== null) open @endif><summary>Filing archive <span>{{ $card['versions']->count() ? '· latest '.$card['versions']->count() : '' }}</span></summary>
         @forelse($card['versions'] as $version)
             <div class="return-version"><span>#{{ $version->id }} · {{ $version->status === 'filed' ? 'External filing recorded' : 'Prepared' }} · {{ \Carbon\CarbonImmutable::parse($version->created_at)->timezone('Asia/Manila')->format('d M Y H:i') }}</span>
                 @if($version->settings_year !== null && (int) $version->year_settings_revision !== $annualSettings['revision'])<strong class="return-reason">Annual settings changed — review and regenerate</strong>@endif
