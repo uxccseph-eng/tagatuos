@@ -2,7 +2,6 @@
     if (window.WorkspaceTheme) { window.WorkspaceTheme.refresh(); return; }
     const root = document.documentElement;
     const preferenceKey = 'kontadurya.workspace.theme';
-    const systemPreference = window.matchMedia('(prefers-color-scheme: dark)');
     function savedTheme() {
         try {
             const saved = localStorage.getItem(preferenceKey) || localStorage.getItem('kontadurya-theme');
@@ -26,11 +25,11 @@
         }
         for (const icon of document.querySelectorAll('#theme-icon, #themeToggleIcon')) icon.textContent = isDark ? 'light_mode' : 'dark_mode';
     }
-    function refresh() { applyTheme(savedTheme() || (systemPreference.matches ? 'dark' : 'light')); }
+    function refresh() { applyTheme(savedTheme() || 'dark'); }
     window.WorkspaceTheme = {refresh};
-    applyTheme(savedTheme() || (systemPreference.matches ? 'dark' : 'light'));
+    applyTheme(savedTheme() || 'dark');
     document.addEventListener('DOMContentLoaded', () => {
-        applyTheme(savedTheme() || (systemPreference.matches ? 'dark' : 'light'));
+        applyTheme(savedTheme() || 'dark');
     });
     document.addEventListener('click', event => {
         const button = event.target.closest('#theme-toggle-btn, #themeToggleBtn, [data-theme-toggle]');
@@ -44,12 +43,9 @@
             // Theme switching remains available when browser storage is disabled.
         }
     });
-    systemPreference.addEventListener('change', () => {
-        if (!savedTheme()) applyTheme(systemPreference.matches ? 'dark' : 'light');
-    });
     window.addEventListener('storage', (event) => {
         if ([preferenceKey, 'kontadurya-theme'].includes(event.key)) {
-            applyTheme(savedTheme() || (systemPreference.matches ? 'dark' : 'light'));
+            applyTheme(savedTheme() || 'dark');
         }
     });
 })();
