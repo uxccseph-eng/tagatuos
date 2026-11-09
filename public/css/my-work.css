@@ -31,7 +31,7 @@
 .work-metric .eyebrow { color: var(--muted); font-size: 10px; }
 .work-metric strong { font-size: 34px; font-weight: 650; line-height: 1.2; letter-spacing: -1px; }
 .work-metric > .muted { font-size: 11px; }
-.work-metric-highlight { border-color: #23614f; background: linear-gradient(130deg, #12342c, var(--panel)); }
+.work-metric-highlight { border-color: #23614f; background: var(--panel); }
 .work-metric-highlight strong { color: var(--accent); }
 .work-columns { display: grid; grid-template-columns: minmax(0, 1fr) 310px; gap: 24px; align-items: start; }
 .work-books { padding: 0; overflow: hidden; }
@@ -90,7 +90,7 @@
 /* Light mode follows the same white panels and pale surfaces as company books. */
 html:not(.dark) .work-metric-highlight {
     border-color: #a7d9c4;
-    background: linear-gradient(130deg, #ecfdf5, var(--panel));
+    background: var(--panel);
 }
 html:not(.dark) .work-table th { background: var(--theme-soft); }
 html:not(.dark) :is(.work-avatar, .work-pill, .work-clear > span) {
