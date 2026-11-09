@@ -4,6 +4,14 @@
     const money=value=>new Intl.NumberFormat('en-PH',{style:'currency',currency:'PHP'}).format(value/100);
     const decimal=value=>(value<0?'-':'')+Math.floor(Math.abs(value)/100)+'.'+String(Math.abs(value)%100).padStart(2,'0');
     const cents=value=>{if(!/^[0-9]{1,9}(?:\.[0-9]{1,2})?$/.test(value))return null;const [whole,fraction='']=value.split('.');return Number(whole)*100+Number(fraction.padEnd(2,'0'));};
+    function updateSaveReadiness(){
+        const issues=preview?.issues || [],button=q('return-save');
+        button.disabled=busy||!preview||issues.length>0;
+        const message=busy?'Loading or saving…':!preview?'Refresh sources to review the latest records.':issues.length?'Cannot save: '+issues.join(' '):form.elements.review_note.value.trim().length<3?'Required: add a review note of at least 3 characters.':!form.elements.reviewed.checked?'Required: confirm that you reviewed the sources and computation.':'Ready to save this preparation. Saving does not file or pay the return.';
+        q('return-save-status').textContent=message;
+        button.title=issues.length?issues.join(' '):'';
+        if(q('return-settings-link'))q('return-settings-link').hidden=issues.length===0;
+    }
     function syncXml(){
         q('return-save').textContent=form.elements.amended.checked?'Save amendment':(preview?.original_id?'Update original':'Save original');
         if(form.elements.amended.checked)form.elements.xml_requested.checked=false;
@@ -72,10 +80,15 @@
             syncXml();
             if(!q('return-dialog').open)q('return-dialog').showModal();
         }catch(error){q('returns-status').textContent=error.message;if(q('return-dialog').open)q('return-error').textContent=error.message;}
-        finally{busy=false;}
+        finally{busy=false;updateSaveReadiness();}
     }
     document.querySelectorAll('[data-prepare-return]').forEach(button=>button.addEventListener('click',()=>{const card=button.closest('.return-card');for(const input of card.querySelectorAll('[data-adjustment]')){if(!input.checkValidity()){input.closest('details').open=true;input.reportValidity();return;}}loadPreview(button.dataset.prepareReturn);}));
     form.elements.amended.addEventListener('change',syncXml);
+    form.addEventListener('input',()=>{q('return-error').textContent='';updateSaveReadiness();});
+    form.addEventListener('change',updateSaveReadiness);
+    form.addEventListener('invalid',event=>{
+        q('return-error').textContent=event.target.name==='review_note'?'Add a review note of at least 3 characters before saving.':event.target.name==='reviewed'?'Confirm that you reviewed the sources and tax computation before saving.':'Complete the highlighted required field before saving: '+(event.target.closest('label')?.textContent.trim() || event.target.name)+'.';
+    },true);
     q('return-xml-options').addEventListener('input',syncXml);q('return-xml-options').addEventListener('change',syncXml);
     document.querySelectorAll('[data-xml-download]').forEach(button=>button.addEventListener('click',async()=>{
         if(busy)return;busy=true;button.disabled=true;q('returns-status').textContent='Preparing the archived XML save file…';
@@ -97,7 +110,7 @@
             if(input.xml_requested){input.xml_vat_reviewed=form.elements.xml_vat_reviewed.checked;for(const key of ['xml_carryover_input','xml_remittance_month1','xml_remittance_month2','xml_prior_overremittance'])input[key]=form.elements[key].value.trim();input.xml_overpayment_action=form.elements.xml_overpayment_action.value||null;if(['0619-E','1601-C'].includes(selection.form))input.xml_line_of_business=form.elements.xml_line_of_business.value.trim();if(selection.form==='1601-C'){input.xml_payroll_reviewed=form.elements.xml_payroll_reviewed.checked;input.xml_payroll_other_description=form.elements.xml_payroll_other_description.value.trim();for(const field of q('return-xml-payroll').querySelectorAll('input[inputmode=decimal]'))input[field.name]=field.value.trim();}}
             await request(main.dataset.save,input);location.hash='filing-archive';location.reload();
         }catch(error){q('return-error').textContent=error.message;if(error.status===409){q('return-error').textContent+=' Use Refresh sources, review the updated totals, and confirm again.';preview=null;}}
-        finally{busy=false;q('return-save').disabled=!preview||preview.issues.length>0;}
+        finally{busy=false;updateSaveReadiness();}
     });
     document.querySelectorAll('[data-record-filing]').forEach(button=>button.addEventListener('click',()=>{if(busy)return;filingUrl=button.dataset.recordFiling;filingRevision=Number(button.dataset.revision);q('filing-form').reset();q('filing-label').textContent=button.dataset.filingLabel;q('filing-error').textContent='';q('filing-dialog').showModal();}));
     for(const button of document.querySelectorAll('[data-delete-preparation]'))button.addEventListener('click',()=>{
