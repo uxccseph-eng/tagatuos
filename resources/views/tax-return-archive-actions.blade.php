@@ -1,4 +1,4 @@
-<a href="{{ route('tax-returns.show', ['id' => $entry->id, 'company_id' => $company['company_id']]) }}" target="_blank" rel="noopener">View / Print</a>
+<button type="button" data-print-preview="{{ route('tax-returns.show', ['id' => $entry->id, 'company_id' => $company['company_id']]) }}" data-print-label="{{ $entry->form }} · {{ $entry->period_from }} to {{ $entry->period_to }}">View / Print</button>
 <a href="{{ route('tax-returns.download', ['id' => $entry->id, 'company_id' => $company['company_id']]) }}">Worksheet CSV</a>
 @if(in_array($entry->form, ['2550Q', '1601-EQ', '0619-E', '1601-C'], true))<button type="button" data-xml-download="{{ route('tax-returns.xml', ['id' => $entry->id, 'company_id' => $company['company_id']]) }}">eBIRForms XML</button>@endif
 @if(!$entry->is_filed)

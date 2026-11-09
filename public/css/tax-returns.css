@@ -23,3 +23,10 @@
 #return-prepare-form { display: flex; flex-direction: column; max-height: calc(90dvh - 2px); }
 #return-dialog .return-dialog-body { min-height: 0; max-height: none; overflow: auto; flex: 1 1 auto; }
 #return-dialog header, #return-dialog footer { flex: 0 0 auto; }
+#return-print-dialog { width: min(980px, 96vw); height: 94dvh; max-height: 94dvh; overflow: hidden; }
+#return-print-dialog[open] { display: flex; flex-direction: column; }
+#return-print-dialog header, #return-print-dialog footer { flex: none; padding: 16px 22px; }
+#return-print-status { flex: none; padding: 8px 22px; margin: 0; font-size: 12px; color: var(--return-muted); }
+#return-print-frame { flex: 1; min-height: 0; width: 100%; border: 0; background: #e8edf2; }
+#return-print-dialog footer button { min-height: 44px; padding: 10px 16px; border-radius: 8px; }
+@media (max-width: 600px) { #return-print-dialog header, #return-print-dialog footer { padding: 12px 16px; } #return-print-dialog h2 { font-size: 16px; } }

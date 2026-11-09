@@ -2,6 +2,23 @@
     const main=document.getElementById('tax-returns-main');if(!main)return;
     const q=id=>document.getElementById(id),form=q('return-prepare-form');let preview=null,selection=null,requestId=null,busy=false,filingUrl=null,filingRevision=null,deleteSelection=null,wasXml=false,previousCredits='',previousTax='';
     const money=value=>new Intl.NumberFormat('en-PH',{style:'currency',currency:'PHP'}).format(value/100);
+    const printDialog=q('return-print-dialog'),printFrame=q('return-print-frame'),printButton=q('return-print-pdf');
+    let printRequest=0;
+    printDialog.addEventListener('close',()=>{printRequest++;printFrame.srcdoc='';printFrame.hidden=true;printButton.disabled=true;});
+    document.querySelectorAll('[data-print-preview]').forEach(button=>button.addEventListener('click',async()=>{
+        const current=++printRequest;
+        q('return-print-title').textContent=button.dataset.printLabel;
+        q('return-print-status').textContent='Loading the saved preparation…';printFrame.hidden=true;printButton.disabled=true;
+        if(!printDialog.open)printDialog.showModal();
+        try{
+            const response=await fetch(button.dataset.printPreview,{credentials:'same-origin',headers:{Accept:'text/html'},cache:'no-store'});
+            if(!response.ok)throw Error('This saved preparation is unavailable or you do not have access. Close this preview and refresh the filing archive.');
+            const html=await response.text();if(current!==printRequest||!printDialog.open)return;
+            printFrame.onload=()=>{if(current!==printRequest||!printDialog.open)return;printButton.disabled=false;q('return-print-status').textContent='Saved preparation preview. Choose Print / Save as PDF to open your browser’s print dialog.';};
+            printFrame.srcdoc=html;printFrame.hidden=false;
+        }catch(error){if(current===printRequest)q('return-print-status').textContent=error.message;}
+    }));
+    printButton.addEventListener('click',()=>{if(!printButton.disabled){printFrame.contentWindow.focus();printFrame.contentWindow.print();}});
     const decimal=value=>(value<0?'-':'')+Math.floor(Math.abs(value)/100)+'.'+String(Math.abs(value)%100).padStart(2,'0');
     const cents=value=>{if(!/^[0-9]{1,9}(?:\.[0-9]{1,2})?$/.test(value))return null;const [whole,fraction='']=value.split('.');return Number(whole)*100+Number(fraction.padEnd(2,'0'));};
     function updateSaveReadiness(){

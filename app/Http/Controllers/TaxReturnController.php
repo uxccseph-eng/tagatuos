@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\PrepareTaxReturnRequest;
 use App\Models\CompanySetting;
+use App\Services\Tax\Bir0619EPrintData;
 use App\Services\Tax\BirExporterFactory;
 use App\Services\Tax\TaxReturnCatalog;
 use App\Services\Tax\TaxReturnService;
@@ -76,8 +77,10 @@ class TaxReturnController extends Controller
     public function show(Request $request, int $id): Response
     {
         $record = $this->record($request, $id);
+        $snapshot = json_decode($record->snapshot, true, 512, JSON_THROW_ON_ERROR);
+        $printData = $record->form === '0619-E' ? app(Bir0619EPrintData::class)->build($record, $snapshot) : null;
 
-        return response()->view('tax-return-print', ['record' => $record, 'snapshot' => json_decode($record->snapshot, true, 512, JSON_THROW_ON_ERROR)])->header('Cache-Control', 'no-store, private');
+        return response()->view($printData && $printData['mapped'] ? 'tax-return-0619e-print' : 'tax-return-print', ['record' => $record, 'snapshot' => $snapshot, 'printData' => $printData])->header('Cache-Control', 'no-store, private');
     }
 
     public function download(Request $request, int $id): StreamedResponse
