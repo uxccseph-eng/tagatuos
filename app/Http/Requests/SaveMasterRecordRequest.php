@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\MasterCode;
+use App\MasterTin;
 use App\Models\BankAccount;
 use App\Models\ChartAccount;
 use App\Models\Employee;
@@ -13,6 +14,8 @@ use Illuminate\Database\Query\Builder;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
+use Illuminate\Validation\Validator;
 
 class SaveMasterRecordRequest extends FormRequest
 {
@@ -44,7 +47,7 @@ class SaveMasterRecordRequest extends FormRequest
             $this->merge(['code' => MasterCode::registry(ChartAccount::workspaceKey($this->session()->get('company_setup')), (string) $this->route('registry'), (string) $this->input('classification'))]);
             $this->attributes->set('generated_code', true);
         }
-        if (in_array($this->route('registry'), ['parties', 'employees'], true) && is_string($this->input('tin')) && ($this->route('registry') === 'employees' || strlen(preg_replace('/\D/', '', $this->input('tin'))) >= 12)) {
+        if (in_array($this->route('registry'), ['parties', 'employees'], true) && is_string($this->input('tin'))) {
             $this->merge(['tin' => Tin::format($this->input('tin'))]);
         }
         if ($this->route('registry') === 'parties') {
@@ -91,6 +94,23 @@ class SaveMasterRecordRequest extends FormRequest
             $tin = preg_replace('/\D/', '', (string) $this->input('tin'));
             $this->merge(['name' => $name, 'name_key' => hash('sha256', Str::lower($name)), 'tin_key' => preg_match('/[1-9]/', $tin) ? $tin : null, 'classification' => $this->input('classification') ?: 'Regular']);
         }
+    }
+
+    /** @return list<\Closure> */
+    public function after(): array
+    {
+        return [function (Validator $validator): void {
+            if ($validator->errors()->has('tin') || ! in_array($this->route('registry'), ['parties', 'employees'], true)) {
+                return;
+            }
+            try {
+                MasterTin::assertUnique((string) $this->route('registry'), ChartAccount::workspaceKey($this->session()->get('company_setup')), $this->input('tin'), $this->route('record') ? (int) $this->route('record') : null);
+            } catch (ValidationException $exception) {
+                foreach ($exception->errors()['tin'] as $message) {
+                    $validator->errors()->add('tin', $message);
+                }
+            }
+        }];
     }
 
     /** @return array<string, mixed> */

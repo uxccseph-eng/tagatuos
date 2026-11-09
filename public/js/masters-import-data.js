@@ -70,7 +70,23 @@
     }
     function template(registry,columns,withSamples=false){return csv([columns,...(withSamples?sampleRows(registry).map(row=>columns.map(column=>row[column]??'')):[])])+'\r\n';}
     function displayEmployeeDate(value){return String(value??'').replace(/^(\d{4})-(\d{2})-(\d{2})$/, '$3/$2/$1');}
-    const api={displayEmployeeDate,guessMapping,source,mapRows,included,fillBlanks,csv,sampleRows,template};
+    function tinKey(value) {
+        value = String(value ?? '').trim();
+        if (!/^(?:[0-9]{9}|[0-9]{12,14}|[0-9]{3}-[0-9]{3}-[0-9]{3}(?:-[0-9]{3,5})?)$/.test(value)) return null;
+        const digits = value.replace(/-/g, '');
+        return digits.slice(0, 9) === '000000000' ? null : digits.slice(0, 9) + digits.slice(9).padStart(5, '0');
+    }
+    function duplicateTinIds(records) {
+        const groups = new Map();
+        for (const record of records) {
+            const key = tinKey(record.tin);
+            if (!key) continue;
+            if (!groups.has(key)) groups.set(key, []);
+            groups.get(key).push(String(record.id));
+        }
+        return new Set([...groups.values()].filter(ids => ids.length > 1).flat());
+    }
+    const api={tinKey,duplicateTinIds,displayEmployeeDate,guessMapping,source,mapRows,included,fillBlanks,csv,sampleRows,template};
     if(typeof module!=='undefined'&&module.exports)module.exports=api;
     if(root)root.MasterImportData=api;
 })(typeof window!=='undefined'?window:null);

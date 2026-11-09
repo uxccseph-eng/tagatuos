@@ -43,3 +43,11 @@ test('downloaded CSV protects formula cells and preserves commas quotes and line
     assert.equal(tools.displayEmployeeDate('04/11/2026'), '04/11/2026');
     assert.equal(tools.displayEmployeeDate(null), '');
 });
+
+
+test('duplicate TIN checks normalize branches, include archived records, and ignore unknown TINs', () => {
+    const records = [{id:1,tin:'123456789'}, {id:2,tin:'123-456-789-00000',archived:true}, {id:3,tin:'12345678900123'}, {id:4,tin:'123-456-789-123'}, {id:5,tin:'000000000'}, {id:6,tin:'000-000-000-00000'}, {id:7,tin:'123-456-789-00001'}];
+    assert.deepEqual([...data.duplicateTinIds(records)], ['1','2','3','4']);
+    assert.equal(data.tinKey('bad123456789'), null);
+    assert.equal(data.tinKey('000-000-000-00001'), null);
+});

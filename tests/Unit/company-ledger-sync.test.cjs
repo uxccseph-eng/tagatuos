@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 const source = fs.readFileSync('public/js/company-ledger-sync.js', 'utf8');
 const empty = () => ({sales: [], purchases: [], collections: [], payments: [], cwtCertificates: [], wtpCertificates: [], journalEntries: [], nextCollectionId: 1, nextCollectionNumber: 1});
-function boot({initialized = true, legacy = null, canWrite = true, fetcher = null, storage = new Map(), snapshot = {}} = {}) {
+function boot({initialized = true, legacy = null, canWrite = true, fetcher = null, collaborative = false, storage = new Map(), snapshot = {}} = {}) {
     class Element {
         constructor() { this.children = []; this.listeners = {}; this.dataset = {}; this.textContent = ''; }
         append(...items) { this.children.push(...items); }
@@ -12,22 +12,32 @@ function boot({initialized = true, legacy = null, canWrite = true, fetcher = nul
         setAttribute() {}
         addEventListener(name, fn) { this.listeners[name] = fn; }
         click() { return this.listeners.click?.(); }
+        showModal() { this.open = true; }
+        close() { this.open = false; this.listeners.close?.(); }
+        remove() { const index = body.children.indexOf(this); if (index >= 0) body.children.splice(index, 1); }
     }
     if (legacy) storage.set('kontadurya.ledger.v1.company-test', JSON.stringify(legacy));
     const requests = [], intervals = [], database = {company_id: 1, revision: 0, initialized, state: empty(), payroll: [], journals: [], url: '/sheets/database', csrf: 'csrf', canWrite, ...snapshot};
     const body = new Element();
-    const document = {body, hidden: false, documentElement: {classList: {toggle() {}}}, getElementById: () => ({dataset: {key: 'company-test'}}), createElement: () => new Element(), addEventListener() {}};
+    let reloads = 0;
+    const document = {body, hidden: false, documentElement: {classList: {toggle() {}}}, getElementById: () => ({dataset: {key: 'company-test'}}), createElement: () => new Element(), querySelector: () => null, querySelectorAll: () => [], addEventListener() {}};
     const sessionStorage = {getItem: key => storage.get(key) || null, setItem: (key, value) => storage.set(key, value), removeItem: key => storage.delete(key)};
-    const window = {CompanyLedgerDatabase: database, addEventListener() {}, dispatchEvent() {}};
+    const local = new Map();
+    const localStorage = {getItem: key => local.get(key) || null, setItem: (key, value) => local.set(key, value), removeItem: key => local.delete(key)};
+    const window = {localStorage, CompanyLedgerDatabase: database, addEventListener() {}, dispatchEvent() {}};
     let revision = database.revision;
     const fetch = async (url, options) => {
-        const payload = JSON.parse(options.body);
+        const payload = options.body ? JSON.parse(options.body) : null;
         requests.push(payload);
         if (fetcher) return fetcher(payload, requests.length);
         return {ok: true, json: async () => ({company_id: 1, initialized: true, state: payload.state, payroll: payload.payroll, revision: ++revision, journals: []})};
     };
-    vm.runInNewContext(source, {window, document, sessionStorage, fetch, crypto: require('node:crypto').webcrypto, location: {href: 'http://localhost/sheets/sales', origin: 'http://localhost', reload() {}}, URL, Blob, CustomEvent: class {}, setTimeout: () => 1, clearTimeout() {}, setInterval: fn => intervals.push(fn), console});
-    return {api: window.CompanyLedger, storage, requests, sessionStorage, database, buttons: () => body.children[0].children[1].children, intervals};
+    if (collaborative) {
+        database.record_versions ||= {};
+        vm.runInNewContext(fs.readFileSync('public/js/company-ledger-records.js', 'utf8'), {window});
+    }
+    vm.runInNewContext(source, {window, document, sessionStorage, fetch, crypto: require('node:crypto').webcrypto, location: {href: 'http://localhost/sheets/sales', origin: 'http://localhost', reload() { reloads++; }}, URL, Blob, CustomEvent: class {}, setTimeout: () => 1, clearTimeout() {}, setInterval: fn => intervals.push(fn), console});
+    return {api: window.CompanyLedger, local, storage, requests, sessionStorage, database, buttons: () => body.children[0].children[1].children, dialog: () => body.children.find(element => element.className === 'company-conflict-dialog'), reloads: () => reloads, intervals};
 }
 test('database bootstrap takes precedence over old browser cache', () => {
     const legacy = empty(); legacy.sales.push({id: 'old'});
@@ -71,7 +81,7 @@ test('network retry reuses the original save identifier to avoid duplicate posti
         if (count === 1) throw Error('Connection lost');
         return {ok: true, json: async () => ({...p.database, revision: 1, state: payload.state, payroll: payload.payroll})};
     }});
-    p.api.saveState(empty()); await assert.rejects(p.api.flush(), /Connection lost/);
+    const state = empty(); state.sales.push({id: 'retry'}); p.api.saveState(state); await assert.rejects(p.api.flush(), /Connection lost/);
     p.buttons().find(button => button.textContent === 'Retry save').click();
     await p.api.flush();
     assert.equal(p.requests[0].request_id, p.requests[1].request_id);
@@ -108,7 +118,8 @@ test('failed save survives reload and requires explicit restore and reviewed sav
     assert.equal(locked.requests.length, 0);
     await assert.rejects(locked.api.flush(), /expense account/);
     locked.buttons().find(button => button.textContent === 'Restore unsaved work').click();
-    const restored = boot({storage:first.storage});
+    const restored = locked;
+    assert.equal(restored.reloads(), 0);
     assert.equal(restored.api.state().purchases.length, 1);
     assert.equal(restored.api.postingLabel('purchases',state.purchases[0]), 'Not saved');
     await assert.rejects(restored.api.flush(), /Review/);
@@ -187,4 +198,102 @@ test('a rejected posted edit shows Not saved even though the original entry was 
     assert.equal(p.api.postingLabel('sales',{id:1}),'Not saved');
     assert.equal(p.database.state.sales[0].gross,10000);
     assert.equal(p.storage.has(recoveryKey),true);
+});
+
+
+test('export removes company recovery data without reloading or clearing another company', async () => {
+    const p = boot({fetcher: async () => ({ok: false, status: 409, json: async () => ({message: 'Version conflict'})})});
+    const state = empty(); state.sales.push({id: 'a'}); p.api.saveState(state);
+    await assert.rejects(p.api.flush(), /Version conflict/);
+    p.storage.set('other-company.pending-database-save', 'keep');
+    p.local.set(recoveryKey, 'draft'); p.local.set('other-company.pending-database-save', 'keep');
+    p.buttons().find(button => button.textContent === 'Export unsaved work (.json)').click();
+    assert.equal(p.storage.has(recoveryKey), false);
+    assert.equal(p.storage.get('other-company.pending-database-save'), 'keep');
+    assert.equal(p.local.has(recoveryKey), false);
+    assert.equal(p.local.get('other-company.pending-database-save'), 'keep');
+    assert.equal(p.reloads(), 0);
+    assert.equal(p.api.state().sales[0].id, 'a');
+    assert.ok(p.dialog());
+    assert.equal(boot({storage: p.storage}).api.pending(), false);
+});
+
+test('only an explicit discard clears the draft and reloads', async () => {
+    const p = boot({fetcher: async () => ({ok: false, status: 409, json: async () => ({message: 'Conflict'})})});
+    const state = empty(); state.sales.push({id: 'a'}); p.api.saveState(state);
+    await assert.rejects(p.api.flush(), /Conflict/);
+    assert.equal(p.reloads(), 0);
+    p.dialog().children[3].children[0].click();
+    assert.equal(p.reloads(), 1);
+    assert.equal(p.storage.has(recoveryKey), false);
+});
+
+test('explicit overwrite replaces changed entries only and uses fresh versions with a new request id', async () => {
+    const base = empty(); base.sales = [{id: 'a', gross: 100}];
+    const latest = empty(); latest.sales = [{id: 'a', gross: 200}, {id: 'b', gross: 300}];
+    let submitted;
+    const p = boot({collaborative: true, snapshot: {state: base, revision: 1, record_versions: {sales: {a: 1}}}, fetcher: async (payload, count) => {
+        if (count === 1) return {ok: false, status: 409, json: async () => ({message: 'Conflict', record_conflict: true})};
+        if (!payload) return {ok: true, json: async () => ({...p.database, state: latest, revision: 2, record_versions: {sales: {a: 2, b: 1}}})};
+        submitted = payload;
+        const state = empty(); state.sales = [{id: 'a', gross: 500}, {id: 'b', gross: 300}];
+        return {ok: true, json: async () => ({...p.database, state, revision: 3, record_versions: {sales: {a: 3, b: 1}}})};
+    }});
+    const changed = p.api.state(); changed.sales[0].gross = 500; p.api.saveState(changed);
+    await assert.rejects(p.api.flush(), /Conflict/);
+    await p.dialog().children[3].children[1].click();
+    assert.equal(submitted.revision, 2);
+    assert.equal(submitted.operations.length, 1);
+    assert.equal(submitted.operations[0].expected_version, 2);
+    assert.equal(submitted.operations[0].record.gross, 500);
+    assert.notEqual(submitted.request_id, p.requests[0].request_id);
+    assert.equal(p.api.state().sales[1].gross, 300);
+    assert.equal(p.api.pending(), false);
+    assert.equal(p.reloads(), 0);
+});
+
+test('overwrite still shows server validation failures and does not reload', async () => {
+    const p = boot({collaborative: true, fetcher: async (payload, count) => {
+        if (count === 2) return {ok: true, json: async () => ({...p.database, revision: 1, record_versions: {}})};
+        return {ok: false, status: count === 1 ? 409 : 422, json: async () => ({message: count === 1 ? 'Conflict' : 'Invalid account'})};
+    }});
+    const state = empty(); state.sales.push({id: 'a', account: 'invalid'}); p.api.saveState(state);
+    await assert.rejects(p.api.flush(), /Conflict/);
+    await p.dialog().children[3].children[1].click();
+    assert.equal(p.dialog().children[2].textContent, 'Invalid account');
+    assert.equal(p.api.pending(), true);
+    assert.equal(p.reloads(), 0);
+});
+
+
+test('exported recovery can be explicitly overwritten from its original entry history without restoring its storage', async () => {
+    const base = empty(); base.sales = [{id:'a',gross:100}];
+    const local = empty(); local.sales = [{id:'a',gross:500}];
+    const latest = empty(); latest.sales = [{id:'a',gross:200},{id:'b',gross:300}];
+    const storage = new Map([[recoveryKey, JSON.stringify({company_id:1,revision:1,state:local,payroll:[],base_state:base,base_payroll:[],base_versions:{sales:{a:1}}})]]);
+    let saved;
+    const p = boot({storage,collaborative:true,snapshot:{state:latest,revision:2,record_versions:{sales:{a:2,b:1}}},fetcher:async payload=> {
+        if (!payload) return {ok:true,json:async()=>({...p.database})};
+        saved = payload;
+        return {ok:true,json:async()=>({...p.database,revision:3,state:{...latest,sales:[{id:'a',gross:500},{id:'b',gross:300}]},record_versions:{sales:{a:3,b:1}}})};
+    }});
+    p.buttons().find(button=>button.textContent==='Export unsaved work (.json)').click();
+    await p.dialog().children[3].children[1].click();
+    assert.equal(saved.operations.length, 1);
+    assert.equal(saved.operations[0].record.gross, 500);
+    assert.equal(storage.has(recoveryKey), false);
+    assert.equal(p.api.pending(), false);
+});
+
+test('a second writer racing an explicit overwrite still produces a conflict instead of an unchecked overwrite', async () => {
+    const p = boot({collaborative:true,fetcher:async(payload,count)=> {
+        if (!payload) return {ok:true,json:async()=>({...p.database,revision:2,record_versions:{}})};
+        return {ok:false,status:409,json:async()=>({message:count===1?'First conflict':'Changed again; review latest',record_conflict:true})};
+    }});
+    const state=empty();state.sales=[{id:'a'}];p.api.saveState(state);
+    await assert.rejects(p.api.flush(), /First conflict/);
+    await p.dialog().children[3].children[1].click();
+    assert.equal(p.dialog().children[2].textContent, 'Changed again; review latest');
+    assert.equal(p.api.pending(), true);
+    assert.equal(p.reloads(), 0);
 });

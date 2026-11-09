@@ -200,8 +200,8 @@ class MasterImport
             }
         }
         if (in_array($registry, ['parties', 'employees'], true)) {
-            $tin = preg_replace('/\D/', '', Tin::format((string) ($record['tin'] ?? '')));
-            if ($tin !== '' && preg_match('/[1-9]/', $tin)) {
+            $tin = Tin::key((string) ($record['tin'] ?? ''));
+            if ($tin !== null) {
                 $identities['tin'] = $tin;
             }
         }

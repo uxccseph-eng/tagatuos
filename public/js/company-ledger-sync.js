@@ -11,6 +11,7 @@
     const restoreKey = recoveryKey + '.restore';
     let state = clone(database.state), payroll = clone(database.payroll), revision = database.revision;
     let pending = false, running = null, timer = null, failure = null, migration = false, retry = null, recoveryReview = false, leaving = false, restoreAvailable = false;
+    let recoveryExported = false, conflictDialog = null, resolutionRunning = false, dismissedFailure = null;
     const sheets = ['sales','purchases','collections','payments','cwtCertificates','wtpCertificates','journalEntries'];
     const validState = value => value && typeof value === 'object' && sheets.every(key => Array.isArray(value[key]));
     const records = window.LedgerRecordChanges;
@@ -62,6 +63,7 @@
             failure = {message: reason + (preserved?.error?.message ? ' Last save error: ' + String(preserved.error.message) : ''), status: 409};
         }
     }
+    let localRecoveryPending = Boolean(validRecovery && !restoreRequested);
     let editorState = clone(state), editorPayroll = clone(payroll);
     function postingLabel(sheet, record) {
         const confirmed = (sheet === 'payroll' ? database.payroll : database.state[sheet]) || [];
@@ -87,18 +89,43 @@
         const url = URL.createObjectURL(blob), link = document.createElement('a');
         link.href = url; link.download = `company-${database.company_id}-unsaved-work.json`; link.click();
         setTimeout(() => URL.revokeObjectURL(url), 1000);
+        clearRecovery();
+        recoveryExported = true;
+        restoreAvailable = false;
+        render();
+        showConflictDialog();
+    }
+    function clearRecovery() {
+        // Clear only this company's recovery keys; never clear another book or login session.
+        for (const storage of [sessionStorage, window.localStorage]) {
+            if (!storage) continue;
+            for (const key of [recoveryKey, restoreKey, ledgerKey, payrollKey, ledgerKey + '.before-database-transfer']) storage.removeItem(key);
+        }
+    }
+    function restoreRecovery() {
+        if (!canRestore) return;
+        state = clone(preserved.state); payroll = clone(preserved.payroll);
+        if (recoverableOperations) {
+            database.state = clone(preserved.base_state); database.payroll = clone(preserved.base_payroll);
+            database.record_versions = clone(preserved.base_versions); revision = preserved.revision;
+        }
+        const request = preserved.request;
+        retry = request && request.revision === revision && typeof request.request_id === 'string' && validState(request.state) && Array.isArray(request.payroll) && (!collaborative || Array.isArray(request.operations)) ? clone(request) : null;
+        failure = null; restoreAvailable = false; localRecoveryPending = false; recoveryReview = true; pending = true;
+        for (const open of document.querySelectorAll?.('dialog[open]') || []) open.close();
+        notify(); render();
     }
     function render() {
         actions.replaceChildren();
         document.documentElement.classList.toggle('company-save-pending', pending || Boolean(running) || Boolean(failure) || migration);
         if (failure) {
-            label.textContent = failure.record_conflict ? 'Changes need review: another accountant updated this entry. Your changes are kept in this tab. Compare both versions before saving.' : 'Not saved to the database: ' + failure.message;
+            label.textContent = failure.record_conflict ? 'Changes need review: another accountant updated this entry. Your changes are kept in this tab. Choose how to resolve the unsaved changes.' : 'Not saved to the database: ' + failure.message;
             banner.dataset.state = failure.record_conflict ? 'warning' : 'error';
-            if (!failure.record_conflict) button('Download unsaved work', download);
-            if (restoreAvailable) button('Restore unsaved work', () => { try { sessionStorage.setItem(restoreKey, '1'); leaving = true; location.reload(); } catch { leaving = false; label.textContent = 'Could not prepare recovery. Download the unsaved work before continuing.'; } });
-            if (failure.record_conflict) button('Review changes', () => reviewConflicts().catch(error => { label.textContent = error.message; }));
+            button('Export unsaved work (.json)', download);
+            if (restoreAvailable) button('Restore unsaved work', restoreRecovery);
+            button('Resolve save conflict', showConflictDialog);
             if (failure.status !== 409) button('Retry save', () => { failure = null; pending = true; flush().catch(() => {}); });
-            if (!failure.record_conflict) button('Download and reload', () => { download(); leaving = true; location.reload(); });
+            if (failure.status === 409 && failure !== dismissedFailure) showConflictDialog();
         } else if (recoveryReview) {
             label.textContent = 'Unsaved work restored in this tab. Review the entries, then save them to the company database.';
             banner.dataset.state = 'pending';
@@ -120,6 +147,7 @@
         for (const node of document.querySelectorAll?.('[data-company-posted-sheet]') || []) updateBadge(node);
     }
     function stash() {
+        if (recoveryExported) return;
         sessionStorage.setItem(recoveryKey, JSON.stringify({company_id: database.company_id, revision, state, payroll, base_state: database.state, base_payroll: database.payroll, base_versions: database.record_versions, request: retry, error: failure}));
     }
     function stage(section, next) {
@@ -135,6 +163,7 @@
         } else if (section === 'state') state = clone(next); else payroll = clone(next);
         if (!running && failure?.status) retry = null;
         failure = null;
+        recoveryExported = false;
         try { stash(); }
         catch { state = previousState; payroll = previousPayroll; editorState = previousEditorState; editorPayroll = previousEditorPayroll; failure = previousFailure; retry = previousRetry; throw Error('This tab could not preserve the pending save. Your last confirmed database records are unchanged.'); }
         if (!migration && !recoveryReview) { pending = true; clearTimeout(timer); timer = setTimeout(() => flush().catch(() => {}), 300); }
@@ -165,7 +194,7 @@
             revision = result.revision;
             Object.assign(database, result);
             for(const op of expectedAfterRetry) { database.record_versions[op.sheet] ||= {}; Object.defineProperty(database.record_versions[op.sheet],op.id,{value:op.expected_version,writable:true,enumerable:true,configurable:true}); }
-            state = clone(later?.state || result.state); payroll = clone(later?.payroll || result.payroll);
+            state = clone(later?.state || (pending && !collaborative ? state : result.state)); payroll = clone(later?.payroll || (pending && !collaborative ? payroll : result.payroll));
             retry = null;
             pending = collaborative ? operations().length > 0 : pending;
             if (!pending) sessionStorage.removeItem(recoveryKey); else stash();
@@ -212,59 +241,76 @@
             notify(); render();
         } catch {} finally {checking=false;}
     }
-    async function reviewConflicts() {
-        const response = await fetch(database.url,{headers:{'Accept':'application/json','X-Company-ID':String(database.company_id)},cache:'no-store'});
-        if (!response.ok) throw Error('Could not load the latest entries. Your unsaved work is preserved.');
-        const latest=await response.json();
-        if (String(latest.company_id)!==String(database.company_id) || !validState(latest.state) || !Array.isArray(latest.payroll)) throw Error('The server did not return this company book.');
-        const edits=operations();
-        const conflicts=edits.filter(op => op.expected_version !== records.version(latest.record_versions,op.sheet,op.id,0));
-        const dialog=document.createElement('dialog');dialog.className='company-conflict-dialog';
-        const title=document.createElement('h2');title.textContent='Review changes to the same entry';dialog.append(title);
-        const explanation=document.createElement('p');explanation.textContent='Compare your changes with the latest saved entry and choose which one to keep. Confirming closes the entry window and refreshes the sheet.';dialog.append(explanation);
-        const choices=[];
-        const getRows=(snapshot,sheet)=>sheet==='payroll'?snapshot.payroll:snapshot.state[sheet];
-        for (const operation of conflicts) {
-            const saved=getRows(latest,operation.sheet).find(row=>String(row.id)===operation.id);
-            const section=document.createElement('section'),heading=document.createElement('h3');heading.textContent=operation.sheet+' · '+(saved?.number || operation.record?.number || operation.id);section.append(heading);
-            const writer=failure.conflicts?.find(item=>item.sheet===operation.sheet&&String(item.id)===operation.id)?.last_edited_by;
-            if(writer){const attribution=document.createElement('p');attribution.textContent='Last saved by '+writer;section.append(attribution);}
-            const summary=document.createElement('div');summary.className='company-conflict-values';
-            for(const [label,value] of [['Your entry',operation.record],['Latest saved entry',saved]]) {
-                const block=document.createElement('div'),caption=document.createElement('strong'),text=document.createElement('pre');caption.textContent=label;
-                const money=value=>new Intl.NumberFormat('en-PH',{style:'currency',currency:'PHP'}).format(Number(value || 0)/100);
-                const describe=row=>{
-                    if(!row)return 'Entry deleted';
-                    const pairs=[['Transaction',row.number || 'Draft'],['Date',row.date],['Status',row.status],['Party',row.customer || row.supplier],['Reference',row.reference || row.invoice || row.bill],['Amount',row.gross!==undefined?money(row.gross):row.amount!==undefined?money(row.amount):null],['Account',row.account],['Cash / bank',row.bank],['Terms',row.terms],['Description',row.memo || row.description || row.particulars || row.notes],['Attachments',row.attachments?.map(file=>file.name).join(', ')]];
-                    if(row.lines?.length)pairs.push(['Journal lines',row.lines.map(line=>line.account+': Debit '+money(line.debit)+' / Credit '+money(line.credit)).join('\n')]);
-                    if(row.employees)pairs.push(['Payroll',row.periodStart+' to '+row.periodEnd+'; '+row.employees.length+' employees']);
-                    return pairs.filter(([,value])=>value!==undefined&&value!==null&&value!=='').map(([label,value])=>label+': '+value).join('\n').slice(0,4000);
-                };
-                text.textContent=describe(value);block.append(caption,text);summary.append(block);
-            }
-            section.append(summary);
-            const select=document.createElement('select');select.setAttribute('aria-label','Resolution for '+operation.id);
-            select.add(new Option('Use the latest saved entry','latest'));if(saved)select.add(new Option('Use my changes','mine'));section.append(select);choices.push({operation,select});dialog.append(section);
-        }
-        if (!conflicts.length) {const message=document.createElement('p');message.textContent='Your changes can now be saved. Select Confirm and continue.';dialog.append(message);}
-        const controls=document.createElement('div'),cancel=document.createElement('button'),apply=document.createElement('button');
-        cancel.type=apply.type='button';cancel.textContent='Cancel';apply.textContent='Confirm and continue';controls.append(cancel,apply);dialog.append(controls);
-        cancel.addEventListener('click',()=>dialog.close());dialog.addEventListener('close',()=>dialog.remove());
-        apply.addEventListener('click',()=>{
-            const merged=records.rebase(database.state,database.payroll,state,payroll,latest.state,latest.payroll);
-            for(const {operation,select} of choices) {
-                if(select.value==='mine') continue;
-                const saved=getRows(latest,operation.sheet).find(row=>String(row.id)===operation.id);
-                let rows=getRows(merged,operation.sheet).filter(row=>String(row.id)!==operation.id);
-                if(saved) rows.push(clone(saved));
-                if(operation.sheet==='payroll') merged.payroll=rows; else merged.state[operation.sheet]=rows;
-            }
-            state=merged.state;payroll=merged.payroll;revision=latest.revision;Object.assign(database,latest);retry=null;failure=null;pending=operations().length>0;
-            try { if(pending) stash(); else sessionStorage.removeItem(recoveryKey); } catch {failure={status:0,message:'Could not preserve the reviewed changes. Download your unsaved work.'};}
-            for(const open of document.querySelectorAll('dialog[open]')) open.close();
-            notify();render();if(pending&&!failure)flush().catch(()=>{});
+    function showConflictDialog() {
+        if (!failure || conflictDialog) return;
+        const dialog = document.createElement('dialog');
+        conflictDialog = dialog;
+        dialog.className = 'company-conflict-dialog'; dialog.setAttribute('aria-label', 'Resolve unsaved changes');
+        const title = document.createElement('h2'); title.textContent = 'Resolve unsaved changes';
+        const explanation = document.createElement('p');
+        explanation.textContent = 'Discard Local loads the latest saved book and removes this tab’s draft. Force Overwrite keeps your changed entries and replaces their saved versions. Other entries stay unchanged. Permissions and posting checks still apply.';
+        const message = document.createElement('p'); message.setAttribute('aria-live', 'polite'); message.textContent = failure.message;
+        const controls = document.createElement('div');
+        const discard = document.createElement('button'), overwrite = document.createElement('button');
+        discard.type = overwrite.type = 'button';
+        discard.textContent = 'Discard Local & Reload Latest'; overwrite.textContent = 'Force Overwrite Database';
+        overwrite.disabled = !database.canWrite || (!collaborative && restoreAvailable && !validRecovery);
+        controls.append(discard, overwrite); dialog.append(title, explanation, message, controls);
+        const exportButton = document.createElement('button'); exportButton.type = 'button'; exportButton.textContent = 'Export unsaved work (.json)';
+        exportButton.addEventListener('click', download); dialog.append(exportButton);
+        discard.addEventListener('click', () => {
+            if (resolutionRunning) return;
+            try {
+                clearRecovery(); clearTimeout(timer); pending = false; retry = null; failure = null; leaving = true;
+                location.reload();
+            } catch { message.textContent = 'Could not clear the local draft. Keep this tab open and try again.'; }
         });
-        document.body.append(dialog);dialog.showModal();
+        overwrite.addEventListener('click', async () => {
+            if (resolutionRunning || !database.canWrite) return;
+            resolutionRunning = true; discard.disabled = overwrite.disabled = true;
+            try {
+                await overwriteChanges();
+                dialog.close(); notify(); render();
+            } catch (error) { message.textContent = error.message; }
+            finally { resolutionRunning = false; discard.disabled = false; overwrite.disabled = !database.canWrite; }
+        });
+        dialog.addEventListener('cancel', event => { if (resolutionRunning) event.preventDefault(); });
+        dialog.addEventListener('close', () => { dismissedFailure = failure; conflictDialog = null; dialog.remove(); });
+        document.body.append(dialog); dialog.showModal();
+    }
+    async function overwriteChanges() {
+        if (!database.canWrite) throw Error('You do not have permission to save Sheet transactions.');
+        if (running) await running.catch(() => {});
+        const response = await fetch(database.url, {headers: {'Accept': 'application/json', 'X-Company-ID': String(database.company_id)}, cache: 'no-store'});
+        if (!response.ok) throw Error('Could not load the latest saved book. Your changes remain in this tab.');
+        const latest = await response.json();
+        if (String(latest.company_id) !== String(database.company_id) || !Number.isInteger(latest.revision) || latest.revision < revision || !validState(latest.state) || !Array.isArray(latest.payroll) || (collaborative && !latest.record_versions)) throw Error('The server did not return a valid version of this company book.');
+        const recovering = localRecoveryPending && validRecovery;
+        if (recovering && collaborative && !recoverableOperations) throw Error('This older recovery has no entry history. Restore and review it before saving.');
+        const localState = recovering ? preserved.state : state, localPayroll = recovering ? preserved.payroll : payroll;
+        const baseState = recovering ? preserved.base_state : database.state, basePayroll = recovering ? preserved.base_payroll : database.payroll;
+        const merged = {state: clone(latest.state), payroll: clone(latest.payroll)};
+        if (collaborative) {
+            // Replace only entries this tab changed, using the freshly fetched versions for the normal atomic save.
+            for (const operation of records.changes(baseState, basePayroll, localState, localPayroll, latest.record_versions)) {
+                const rows = operation.sheet === 'payroll' ? merged.payroll : merged.state[operation.sheet];
+                const index = rows.findIndex(row => String(row.id) === operation.id);
+                if (operation.record === null) { if (index >= 0) rows.splice(index, 1); }
+                else if (index >= 0) rows[index] = clone(operation.record);
+                else rows.push(clone(operation.record));
+            }
+        } else {
+            throw Error('This book does not support safe entry-level overwrite. Discard Local and reload the latest book.');
+        }
+        revision = latest.revision; Object.assign(database, latest); state = merged.state; payroll = merged.payroll;
+        retry = null; failure = null; recoveryReview = false; migration = false; restoreAvailable = false;
+        localRecoveryPending = false;
+        pending = operations().length > 0;
+        if (pending) stash();
+        else clearRecovery();
+        await flush();
+        for (const open of document.querySelectorAll?.('dialog[open]') || []) { if (open !== conflictDialog) open.close(); }
+        notify(); render();
     }
     setInterval(refreshRemote,5000);
     window.addEventListener('focus',refreshRemote);

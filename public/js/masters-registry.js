@@ -4,13 +4,23 @@
     const parties = main.dataset.registry === 'parties', bank = main.dataset.registry === 'bank-accounts', atc = main.dataset.registry === 'atc-codes', label = employees ? 'employee' : parties ? 'party' : bank ? 'bank account' : 'tax code', keys = employees ? ['code','name','tin','classification','alphalist'] : bank ? ['name','bank','account_number','gl_account','currency'] : atc ? ['code','name','rate','category','payee','form'] : parties ? ['code','name','classification','tin'] : ['code','name','kind','rate','atc'];
     let records = JSON.parse(el('registry-data').textContent), editing = null, pending = null, page = 1, sortKey = bank ? 'name' : 'code', direction = 1;
     const token = document.querySelector('meta[name="csrf-token"]').content;
+    let duplicateIds = new Set();
+    const duplicateToggle = document.createElement('input'), duplicateLabel = document.createElement('label');
+    if (parties || employees) {
+        duplicateToggle.type = 'checkbox'; duplicateToggle.id = 'registry-duplicate-tins';
+        duplicateLabel.append(duplicateToggle, document.createTextNode(' Duplicate TINs only (includes archived)'));
+        el('registry-status').after(duplicateLabel);
+        duplicateToggle.addEventListener('change', () => { page = 1; render(); });
+    }
     function filtered() {
         const search = (el('registry-search').value + ' ' + el('sales-global-search').value).trim().toLowerCase(), classification = el('registry-filter')?.value;
-        return records.filter(record => (el('registry-archived')?.checked || !record.archived) && (!classification || record.classification === classification || (record.classification === 'Both' && classification !== 'Both')) && [record.code,record.name,record.tin,record.description,record.kind,record.atc,record.bank,record.account_number,record.gl_account,record.currency,record.category,record.payee,record.form].join(' ').toLowerCase().includes(search)).sort((a,b) => direction * (sortKey === 'rate' ? Number(a.rate)-Number(b.rate) : String(a[sortKey] || '').localeCompare(String(b[sortKey] || ''))));
+        return records.filter(record => (duplicateToggle.checked ? duplicateIds.has(String(record.id)) : (el('registry-archived')?.checked || !record.archived)) && (!classification || record.classification === classification || (record.classification === 'Both' && classification !== 'Both')) && [record.code,record.name,record.tin,record.description,record.kind,record.atc,record.bank,record.account_number,record.gl_account,record.currency,record.category,record.payee,record.form].join(' ').toLowerCase().includes(search)).sort((a,b) => direction * (sortKey === 'rate' ? Number(a.rate)-Number(b.rate) : String(a[sortKey] || '').localeCompare(String(b[sortKey] || ''))));
     }
     function icon(name) { const span = document.createElement('span'); span.className = 'material-symbols-outlined'; span.textContent = name; span.setAttribute('aria-hidden','true'); return span; }
     function tool(label, symbol, callback) { const button = document.createElement('button'); button.type = 'button'; button.className = 'masters-row-action'; button.title = label; button.setAttribute('aria-label', label); button.append(icon(symbol)); button.addEventListener('click',callback); return button; }
     function render() {
+        duplicateIds = (parties || employees) ? (window.MasterImportData?.duplicateTinIds(records) || new Set()) : new Set();
+        duplicateToggle.setAttribute('aria-label', 'Duplicate TINs only: ' + duplicateIds.size + ' records, including archived');
         const list = filtered(), size = Number(el('registry-page-size').value), pages = Math.max(1,Math.ceil(list.length/size)); page = Math.min(page,pages); const start = (page-1)*size;
         el('registry-rows').replaceChildren();
         for (const record of list.slice(start,start+size)) {
@@ -18,6 +28,7 @@
             keys.forEach(key => {
                 const cell = row.insertCell(); cell.textContent = key === 'rate' ? Number(record.rate).toLocaleString(undefined,{maximumFractionDigits:4})+'%' : key === 'alphalist' ? (record.tin && /[1-9]/.test(record.tin) && record.address ? 'Ready' : 'Incomplete') : record[key] || '—';
                 if (key === 'gl_account') { const link = document.createElement('a'); const url = new URL(main.dataset.accountsUrl,location.origin); url.searchParams.set('account',String(record.gl_account).split(' · ')[0]); link.href = url.href; link.target = '_blank'; link.rel = 'noopener'; link.textContent = record.gl_account; link.className = 'registry-gl-link'; cell.replaceChildren(link); }
+                if (key === 'tin' && duplicateIds.has(String(record.id))) { const badge = document.createElement('small'); badge.textContent = 'Duplicate TIN - check existing records'; cell.append(badge); }
                 if (key === 'code') { cell.className = 'registry-code'; }
                 if (key === 'name' && parties && record.description) { const small = document.createElement('small'); small.textContent = record.description; cell.append(small); }
                 if (key === 'name' && parties && record.is_petty_cash) { const badge = document.createElement('small'); badge.textContent = 'Petty cash / miscellaneous payee · TIN optional'; cell.append(badge); }
@@ -32,6 +43,7 @@
         el('registry-range').textContent = 'Showing '+(list.length ? start+1 : 0)+'–'+Math.min(start+size,list.length)+' of '+list.length+' records'; el('registry-page').textContent = 'Page '+page+' of '+pages; el('registry-previous').disabled = page === 1; el('registry-next').disabled = page === pages;
         document.querySelectorAll('[data-sort]').forEach(button => { const key = keys[Number(button.dataset.sort)]; button.parentElement.setAttribute('aria-sort',key === sortKey ? direction === 1 ? 'ascending' : 'descending' : 'none'); button.disabled = !key; });
     }
+    document.addEventListener('DOMContentLoaded', render, {once: true});
     function updatePartyType(){
         if(!parties)return;
         const individual=form.elements.entity_type.value==='individual';

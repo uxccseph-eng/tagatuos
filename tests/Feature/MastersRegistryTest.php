@@ -84,4 +84,31 @@ class MastersRegistryTest extends TestCase
         $this->postJson('/masters/parties/import/preview', ['records' => [[...$row, 'code' => 'IMPORT-5', 'archived' => true]]])->assertOk()->assertJsonPath('preview_token', null);
         $this->withSession($this->workspace('Fresh Workspace'))->postJson('/masters/parties', [...$row, 'code' => 'VARIOUS-CUST'])->assertUnprocessable()->assertJsonValidationErrors('code');
     }
+
+    public function test_party_tins_are_unique_by_taxpayer_and_branch_including_archived_and_legacy_formats(): void
+    {
+        $workspaceKey = ChartAccount::workspaceKey($this->workspace()['company_setup']);
+        $existing = Party::factory()->create(['workspace_key' => $workspaceKey, 'tin' => '123456789', 'archived' => true]);
+        $payload = ['code' => 'NEW-SUPP', 'name' => 'Another Supplier', 'classification' => 'Supplier', 'tin' => '123-456-789-00000', 'address' => 'Sample City'];
+        $this->withSession($this->workspace())->postJson('/masters/parties', $payload)->assertUnprocessable()->assertJsonValidationErrors('tin');
+        $this->putJson('/masters/parties/'.$existing->id, [...$payload, 'code' => $existing->code])->assertOk();
+        $this->postJson('/masters/parties', [...$payload, 'tin' => '123-456-789-00123'])->assertCreated();
+        $this->postJson('/masters/parties', [...$payload, 'code' => 'SAME-BRANCH', 'tin' => '123456789123'])->assertUnprocessable()->assertJsonValidationErrors('tin');
+        $this->withSession($this->workspace('Other Book'))->postJson('/masters/parties', $payload)->assertCreated();
+    }
+
+    public function test_party_updates_and_imports_cannot_duplicate_a_tin_but_unknown_tins_remain_allowed(): void
+    {
+        $payload = ['code' => 'PARTY-A', 'name' => 'Party A', 'classification' => 'Customer', 'tin' => '987654321', 'address' => 'Sample City'];
+        $first = $this->withSession($this->workspace())->postJson('/masters/parties', $payload)->assertCreated()->json('record');
+        $other = $this->postJson('/masters/parties', [...$payload, 'code' => 'PARTY-B', 'name' => 'Party B', 'tin' => '111222333'])->assertCreated()->json('record');
+        $this->putJson('/masters/parties/'.$other['id'], [...$payload, 'code' => 'PARTY-B'])->assertUnprocessable()->assertJsonValidationErrors('tin');
+        $preview = $this->postJson('/masters/parties/import/preview', ['records' => [[...$payload, 'code' => 'IMPORT-DUP', 'name' => 'Import Duplicate', 'tin' => '987-654-321-000']]])->assertOk();
+        $this->assertNull($preview->json('preview_token'));
+        $this->assertNotEmpty($preview->json('errors'));
+        foreach (['UNKNOWN-A', 'UNKNOWN-B'] as $code) {
+            $this->postJson('/masters/parties', [...$payload, 'code' => $code, 'name' => $code, 'tin' => '000000000'])->assertCreated();
+        }
+        $this->assertDatabaseHas('parties', ['id' => $first['id'], 'tin' => '987-654-321-00000']);
+    }
 }

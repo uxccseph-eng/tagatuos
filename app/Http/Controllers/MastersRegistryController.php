@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\SaveMasterRecordRequest;
 use App\MasterCode;
+use App\MasterTin;
 use App\Models\BankAccount;
 use App\Models\ChartAccount;
 use App\Models\Employee;
@@ -77,18 +78,23 @@ class MastersRegistryController extends Controller
             $model::seedWorkspace($workspaceKey);
         }
 
-        $data = $request->validated();
-        for ($attempt = 0; ; $attempt++) {
-            try {
-                $record = $model::query()->create([...$data, 'workspace_key' => $workspaceKey]);
-                break;
-            } catch (UniqueConstraintViolationException $exception) {
-                if (! $request->attributes->get('generated_code') || $attempt >= 4) {
-                    throw $exception;
+        $record = MasterTin::write($registry, $workspaceKey, function () use ($request, $registry, $workspaceKey, $model): Model {
+            $data = $request->validated();
+            MasterTin::assertUnique($registry, $workspaceKey, $data['tin'] ?? null);
+            for ($attempt = 0; ; $attempt++) {
+                try {
+                    $record = $model::query()->create([...$data, 'workspace_key' => $workspaceKey]);
+                    break;
+                } catch (UniqueConstraintViolationException $exception) {
+                    if (! $request->attributes->get('generated_code') || $attempt >= 4) {
+                        throw $exception;
+                    }
+                    $data['code'] = MasterCode::registry($workspaceKey, $registry, $data['classification'] ?? '');
                 }
-                $data['code'] = MasterCode::registry($workspaceKey, $registry, $data['classification'] ?? '');
             }
-        }
+
+            return $record;
+        });
 
         return response()->json(['record' => $record], 201);
     }
@@ -96,7 +102,11 @@ class MastersRegistryController extends Controller
     public function update(SaveMasterRecordRequest $request, string $registry, int $record): JsonResponse
     {
         $item = $this->record($request, $registry, $record);
-        $item->update($request->validated());
+        $workspaceKey = ChartAccount::workspaceKey($request->session()->get('company_setup'));
+        MasterTin::write($registry, $workspaceKey, function () use ($request, $registry, $workspaceKey, $record, $item): void {
+            MasterTin::assertUnique($registry, $workspaceKey, $request->validated('tin'), $record);
+            $item->update($request->validated());
+        });
 
         return response()->json(['record' => $item->fresh()]);
     }
@@ -112,7 +122,11 @@ class MastersRegistryController extends Controller
     public function restore(Request $request, string $registry, int $record): JsonResponse
     {
         $item = $this->record($request, $registry, $record);
-        $item->update(['archived' => false]);
+        $workspaceKey = ChartAccount::workspaceKey($request->session()->get('company_setup'));
+        MasterTin::write($registry, $workspaceKey, function () use ($registry, $workspaceKey, $item, $record): void {
+            MasterTin::assertUnique($registry, $workspaceKey, $item->getAttribute('tin'), $record);
+            $item->update(['archived' => false]);
+        });
 
         return response()->json(['record' => $item->fresh()]);
     }
