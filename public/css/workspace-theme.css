@@ -1,0 +1,124 @@
+/* Shared semantic colours for public pages, account pages, and the workspace. */
+html:not(.dark) {
+    color-scheme: light;
+    --theme-bg: #f8fafc;
+    --theme-panel: #fff;
+    --theme-soft: #f1f5f9;
+    --theme-field: #fff;
+    --theme-text: #0f172a;
+    --theme-muted: #475569;
+    --theme-line: #cbd5e1;
+    --theme-accent: #047857;
+    --theme-on-accent: #fff;
+    --bg: var(--theme-bg);
+    --panel: var(--theme-panel);
+    --border: var(--theme-line);
+    --text: var(--theme-text);
+    --muted: var(--theme-muted);
+    --accent: var(--theme-accent);
+}
+html.dark {
+    color-scheme: dark;
+    --theme-bg: #0e131f;
+    --theme-panel: #161c28;
+    --theme-soft: #242a36;
+    --theme-field: #101824;
+    --theme-text: #dde2f3;
+    --theme-muted: #b8c4d4;
+    --theme-line: #3b4a40;
+    --theme-accent: #00f5a0;
+    --theme-on-accent: #002111;
+    --bg: var(--theme-bg);
+    --panel: var(--theme-panel);
+    --border: var(--theme-line);
+    --text: var(--theme-text);
+    --muted: var(--theme-muted);
+    --accent: var(--theme-accent);
+}
+.workspace-theme-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 36px;
+    padding: 7px 10px;
+    border: 1px solid var(--theme-line);
+    border-radius: 6px;
+    background: var(--theme-panel);
+    color: var(--theme-text);
+    font: 600 12px/20px "Segoe UI", Arial, sans-serif;
+    cursor: pointer;
+    white-space: nowrap;
+}
+.workspace-theme-toggle:focus-visible { outline: 2px solid var(--theme-accent); outline-offset: 3px; }
+
+/* Account screens used a separate dark-only palette. */
+html:not(.dark) :is(.account-header, .portal-strip) { background: var(--theme-panel); }
+html:not(.dark) body:has(.account-header) :is(label, .portal-strip #team-portal-address) { color: var(--theme-text); }
+html:not(.dark) body:has(.account-header) :is(input:not([type="checkbox"]), select, textarea) {
+    background-color: var(--theme-field);
+    color: var(--theme-text);
+    border-color: #7b899a;
+}
+html:not(.dark) body:has(.account-header) :is(.secondary, .role-badge, .permission-chips span, .team-table th) {
+    background: var(--theme-soft);
+    color: var(--theme-text);
+    border-color: var(--theme-line);
+}
+html:not(.dark) body:has(.account-header) :is(.team-table tbody tr:hover, .icon-button:hover) { background: var(--theme-soft); }
+html:not(.dark) body:has(.account-header) :is(.member-email, .storage-note, .account-footer, .client-book-progress p) { color: var(--theme-muted); }
+html:not(.dark) body:has(.account-header) :is(.primary, .button.primary) { background: var(--theme-accent); color: var(--theme-on-accent); }
+html:not(.dark) :is(.brand-mark, .book-avatar, .intro-points > div > span, .owner-badge, .status-badge, .notice) {
+    background: #ecfdf5;
+    color: #065f46;
+    border-color: #a7d9c4;
+}
+html:not(.dark) :is(.notice.error, .status-badge.suspended) { background: #fff1f2; color: #9f1239; border-color: #fda4af; }
+html:not(.dark) :is(.book-delete-link, .client-book-progress.is-failed p, .icon-button.danger) { color: #b42335; }
+
+/* Legacy public/setup surfaces retain their layout while following the selected theme. */
+html:not(.dark) body:is(.landing-page, .company-setup-page) { background: var(--theme-bg); color: var(--theme-text); }
+html:not(.dark) :is(.landing-page, .company-setup-page) :is(.glass-canvas, .glass-canvas-card, .glass-canvas-glow, .glass-card, .choice-card) {
+    background: var(--theme-panel);
+    border-color: var(--theme-line);
+    box-shadow: 0 8px 24px #0f172a0a;
+}
+html:not(.dark) :is(.landing-page, .company-setup-page) :is([class~="text-white"], [class~="text-slate-200"], [class~="text-slate-300"]) { color: var(--theme-text); }
+html:not(.dark) :is(.landing-page, .company-setup-page) :is([class~="text-slate-400"], [class~="text-slate-500"]) { color: var(--theme-muted); }
+html:not(.dark) :is(.landing-page, .company-setup-page) [class*="border-white"] { border-color: var(--theme-line); }
+html:not(.dark) :is(.landing-page, .company-setup-page) :is(
+    [class~="bg-[#02050E]"], [class~="bg-[#070E22]/90"], [class~="bg-[#030712]/80"], [class~="bg-[#030712]"], [class~="bg-[#030712]/75"], [class~="bg-slate-950"],
+    [class~="bg-slate-950/40"], [class~="bg-slate-950/60"], [class~="bg-slate-950/70"],
+    [class~="bg-slate-950/80"], [class~="bg-slate-900"], [class~="bg-slate-900/60"], [class~="bg-slate-900/80"],
+    .rdo-picker, .rdo-trigger, .rdo-picker input, #resource-dialog) {
+    background-color: var(--theme-panel);
+    color: var(--theme-text);
+    border-color: var(--theme-line);
+}
+html:not(.dark) .company-setup-page .cosmic-mesh { background-image: none; }
+html:not(.dark) .company-setup-page .grid-lines { background-image: none; }
+html:not(.dark) .company-setup-page .setup-sec .settings-field > span { color: var(--theme-text); }
+html:not(.dark) .company-setup-page .setup-sec .settings-field small { color: var(--theme-muted); }
+html:not(.dark) .company-setup-page .choice-card .radio-indicator { background: var(--theme-panel); border-color: #7b899a; }
+html:not(.dark) .landing-page .text-glow-gradient { background: linear-gradient(135deg, #0f172a, #047857); background-clip: text; }
+html:not(.dark) .landing-page .text-violet-gradient { background: linear-gradient(135deg, #6d28d9, #0369a1); background-clip: text; }
+html:not(.dark) :is(.text-emerald-300, .text-emerald-400, .text-green-400) { color: #047857; }
+html:not(.dark) :is(.text-cyan-300, .text-cyan-400) { color: #0369a1; }
+html:not(.dark) :is(.text-violet-300, .text-violet-400) { color: #6d28d9; }
+html:not(.dark) :is(.text-amber-400, .text-amber-500) { color: #92400e; }
+html:not(.dark) :is(.text-rose-300, .text-rose-400) { color: #be123c; }
+
+html:not(.dark) .company-setup-page #rdo-options button:hover { background: var(--theme-soft); color: var(--theme-text); }
+.landing-page #mobile-menu .workspace-theme-toggle { width: 100%; margin-block: 8px; }
+@media (max-width: 1279px) {
+    .landing-page header > div .workspace-theme-toggle { display: none; }
+}
+
+html:not(.dark) .landing-page .landing-callout { background: linear-gradient(110deg, #ecfdf5, #f0f9ff); box-shadow: 0 8px 24px #0f172a0a; }
+html:not(.dark) .landing-page .landing-input-sample { background: var(--theme-soft); }
+html:not(.dark) :is([class~="text-emerald-300/80"], [class~="text-emerald-400/80"]) { color: #047857; }
+
+html:not(.dark) .company-setup-page [class*="border-slate-"] { border-color: var(--theme-line); }
+html:not(.dark) :is(.landing-page, .company-setup-page) :is([class~="bg-emerald-950/40"], [class~="bg-emerald-950/60"]) { background-color: #ecfdf5; }
+html:not(.dark) .company-setup-page .text-cyan-100 { color: #075985; }
+html:not(.dark) .company-setup-page .text-emerald-200 { color: #065f46; }
+html:not(.dark) .company-setup-page .text-rose-200 { color: #9f1239; }

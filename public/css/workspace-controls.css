@@ -3,18 +3,18 @@
     --ui-control-height: 42px;
     --ui-control-radius: 6px;
     --ui-control-line: #7b899a;
-    --ui-control-bg: #fff;
-    --ui-control-ink: #172536;
-    --ui-muted: #526176;
+    --ui-control-bg: var(--theme-field, #fff);
+    --ui-control-ink: var(--theme-text, #172536);
+    --ui-muted: var(--theme-muted, #526176);
     --ui-error: #b42335;
     --ui-focus: #047857;
     --ui-soft: #f1f5f9;
 }
 .dark {
     --ui-control-line: #59697d;
-    --ui-control-bg: #101824;
-    --ui-control-ink: #e4ebf3;
-    --ui-muted: #b8c4d4;
+    --ui-control-bg: var(--theme-field, #101824);
+    --ui-control-ink: var(--theme-text, #e4ebf3);
+    --ui-muted: var(--theme-muted, #b8c4d4);
     --ui-error: #ff9aa5;
     --ui-focus: #34d399;
     --ui-soft: #1d2837;

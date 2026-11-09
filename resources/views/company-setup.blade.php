@@ -25,7 +25,7 @@
 @include('working-period-assets')
 <script src="{{ asset('js/draft-leave-guard.js') }}?v={{ filemtime(public_path('js/draft-leave-guard.js')) }}" defer></script></head>
 
-<body class="min-h-screen cosmic-mesh grid-lines relative selection:bg-emerald-500/30 selection:text-emerald-200">
+<body class="company-setup-page min-h-screen cosmic-mesh grid-lines relative selection:bg-emerald-500/30 selection:text-emerald-200">
 
 
 

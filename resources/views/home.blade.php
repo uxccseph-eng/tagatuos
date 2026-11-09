@@ -10,8 +10,8 @@
 <link rel="stylesheet" href="{{ asset('css/app.css') }}">
 <script src="{{ asset('js/app.js') }}" defer></script>
 <meta name="description" content="A new way to manage Philippine business books. Explore the Kontadurya ledger, workflow, and free community tier.">
-<script src="{{ asset('js/draft-leave-guard.js') }}?v={{ filemtime(public_path('js/draft-leave-guard.js')) }}" defer></script></head>
-<body class="selection:bg-emerald-500/30 selection:text-emerald-300 relative bg-[#030712] text-slate-200">
+<script src="{{ asset('js/draft-leave-guard.js') }}?v={{ filemtime(public_path('js/draft-leave-guard.js')) }}" defer></script>@include('workspace-theme-assets')</head>
+<body class="landing-page selection:bg-emerald-500/30 selection:text-emerald-300 relative bg-[#030712] text-slate-200">
 <!-- Ambient Bioluminescent Background Aura -->
 <div class="fixed inset-0 pointer-events-none cyber-grid z-0"></div>
 <div class="fixed -top-40 left-1/4 h-[650px] w-[650px] glow-emerald-spot pointer-events-none z-0 blur-3xl opacity-60"></div>
@@ -43,6 +43,7 @@
 </nav>
 </div>
 <div class="flex shrink-0 items-center gap-3">
+@include('theme-toggle')
 <a class="hidden sm:inline-flex text-[14px] font-medium text-slate-300 hover:text-white transition-colors px-3 py-2" href="{{ route('login') }}">
           Terminal Login
         </a>
@@ -55,6 +56,8 @@
 </button></div>
 </div>
 <nav id="mobile-menu" aria-label="Mobile" class="border-t border-white/10 bg-slate-950 px-6 py-5 xl:hidden" hidden>
+@include('theme-toggle')
+
     <div class="flex flex-col gap-4 text-sm text-slate-300">
         <a href="#features">Features</a>
         <a href="#how">Autonomous Flow</a>
@@ -514,7 +517,7 @@
 <span class="text-white font-sans font-semibold">Row Input Demonstration</span>
 <span class="text-cyan-400 font-mono-tech">Auto-Parsing Active</span>
 </div>
-<div class="mt-4 p-4 rounded-xl bg-gradient-to-r from-cyan-950/30 to-slate-900 border border-cyan-500/20">
+<div class="landing-input-sample mt-4 p-4 rounded-xl bg-gradient-to-r from-cyan-950/30 to-slate-900 border border-cyan-500/20">
 <div class="text-[11px] text-slate-400">Input Given:</div>
 <div class="text-sm font-bold text-white mt-1">Invoice: ₱50,000.00 Gross to Tech Corp</div>
 <div class="mt-3 grid grid-cols-3 gap-2 pt-3 border-t border-white/10 text-center">
@@ -768,7 +771,7 @@
 <!-- Bioluminescent Spatial CTA Pod -->
 <section class="py-20 relative">
 <div class="mx-auto w-full max-w-7xl px-6 sm:px-10">
-<div class="relative overflow-hidden rounded-[36px] bg-gradient-to-r from-emerald-950/60 via-slate-900 to-cyan-950/60 border border-emerald-500/30 p-8 sm:p-16 lg:p-20 text-center shadow-[0_0_60px_rgba(16,185,129,0.15)]">
+<div class="landing-callout relative overflow-hidden rounded-[36px] bg-gradient-to-r from-emerald-950/60 via-slate-900 to-cyan-950/60 border border-emerald-500/30 p-8 sm:p-16 lg:p-20 text-center shadow-[0_0_60px_rgba(16,185,129,0.15)]">
 <div class="absolute -top-32 left-1/2 -translate-x-1/2 h-64 w-96 bg-emerald-500/20 blur-3xl pointer-events-none"></div>
 <div class="relative z-10 max-w-2xl mx-auto">
 <span class="inline-flex items-center gap-2 rounded-full border border-emerald-400/30 bg-emerald-500/10 px-3 py-1 font-mono-tech text-xs font-semibold uppercase tracking-[0.2em] text-emerald-300">

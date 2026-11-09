@@ -98,8 +98,8 @@ html:not(.dark) {
     --sales-on-background: 15 23 42;
     --sales-primary-container: 4 120 87;
     --sales-primary-fixed: 6 95 70;
-    --sales-primary: 209 250 229;
-    --sales-on-primary: 6 95 70;
+    --sales-primary: 4 120 87;
+    --sales-on-primary: 255 255 255;
     --sales-on-primary-fixed: 255 255 255;
     --sales-on-primary-container: 255 255 255;
     --sales-secondary: 3 105 161;

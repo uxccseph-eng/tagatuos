@@ -31,20 +31,7 @@ document.querySelectorAll('[data-section-toggle]').forEach((button, index) => {
         button.setAttribute('aria-expanded', String(!section.hidden));
     });
 });
-const themeButton = document.getElementById('themeToggleBtn');
-function updateTheme(isDark) {
-    document.documentElement.classList.toggle('dark', isDark);
-    document.documentElement.style.colorScheme = isDark ? 'dark' : 'light';
-    document.getElementById('themeToggleIcon').textContent = isDark ? 'light_mode' : 'dark_mode';
-    themeButton.setAttribute('aria-label', isDark ? 'Switch to light theme' : 'Switch to dark theme');
-    themeButton.title = isDark ? 'Switch to light theme' : 'Switch to dark theme';
-}
-try { updateTheme(localStorage.getItem('kontadurya.workspace.theme') !== 'light'); } catch { updateTheme(true); }
-themeButton.addEventListener('click', () => {
-    const isDark = !document.documentElement.classList.contains('dark');
-    updateTheme(isDark);
-    try { localStorage.setItem('kontadurya.workspace.theme', isDark ? 'dark' : 'light'); } catch { /* Storage may be unavailable. */ }
-});
+window.WorkspaceTheme?.refresh();
 const workspaceDialog = document.getElementById('workspace-dialog');
 const searchDialog = document.getElementById('workspace-search');
 function openWorkspaceTopic(topic) {
