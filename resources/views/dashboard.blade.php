@@ -11,7 +11,9 @@
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
   <script src="{{ asset('js/dashboard-config.js') }}"></script>
-  <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}?v={{ filemtime(public_path('css/dashboard.css')) }}"><script src="{{ route('masters.accounts.catalog', ['_company_id' => $company['company_id'] ?? null]) }}"></script><script src="{{ asset('js/sheet-masters.js') }}?v={{ filemtime(public_path('js/sheet-masters.js')) }}" defer></script><script src="{{ asset('js/workspace-ledger.js') }}?v={{ filemtime(public_path('js/workspace-ledger.js')) }}" defer></script><script src="{{ asset('js/dashboard-report.js') }}?v={{ filemtime(public_path('js/dashboard-report.js')) }}" defer></script><script src="{{ asset('js/dashboard.js') }}?v={{ filemtime(public_path('js/dashboard.js')) }}" defer></script>
+  <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}?v={{ filemtime(public_path('css/dashboard.css')) }}"><script src="{{ route('masters.accounts.catalog', ['_company_id' => $company['company_id'] ?? null]) }}"></script><script src="{{ asset('js/sheet-masters.js') }}?v={{ filemtime(public_path('js/sheet-masters.js')) }}" defer></script>
+  @include('company-ledger-assets')
+  <script src="{{ asset('js/workspace-ledger.js') }}?v={{ filemtime(public_path('js/workspace-ledger.js')) }}" defer></script><script src="{{ asset('js/dashboard-report.js') }}?v={{ filemtime(public_path('js/dashboard-report.js')) }}" defer></script><script src="{{ asset('js/dashboard.js') }}?v={{ filemtime(public_path('js/dashboard.js')) }}" defer></script>
 <script src="{{ asset('js/draft-leave-guard.js') }}?v={{ filemtime(public_path('js/draft-leave-guard.js')) }}" defer></script><link rel="stylesheet" href="{{ asset('css/workspace-typography.css') }}?v={{ filemtime(public_path('css/workspace-typography.css')) }}">
 </head>
 <body class="bg-[#f8fafc] dark:bg-[#0e131f] text-slate-800 dark:text-slate-100 font-sans antialiased min-h-screen transition-colors duration-300">

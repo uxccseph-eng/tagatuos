@@ -29,6 +29,7 @@ class ClientDashboardTest extends TestCase
             $response->assertSee(route('dashboard', ['company_id' => $book->id]), false);
         }
         $this->assertDatabaseCount('company_ledgers', 0);
+        $response->assertSeeInOrder(['js/company-ledger-records.js', 'js/company-ledger-sync.js', 'js/workspace-ledger.js', 'js/dashboard-report.js', 'js/dashboard.js']);
     }
 
     public function test_switch_links_use_explicit_company_context_and_do_not_grant_access_to_other_clients(): void

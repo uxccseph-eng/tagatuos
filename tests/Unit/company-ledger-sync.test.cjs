@@ -45,6 +45,31 @@ test('database bootstrap takes precedence over old browser cache', () => {
     assert.equal(p.api.state().sales.length, 0);
     assert.equal(p.requests.length, 0);
 });
+
+test('idle dashboards receive saved journals from another accountant without posting or reloading', async () => {
+    const journals = [{id: 'saved-journal', date: '2026-11-01', lines: [{account: '1020', debit: 50000, credit: 0}, {account: '4020', debit: 0, credit: 50000}]}];
+    const p = boot({collaborative: true, fetcher: async (payload, count) => {
+        assert.equal(payload, null);
+        return {ok: true, json: async () => count === 1 ? {revision: 1} : {...p.database, revision: 1, journals}};
+    }});
+    await p.intervals[0]();
+    assert.equal(p.api.journals()[0].lines[0].debit, 50000);
+    assert.equal(p.database.revision, 1);
+    assert.equal(p.api.pending(), false);
+    assert.equal(p.requests.length, 2);
+    assert.equal(p.reloads(), 0);
+});
+
+test('idle refresh skips unchanged revisions and rejects a snapshot for another client', async () => {
+    const unchanged = boot({collaborative: true, fetcher: async () => ({ok: true, json: async () => ({revision: 0})})});
+    await unchanged.intervals[0]();
+    assert.equal(unchanged.requests.length, 1);
+    const p = boot({collaborative: true, fetcher: async (payload, count) => ({ok: true, json: async () => count === 1 ? {revision: 1} : {...p.database, company_id: 2, revision: 1, journals: [{id: 'foreign'}]}})});
+    await p.intervals[0]();
+    assert.equal(p.api.journals().length, 0);
+    assert.equal(p.database.revision, 0);
+    assert.equal(p.reloads(), 0);
+});
 test('a save remains pending until acknowledged and writes a recoverable copy', async () => {
     const p = boot(); const state = empty(); state.sales.push({id: 1});
     p.api.saveState(state);
