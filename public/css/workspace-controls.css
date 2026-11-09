@@ -1,0 +1,238 @@
+:root {
+    --ui-font: "Segoe UI", Arial, sans-serif;
+    --ui-control-height: 42px;
+    --ui-control-radius: 6px;
+    --ui-control-line: #7b899a;
+    --ui-control-bg: #fff;
+    --ui-control-ink: #172536;
+    --ui-muted: #526176;
+    --ui-error: #b42335;
+    --ui-focus: #047857;
+    --ui-soft: #f1f5f9;
+}
+.dark {
+    --ui-control-line: #59697d;
+    --ui-control-bg: #101824;
+    --ui-control-ink: #e4ebf3;
+    --ui-muted: #b8c4d4;
+    --ui-error: #ff9aa5;
+    --ui-focus: #34d399;
+    --ui-soft: #1d2837;
+}
+
+/* Shared form controls. File inputs, switches, and printed BIR forms keep their own layout. */
+:is(#new-entry-form, #journal-entry-form, .settings-field, .masters-fields, .party-address-grid,
+    .cwt-entry-fields, .collection-entry-fields, .payroll-entry-inputs, #payroll-remittance-form,
+    .sheet-master-create, .masters-mapping-grid, .payroll-import-fields, .guided-mapping,
+    .payroll-entry-link-form, .field, [data-company-form], .account-form)
+:where(input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([role="switch"]), select, textarea) {
+    box-sizing: border-box;
+    display: block;
+    width: 100%;
+    min-width: 0;
+    height: var(--ui-control-height);
+    min-height: var(--ui-control-height);
+    padding: 10px 12px;
+    border: 1px solid var(--ui-control-line);
+    border-radius: var(--ui-control-radius);
+    background-color: var(--ui-control-bg);
+    color: var(--ui-control-ink);
+    font: 400 14px/20px var(--ui-font);
+    letter-spacing: normal;
+    transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+:is(#new-entry-form, #journal-entry-form, .settings-field, .masters-fields, .party-address-grid,
+    .cwt-entry-fields, .collection-entry-fields, .payroll-entry-inputs, #payroll-remittance-form,
+    .sheet-master-create, .masters-mapping-grid, .payroll-import-fields, .guided-mapping,
+    .payroll-entry-link-form, .field, [data-company-form], .account-form) textarea {
+    height: auto;
+    min-height: 96px;
+    resize: vertical;
+}
+:is(#new-entry-form, #journal-entry-form, .settings-field, .masters-fields, .party-address-grid,
+    .cwt-entry-fields, .collection-entry-fields, .payroll-entry-inputs, #payroll-remittance-form,
+    .sheet-master-create, .masters-mapping-grid, .payroll-import-fields, .guided-mapping,
+    .payroll-entry-link-form, .field, [data-company-form], .account-form) :is(input, select, textarea):focus-visible {
+    outline: 2px solid var(--ui-focus);
+    outline-offset: 2px;
+    border-color: var(--ui-focus);
+    box-shadow: none;
+}
+:is(#new-entry-form, #journal-entry-form, .settings-field, .masters-fields, .party-address-grid,
+    .cwt-entry-fields, .collection-entry-fields, .payroll-entry-inputs, #payroll-remittance-form,
+    .sheet-master-create, .masters-mapping-grid, .payroll-import-fields, .guided-mapping,
+    .payroll-entry-link-form, .field, [data-company-form], .account-form) [aria-invalid="true"] {
+    border-color: #dc5464;
+}
+:is(#new-entry-form, #journal-entry-form, .settings-field, .masters-fields, .cwt-entry-fields,
+    .collection-entry-fields, .payroll-entry-inputs, .sheet-master-create) input::placeholder,
+:is(#new-entry-form, .settings-field, .masters-fields, .cwt-entry-fields) textarea::placeholder {
+    color: var(--ui-muted);
+    opacity: 1;
+}
+:is(#new-entry-form, .settings-field, .masters-fields, .cwt-entry-fields, .collection-entry-fields)
+:is(input[readonly], textarea[readonly], select:disabled) {
+    background-color: var(--ui-soft);
+    opacity: 1;
+}
+
+/* Top-aligned captions and a single spacing rhythm prevent hints stretching sibling fields. */
+body :is(.settings-grid, .masters-fields, .party-address-grid, .cwt-field-pair, .remittance-field-pair, .collection-entry-fields) {
+    align-items: start;
+    gap: 20px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+:is(#new-entry-form, .cwt-entry-fields, .sheet-master-create) { gap: 20px; }
+:is(#new-entry-form label, .settings-field, .masters-fields > label, .party-address-grid > label,
+    .cwt-entry-fields label, .collection-entry-fields label, .payroll-entry-inputs label, .field > label) {
+    min-width: 0;
+    font: 600 13px/20px var(--ui-font);
+    letter-spacing: normal;
+    text-transform: none;
+    color: var(--ui-control-ink);
+}
+:is(.masters-fields > label, .party-address-grid > label) { display: block; }
+:is(.masters-fields > label, .party-address-grid > label) > :is(input, select, textarea, .sheet-master-picker) {
+    margin-top: 8px;
+}
+:is(.settings-field, .cwt-entry-fields label, .collection-entry-fields label) {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+:is(#new-entry-form, .settings-field, .masters-fields, .party-address-grid) small {
+    font: 400 12px/18px var(--ui-font);
+    color: var(--ui-muted);
+}
+:is(#new-entry-form, .settings-field, .masters-fields) .settings-error { color: var(--ui-error); }
+
+/* Searchable Masters controls have the same box and inset as their native select neighbours. */
+:is(#new-entry-form, .cwt-entry-fields, .collection-entry-fields, .masters-fields) .sheet-master-picker {
+    position: relative;
+    display: block;
+    min-width: 0;
+    width: 100%;
+}
+:is(#new-entry-form, .cwt-entry-fields, .collection-entry-fields, .masters-fields) .sheet-master-picker::after {
+    content: "";
+    position: absolute;
+    right: 14px;
+    top: 17px;
+    width: 7px;
+    height: 7px;
+    border-right: 1.5px solid var(--ui-muted);
+    border-bottom: 1.5px solid var(--ui-muted);
+    transform: rotate(45deg);
+    pointer-events: none;
+}
+:is(#new-entry-form, .cwt-entry-fields, .collection-entry-fields, .masters-fields) .sheet-master-search {
+    padding-right: 34px;
+    text-overflow: ellipsis;
+}
+#new-entry-form .relative:has(.sheet-master-picker) > .material-symbols-outlined { display: none; }
+#new-entry-form .grid { align-items: start; gap: 16px; }
+#new-entry-form #drawer-gross-input { padding-left: 32px; font-size: 16px; color: var(--ui-control-ink); }
+#new-entry-form :is(.gap-1, .gap-1\.5) { gap: 8px; }
+
+/* Drawer widths allow two legible columns; every drawer keeps its existing fixed action bar. */
+dialog:is(.sales-entry-drawer, .cwt-entry, #payroll-entry, #journal-entry) {
+    width: min(480px, 100vw);
+    border-radius: 0;
+    box-shadow: -8px 0 32px #0002;
+}
+dialog#journal-entry { width: min(840px, 100vw); }
+dialog.masters-account-dialog {
+    border-radius: 12px;
+    backdrop-filter: none;
+    box-shadow: 0 16px 48px #0004;
+    background: rgb(var(--sales-surface-container-low));
+}
+:is(.masters-account-dialog, .cwt-entry, #payroll-entry, #journal-entry) h2 {
+    font-family: var(--ui-font);
+    font-size: 22px;
+    font-weight: 650;
+    letter-spacing: -.02em;
+}
+body .settings-page, body .settings-card h3, body .settings-content-heading h2 { font-family: var(--ui-font); }
+body dialog.masters-account-dialog::backdrop { background: rgb(2 6 23 / .55); backdrop-filter: none; }
+body .masters-account-dialog footer button.masters-primary { box-shadow: none; }
+body .settings-card { border-radius: 10px; box-shadow: none; }
+body .settings-card-title { margin-bottom: 20px; }
+.settings-actions button, .masters-account-dialog footer button, .cwt-entry-footer button {
+    min-height: 40px;
+    font-family: var(--ui-font);
+    font-size: 13px;
+    box-shadow: none;
+}
+body .settings-heading { align-items: start; }
+.settings-field > span { min-height: 20px; }
+.payroll-entry-inputs label { grid-template-columns: 112px minmax(0, 1fr); align-items: start; }
+.payroll-entry-inputs label > :is(input, textarea) { margin: 0; }
+
+body .payroll-entry-link-form { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; }
+.payroll-entry-link-form button, .field-stack .button { min-height: var(--ui-control-height); height: var(--ui-control-height); }
+:is(#new-entry-form, .settings-field, .masters-fields, .field, [data-company-form]) :is(input, select, textarea)[hidden] { display: none !important; }
+
+/* Keep the working grid compact and align numbers without growing every spreadsheet row. */
+:is(#sales-table, #purchases-table, #collections-table, #payments-table, #cwt-table, #wtp-table,
+    #journal-table, #payroll-table, .payroll-grid, #ppe-table)
+:is(input:not([type="checkbox"]):not([type="hidden"]):not([type="file"]), select) {
+    box-sizing: border-box;
+    min-height: 36px;
+    height: 36px;
+    min-width: 0;
+    padding-block: 7px;
+    font-size: 13px;
+    line-height: 20px;
+    border-radius: 5px;
+    font-variant-numeric: tabular-nums;
+}
+:is(.sheet-toolbar, .masters-toolbar, .books-tools) { box-shadow: none; }
+.working-date-range { align-items: end; gap: 8px; }
+.working-date-range :is(input, button) { box-sizing: border-box; height: 36px !important; }
+.working-date-range label { font-family: var(--ui-font); font-size: 12px; line-height: 18px; }
+.masters-search, .registry-type-filter > select { box-sizing: border-box; min-height: 38px; }
+.masters-search { flex: 1 1 220px; min-width: 0; }
+.registry-type-filter { min-width: 0; }
+.registry-type-filter select { min-width: 120px; }
+body:has(.account-header) { background-image: none; }
+
+/* Contain the heading and date selector instead of clipping a wider page on phones. */
+body :is(.sheet-heading-row, .sheet-heading-context, .sheet-heading-context > div, .sheet-period, .sheet-period-controls) {
+    min-width: 0;
+    max-width: 100%;
+}
+body .sheet-period { display: grid; grid-template-columns: minmax(0, 1fr); width: 100%; }
+body .sheet-period-label { border-right: 0; padding: 8px 10px; }
+body .sheet-period-controls { flex-wrap: wrap; }
+body .working-date-range { flex: 1 1 100%; border-left: 0; padding: 8px 4px; }
+body .working-date-range label { flex: 1 1 130px; min-width: 0; }
+body .working-date-range input { width: 100%; min-width: 0; }
+@media (max-width: 760px) {
+    body .sheet-heading-row { grid-template-columns: minmax(0, 1fr); }
+    body .sheet-company-line { flex-wrap: wrap; height: auto; white-space: normal; overflow-wrap: anywhere; }
+}
+@media (max-width: 600px) {
+    :root { --ui-control-height: 44px; }
+    body :is(.settings-grid, .masters-fields, .party-address-grid, .cwt-field-pair, .remittance-field-pair, .collection-entry-fields) {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 18px;
+    }
+    #collection-entry-form > label { grid-column: 1 / -1; }
+    #new-entry-form .grid { grid-template-columns: minmax(0, 1fr); }
+    body .settings-heading { flex-wrap: wrap; }
+    .settings-actions { flex-wrap: wrap; }
+    .settings-card { padding: 18px; }
+    .masters-account-dialog header, .masters-account-dialog footer { padding: 18px; }
+    .masters-account-dialog footer { flex-wrap: wrap; }
+    .masters-editor-body { padding-inline: 18px; }
+    .payroll-entry-inputs label { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+    .masters-toolbar { flex-wrap: wrap; }
+    .masters-toolbar-actions { margin-left: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+    :is(input, select, textarea) { transition: none !important; }
+}
+@media print {
+    dialog:is(.sales-entry-drawer, .cwt-entry, #payroll-entry, #journal-entry) { box-shadow: none; }
+}

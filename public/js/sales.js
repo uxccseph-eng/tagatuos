@@ -312,6 +312,7 @@ let entryFromInline = false;
 let entryIsEditable = true;
 let entryAttachments = [];
 const entryCustomerInput = document.createElement('input');
+entryCustomerInput.id = entryFields.Customer.id;
 entryCustomerInput.className = entryFields.Customer.className;
 entryCustomerInput.setAttribute('aria-label', 'Entry Customer');
 entryCustomerInput.setAttribute('list', 'sales-customers');

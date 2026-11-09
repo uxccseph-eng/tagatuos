@@ -579,7 +579,7 @@
 </div>
 <!-- Date -->
 <div class="flex flex-col gap-1">
-<label class="font-label-sm text-label-sm text-on-surface flex items-center justify-between">
+<label for="entry-date" class="font-label-sm text-label-sm text-on-surface flex items-center justify-between">
 <span>Date <span class="text-error">*</span></span>
 <span class="font-label-sm text-[10px] text-on-surface-variant">YYYY-MM-DD</span>
 </label>
@@ -589,7 +589,7 @@
 </div>
 <!-- Customer Dropdown -->
 <div class="flex flex-col gap-1">
-<label class="font-label-sm text-label-sm text-on-surface flex items-center justify-between">
+<label for="drawer-customer-select" class="font-label-sm text-label-sm text-on-surface flex items-center justify-between">
 <span>Customer <span class="text-error">*</span></span>
 <button type="button" id="entry-new-customer" aria-label="New client" class="text-secondary font-label-sm text-[10px] hover:underline" title="Enter a customer name for this demo entry">+ New Client</button>
 </label>
@@ -606,7 +606,7 @@
 </div>
 <!-- Gross Amount -->
 <div class="flex flex-col gap-1">
-<label class="font-label-sm text-label-sm text-on-surface flex items-center justify-between">
+<label for="drawer-gross-input" class="font-label-sm text-label-sm text-on-surface flex items-center justify-between">
 <span>Gross Amount (PHP) <span class="text-error">*</span></span>
 <span id="entry-tax-hint" class="font-label-sm text-[10px] text-primary-container font-mono">Inc. 12% VAT</span>
 </label>
@@ -618,7 +618,7 @@
 <!-- Type & Terms side-by-side -->
 <div class="grid grid-cols-2 gap-space-sm">
 <div class="flex flex-col gap-1">
-<label class="font-label-sm text-label-sm text-on-surface">Tax Type <span class="text-error">*</span></label>
+<label for="entry-tax-type" class="font-label-sm text-label-sm text-on-surface">Tax Type <span class="text-error">*</span></label>
 <div class="relative">
 <select data-entry-field="Tax type" aria-label="Entry Tax type" id="entry-tax-type" class="w-full bg-surface-container text-on-surface font-body-sm text-body-sm px-space-sm py-2 rounded-lg appearance-none focus:outline-none focus:ring-1 focus:ring-secondary cursor-pointer">
 <option selected="" value="VAT">VAT (12%)</option>
@@ -630,7 +630,7 @@
 </div>
 </div>
 <div class="flex flex-col gap-1">
-<label class="font-label-sm text-label-sm text-on-surface">Terms <span class="text-error">*</span></label>
+<label for="entry-terms" class="font-label-sm text-label-sm text-on-surface">Terms <span class="text-error">*</span></label>
 <div class="relative">
 <select data-entry-field="Terms" aria-label="Entry Terms" id="entry-terms" class="w-full bg-surface-container text-on-surface font-body-sm text-body-sm px-space-sm py-2 rounded-lg appearance-none focus:outline-none focus:ring-1 focus:ring-secondary cursor-pointer">
 <option selected="" value="Cash">Cash</option>
@@ -642,7 +642,7 @@
 </div>
 <!-- Revenue Account -->
 <div class="flex flex-col gap-1">
-<label class="font-label-sm text-label-sm text-on-surface">Revenue Account <span class="text-error">*</span></label>
+<label for="entry-revenue-account" class="font-label-sm text-label-sm text-on-surface">Revenue Account <span class="text-error">*</span></label>
 <div class="relative">
 <select data-entry-field="Revenue account" aria-label="Entry Revenue account" id="entry-revenue-account" class="w-full bg-surface-container text-on-surface font-body-sm text-body-sm px-space-sm py-2 rounded-lg appearance-none focus:outline-none focus:ring-1 focus:ring-secondary cursor-pointer">
 <option disabled="" selected="" value="">Select revenue account...</option>
@@ -657,7 +657,7 @@
 <!-- CWT IT & CWT VT Dropdowns -->
 <div class="grid grid-cols-2 gap-space-sm">
 <div class="flex flex-col gap-1">
-<label class="font-label-sm text-label-sm text-on-surface">CWT IT (Creditable)</label>
+<label for="drawer-cwt-it-select" class="font-label-sm text-label-sm text-on-surface">CWT IT (Creditable)</label>
 <div class="relative">
 <select data-entry-field="Income withholding" aria-label="Entry Income withholding" id="drawer-cwt-it-select" class="w-full bg-surface-container text-on-surface font-body-sm text-body-sm px-space-sm py-2 rounded-lg appearance-none focus:outline-none focus:ring-1 focus:ring-secondary cursor-pointer">
 <option selected="" value="NONE">None</option>
@@ -670,7 +670,7 @@
 </div>
 </div>
 <div class="flex flex-col gap-1">
-<label class="font-label-sm text-label-sm text-on-surface">CWT VT</label>
+<label for="entry-vat-withholding" class="font-label-sm text-label-sm text-on-surface">CWT VT</label>
 <div class="relative">
 <select data-entry-field="VAT withholding" aria-label="Entry VAT withholding" id="entry-vat-withholding" class="w-full bg-surface-container text-on-surface font-body-sm text-body-sm px-space-sm py-2 rounded-lg appearance-none focus:outline-none focus:ring-1 focus:ring-secondary cursor-pointer">
 <option selected="" value="NONE">None</option>
@@ -684,11 +684,11 @@
 <!-- SI / OR Number & CTYPE -->
 <div class="grid grid-cols-2 gap-space-sm">
 <div class="flex flex-col gap-1">
-<label class="font-label-sm text-label-sm text-on-surface">SI/OR No.</label>
+<label for="entry-invoice-reference" class="font-label-sm text-label-sm text-on-surface">SI/OR No.</label>
 <input data-entry-field="Invoice reference" aria-label="Entry Invoice reference" id="entry-invoice-reference" class="w-full bg-surface-container text-on-surface font-label-md text-label-md px-space-sm py-2 rounded-lg placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-1 focus:ring-secondary" placeholder="e.g. 0001429" type="text"/>
 </div>
 <div class="flex flex-col gap-1">
-<label class="font-label-sm text-label-sm text-on-surface">CTYPE</label>
+<label for="entry-classification" class="font-label-sm text-label-sm text-on-surface">CTYPE</label>
 <div class="relative">
 <select data-entry-field="Classification" aria-label="Entry Classification" id="entry-classification" class="w-full bg-surface-container text-on-surface font-body-sm text-body-sm px-space-sm py-2 rounded-lg appearance-none focus:outline-none focus:ring-1 focus:ring-secondary cursor-pointer">
 <option selected="" value="Regular">Regular</option>
@@ -702,7 +702,7 @@
 </div>
 <!-- Cash / Bank Account -->
 <div class="flex flex-col gap-1">
-<label class="font-label-sm text-label-sm text-on-surface">Cash/Bank Repository</label>
+<label for="entry-deposit-account" class="font-label-sm text-label-sm text-on-surface">Cash/Bank Repository</label>
 <div class="relative">
 <select data-entry-field="Deposit account" aria-label="Entry Deposit account" id="entry-deposit-account" class="w-full bg-surface-container text-on-surface font-body-sm text-body-sm px-space-sm py-2 rounded-lg appearance-none focus:outline-none focus:ring-1 focus:ring-secondary cursor-pointer">
 <option selected="" value="1010-01">1010-01 · Cash on Hand</option>
@@ -715,7 +715,7 @@
 </div>
 <!-- Settle Now / Amount -->
 <div class="flex flex-col gap-1">
-<label class="font-label-sm text-label-sm text-on-surface flex items-center justify-between">
+<label for="entry-settlement-amount" class="font-label-sm text-label-sm text-on-surface flex items-center justify-between">
 <span>Settle Now</span>
 <button type="button" id="entry-match-gross" aria-label="Match gross" class="font-label-sm text-[10px] text-secondary hover:underline">Match Gross</button>
 </label>
@@ -723,7 +723,7 @@
 </div>
 <!-- Description -->
 <div class="flex flex-col gap-1">
-<label class="font-label-sm text-label-sm text-on-surface flex items-center justify-between">
+<label for="entry-description" class="font-label-sm text-label-sm text-on-surface flex items-center justify-between">
 <span>Description / Item (optional)</span>
 <button type="button" data-entry-quick-picks aria-label="Recent descriptions" class="text-on-surface-variant"><span class="material-symbols-outlined text-[14px]">schedule</span></button>
 </label>
@@ -738,7 +738,7 @@
 </section>
 <!-- Particulars / Notes -->
 <div class="flex flex-col gap-1">
-<label class="font-label-sm text-label-sm text-on-surface">Particulars &amp; Audit Notes</label>
+<label for="entry-particulars" class="font-label-sm text-label-sm text-on-surface">Particulars &amp; Audit Notes</label>
 <textarea data-entry-field="Particulars" aria-label="Entry Particulars" id="entry-particulars" class="w-full bg-surface-container text-on-surface font-body-sm text-body-sm px-space-sm py-2 rounded-lg placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-1 focus:ring-secondary resize-none" placeholder="Internal BIR cross-reference, client PO, or project ID..." rows="2"></textarea>
 </div>
 </form>

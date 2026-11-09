@@ -27,6 +27,16 @@
     function enhance(select){
         if(enhanced.has(select))return;const kind=kindFor(select);if(!kind)return;
         const wrapper=document.createElement('span');wrapper.className='sheet-master-picker';const input=document.createElement('input');input.type='text';input.className='sheet-party-input sheet-master-search';input.setAttribute('role','combobox');input.setAttribute('aria-autocomplete','list');input.setAttribute('aria-haspopup','listbox');input.setAttribute('aria-expanded','false');input.setAttribute('aria-label',select.getAttribute('aria-label') || 'Search '+labels[kind]);input.autocomplete='off';
+        const linkedLabels=Array.from(select.labels || []);
+        input.id=select.id ? select.id+'-picker' : 'sheet-master-input-'+(++sequence);
+        for(const label of linkedLabels) {
+            if(!select.getAttribute('aria-label')) {
+                const caption=label.cloneNode(true);
+                caption.querySelectorAll('select,input,textarea,button,small,.material-symbols-outlined').forEach(node=>node.remove());
+                if(caption.textContent.trim())input.setAttribute('aria-label',caption.textContent.trim().replace(/\s+/g,' '));
+            }
+            label.htmlFor=input.id;
+        }
         select.before(wrapper);wrapper.append(select,input);select.classList.add('sheet-master-native');
         const picker={select,input,kind,sync(){if(input.disabled!==select.disabled)input.disabled=select.disabled;if(active!==picker)input.value=select.selectedOptions[0]?.textContent || '';}};enhanced.set(select,picker);pickers.add(picker);
         const descriptor=Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype,'value');Object.defineProperty(select,'value',{configurable:true,get(){return descriptor.get.call(this);},set(value){descriptor.set.call(this,value);picker.sync();}});
