@@ -97,6 +97,27 @@ class MyWorkDashboardTest extends TestCase
         $this->get(route('dashboard'))->assertOk()->assertViewHas('dashboardRoutes', fn (array $routes): bool => $routes['work'] === route('my-work'));
     }
 
+    public function test_workspace_navigation_stays_available_between_work_company_books_and_account_settings(): void
+    {
+        $user = User::factory()->firm()->create();
+        $book = $this->book($user, 'Navigation Client');
+        $this->actingAs($user)->withSession(['active_company_id' => $book->id]);
+        foreach (['my-work', 'account.dashboard', 'account.password.edit'] as $route) {
+            $this->get(route($route))->assertOk()
+                ->assertSee('id="workspace-app-sidebar"', false)
+                ->assertSee('aria-label="Workspace navigation"', false)
+                ->assertSee(route('sheets.sales', ['company_id' => $book->id]), false)
+                ->assertSee('aria-label="Search client books"', false);
+        }
+    }
+
+    public function test_work_preview_uses_read_only_workspace_navigation_without_requiring_an_account(): void
+    {
+        $this->get(route('workspace.preview', ['page' => 'my-work']))->assertOk()
+            ->assertSee('id="workspace-app-sidebar"', false)->assertSee('Read-only preview')
+            ->assertSee('inert', false)->assertDontSee('action="'.route('logout').'"', false);
+    }
+
     private function book(User $user, string $name, bool $configured = true): Company
     {
         $book = Company::factory()->create(['name' => $name]);

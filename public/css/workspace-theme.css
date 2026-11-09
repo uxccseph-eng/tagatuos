@@ -53,20 +53,20 @@ html.dark {
 
 /* Account screens used a separate dark-only palette. */
 html:not(.dark) :is(.account-header, .portal-strip) { background: var(--theme-panel); }
-html:not(.dark) body:has(.account-header) :is(label, .portal-strip #team-portal-address) { color: var(--theme-text); }
-html:not(.dark) body:has(.account-header) :is(input:not([type="checkbox"]), select, textarea) {
+html:not(.dark) body:is(:has(.account-header), .workspace-shell) :is(label, .portal-strip #team-portal-address) { color: var(--theme-text); }
+html:not(.dark) body:is(:has(.account-header), .workspace-shell) :is(input:not([type="checkbox"]), select, textarea) {
     background-color: var(--theme-field);
     color: var(--theme-text);
     border-color: #7b899a;
 }
-html:not(.dark) body:has(.account-header) :is(.secondary, .role-badge, .permission-chips span, .team-table th) {
+html:not(.dark) body:is(:has(.account-header), .workspace-shell) :is(.secondary, .role-badge, .permission-chips span, .team-table th) {
     background: var(--theme-soft);
     color: var(--theme-text);
     border-color: var(--theme-line);
 }
-html:not(.dark) body:has(.account-header) :is(.team-table tbody tr:hover, .icon-button:hover) { background: var(--theme-soft); }
-html:not(.dark) body:has(.account-header) :is(.member-email, .storage-note, .account-footer, .client-book-progress p) { color: var(--theme-muted); }
-html:not(.dark) body:has(.account-header) :is(.primary, .button.primary) { background: var(--theme-accent); color: var(--theme-on-accent); }
+html:not(.dark) body:is(:has(.account-header), .workspace-shell) :is(.team-table tbody tr:hover, .icon-button:hover) { background: var(--theme-soft); }
+html:not(.dark) body:is(:has(.account-header), .workspace-shell) :is(.member-email, .storage-note, .account-footer, .client-book-progress p) { color: var(--theme-muted); }
+html:not(.dark) body:is(:has(.account-header), .workspace-shell) :is(.primary, .button.primary) { background: var(--theme-accent); color: var(--theme-on-accent); }
 html:not(.dark) :is(.brand-mark, .book-avatar, .intro-points > div > span, .owner-badge, .status-badge, .notice) {
     background: #ecfdf5;
     color: #065f46;

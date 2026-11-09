@@ -195,7 +195,7 @@ body .payroll-entry-link-form { display: grid; grid-template-columns: minmax(0, 
 .masters-search { flex: 1 1 220px; min-width: 0; }
 .registry-type-filter { min-width: 0; }
 .registry-type-filter select { min-width: 120px; }
-body:has(.account-header) { background-image: none; }
+body:is(:has(.account-header), .workspace-shell) { background-image: none; }
 
 /* Contain the heading and date selector instead of clipping a wider page on phones. */
 body :is(.sheet-heading-row, .sheet-heading-context, .sheet-heading-context > div, .sheet-period, .sheet-period-controls) {
