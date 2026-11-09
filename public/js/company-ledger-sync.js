@@ -251,12 +251,15 @@
         explanation.textContent = 'Discard Local loads the latest saved book and removes this tab’s draft. Force Overwrite keeps your changed entries and replaces their saved versions. Other entries stay unchanged. Permissions and posting checks still apply.';
         const message = document.createElement('p'); message.setAttribute('aria-live', 'polite'); message.textContent = failure.message;
         const controls = document.createElement('div');
+        controls.className = 'company-conflict-actions';
         const discard = document.createElement('button'), overwrite = document.createElement('button');
+        discard.className = 'company-conflict-reload'; overwrite.className = 'company-conflict-overwrite';
         discard.type = overwrite.type = 'button';
         discard.textContent = 'Discard Local & Reload Latest'; overwrite.textContent = 'Force Overwrite Database';
         overwrite.disabled = !database.canWrite || (!collaborative && restoreAvailable && !validRecovery);
         controls.append(discard, overwrite); dialog.append(title, explanation, message, controls);
         const exportButton = document.createElement('button'); exportButton.type = 'button'; exportButton.textContent = 'Export unsaved work (.json)';
+        exportButton.className = 'company-conflict-export';
         exportButton.addEventListener('click', download); dialog.append(exportButton);
         discard.addEventListener('click', () => {
             if (resolutionRunning) return;
