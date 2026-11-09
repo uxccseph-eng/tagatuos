@@ -71,6 +71,26 @@ class ClientDashboardTest extends TestCase
             ->get(route('sheets.sales'))->assertOk()->assertSee('Local sales preview')->assertSee('Demo sales sheet');
     }
 
+    public function test_masters_always_loads_company_menu_assets_and_pins_the_rendered_book_context(): void
+    {
+        $owner = User::factory()->firm()->create();
+        $book = Company::factory()->create();
+        $owner->companies()->attach($book, ['role' => 'owner']);
+        $this->profile($book);
+        $urls = [route('masters.accounts', ['company_id' => $book->id])];
+        foreach (['parties', 'employees', 'bank-accounts', 'tax-codes'] as $registry) {
+            $urls[] = route('masters.registry', ['registry' => $registry, 'company_id' => $book->id]);
+        }
+        foreach ($urls as $url) {
+            $response = $this->actingAs($owner)->get($url)->assertOk()
+                ->assertSee('<meta name="tenant-company" content="'.$book->id.'">', false)
+                ->assertSee('js/tenant-context.js')->assertSee('js/workspace-access.js');
+            $this->assertSame(1, substr_count($response->getContent(), 'css/company-switcher.css'));
+            $this->assertSame(1, substr_count($response->getContent(), 'js/company-switcher.js'));
+            $this->assertSame(1, substr_count($response->getContent(), 'aria-label="Switch company book"'));
+        }
+    }
+
     private function profile(Company $book): void
     {
         CompanySetting::factory()->create(['workspace_key' => $book->workspaceKey(), 'lookup_key' => $book->workspaceKey(), 'profile' => ['company_name' => $book->name, 'full_name' => 'Test owner', 'tin' => '123456789', 'vat_type' => 'vat']]);
