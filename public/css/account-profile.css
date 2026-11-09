@@ -1,0 +1,42 @@
+:root {
+    --account-profile-panel: #fff;
+    --account-profile-text: #0f172a;
+    --account-profile-muted: #64748b;
+    --account-profile-border: #cbd5e1;
+    --account-profile-hover: #f1f5f9;
+    --account-profile-avatar: #ecfdf5;
+    --account-profile-accent: #047857;
+}
+
+html.dark {
+    --account-profile-panel: #171f2c;
+    --account-profile-text: #e2e8f0;
+    --account-profile-muted: #94a3b8;
+    --account-profile-border: #334155;
+    --account-profile-hover: #202b3b;
+    --account-profile-avatar: #123b32;
+    --account-profile-accent: #00efa6;
+}
+
+.account-profile { position: relative; flex: none; }
+.account-profile summary { display: flex; align-items: center; gap: 10px; cursor: pointer; list-style: none; }
+.account-profile summary::-webkit-details-marker { display: none; }
+.account-profile summary:focus-visible { outline: 2px solid var(--account-profile-accent); outline-offset: 3px; border-radius: 6px; }
+.account-profile .workspace-profile-copy { display: flex; flex-direction: column; min-width: 0; }
+.account-profile .workspace-profile-name { max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--account-profile-text); font-size: 12px; font-weight: 600; }
+.account-profile .workspace-profile-role { color: var(--account-profile-muted); font-size: 10px; line-height: 1.35; }
+.account-profile .workspace-profile-avatar { display: grid; place-items: center; width: 34px; height: 34px; flex: none; border: 1px solid var(--account-profile-border); border-radius: 50%; background: var(--account-profile-avatar); color: var(--account-profile-accent); font-size: 12px; font-weight: 700; }
+.account-profile .workspace-profile-menu { position: absolute; z-index: 80; top: calc(100% + 10px); right: 0; width: min(240px, calc(100vw - 24px)); padding: 8px; border: 1px solid var(--account-profile-border); border-radius: 9px; background: var(--account-profile-panel); color: var(--account-profile-text); box-shadow: 0 8px 24px #0003; }
+.account-profile .workspace-profile-menu > strong { display: block; padding: 9px 9px 3px; overflow-wrap: anywhere; color: var(--account-profile-text); font-size: 12px; }
+.account-profile-menu-role, .account-profile-preview { display: block; padding: 0 9px 8px; color: var(--account-profile-muted); font-size: 11px; }
+.account-profile .workspace-profile-menu a, .account-profile .workspace-profile-menu button { display: block; width: 100%; padding: 9px; border: 0; border-radius: 6px; background: transparent; color: var(--account-profile-text); text-align: left; text-decoration: none; font: inherit; font-size: 12px; cursor: pointer; }
+.account-profile .workspace-profile-menu a:hover, .account-profile .workspace-profile-menu button:hover { background: var(--account-profile-hover); }
+.account-profile .workspace-profile-menu form { margin: 0; }
+
+.account-profile--sheet { padding-left: 12px; border-left: 1px solid var(--account-profile-border); }
+.account-profile--workspace .workspace-profile-name { max-width: 135px; font-weight: 400; }
+.account-profile--workspace .workspace-profile-role { text-align: right; }
+
+@media (max-width: 650px) {
+    .account-profile--sheet .workspace-profile-copy { display: none; }
+}

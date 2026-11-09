@@ -101,7 +101,7 @@
         document.getElementById('collection-applied').textContent=money(total-advance);
         document.getElementById('collection-advance').textContent=money(advance);
         const selected=selectedRecords();
-        document.getElementById('collection-counts').textContent=`${visible.length} rows · ${active.filter(record=>record.status==='posted').length} posted (demo) · ${active.filter(record=>record.status==='draft').length} drafts · ${selected.length} selected`;
+        document.getElementById('collection-counts').textContent=`${visible.length} rows · ${active.filter(record=>record.status==='posted').length} posted${window.CompanyLedger ? '' : ' (demo)'} · ${active.filter(record=>record.status==='draft').length} drafts · ${selected.length} selected`;
         ['all','draft','posted'].forEach(status=>{
             const button=document.querySelector(`[data-collection-action="${status}"]`);
             button.textContent=`${status==='all'?'All':status==='draft'?'Drafts':'Posted'} (${[...records.values()].filter(record=>record.status!=='archived'&&window.WorkingPeriod.matches(record.date)&&(status==='all'||record.status===status)).length})`;
@@ -179,7 +179,7 @@
         const actions=document.getElementById('collection-dialog-actions');actions.replaceChildren();
         if(record){
             const duplicate=document.createElement('button');duplicate.type='button';duplicate.textContent='Duplicate as draft';duplicate.addEventListener('click',()=>{dialog.close();addCollection(record);});actions.append(duplicate);
-            const toggle=document.createElement('button');toggle.type='button';toggle.textContent=record.status==='void'?'Restore':'Void (demo)';
+            const toggle=document.createElement('button');toggle.type='button';toggle.textContent=record.status==='void'?'Restore':(window.CompanyLedger ? 'Void' : 'Void (demo)');
             toggle.addEventListener('click',()=>{
                 if(record.origin==='cash-sale'){announce('This collection follows its cash sale. Void or restore the sale from the Sales page.');dialog.close();}
                 else if(record.status==='void'){if([...records.values()].some(item=>item.id!==record.id&&item.status==='draft')){announce('Post or delete the existing draft before restoring another draft.');return;}record.status='draft';render(record);update();dialog.close();announce(`${record.number} restored as a draft. Review and post it to apply the collection again.`);}
@@ -262,7 +262,7 @@
     const leaveGuard=new window.DraftLeaveGuard({hasChanges:()=>hasIncompleteCollections()||entryPopup.hasChanges(),discard:()=>{discardIncompleteCollections();entryPopup.discardClose();}});
     const entryPopup=new window.CollectionEntryDrawer({
         ledger,guard:leaveGuard,
-        onSave:record=>{render(record);update();announce(`${record.number} ${record.status==='posted'?'posted':'saved'} in this local preview.`);},
+        onSave:record=>{render(record);update();announce(window.CompanyLedger ? `${record.number || 'Draft'} submitted. Check the database save status below.` : `${record.number} ${record.status==='posted'?'posted':'saved'} in this local preview.`);},
         onDiscard:record=>{records.delete(record.id);record.row.remove();update();announce(`${record.number} unfinished draft discarded.`);},
         onVoid:(record,reason)=>{
             const company=JSON.parse(document.getElementById('collection-company-data').textContent);

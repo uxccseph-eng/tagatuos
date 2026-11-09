@@ -7,7 +7,7 @@
         <div class="sheet-heading-context">
             <span class="sheet-heading-icon"><span class="material-symbols-outlined" aria-hidden="true">{{ $sheetIcons[$sheet] }}</span></span>
             <div>
-                <div class="sheet-heading-title"><h1>{{ $sheetTitles[$sheet] }}</h1><span class="sheet-demo-badge">{{ $sheet === 'cwt' ? 'Received certificates' : ($sheet === 'wtp' ? 'Issued certificates' : 'Demo '.$sheet.' sheet') }}</span></div>
+                <div class="sheet-heading-title"><h1>{{ $sheetTitles[$sheet] }}</h1><span class="sheet-demo-badge">{{ $sheet === 'cwt' ? 'Received certificates' : ($sheet === 'wtp' ? 'Issued certificates' : (auth()->check() && isset($company['company_id']) ? 'Company '.$sheet.' sheet' : 'Demo '.$sheet.' sheet')) }}</span></div>
                 <p class="sheet-company-line"><span>{{ $company['company_name'] }}</span><span aria-hidden="true">•</span><span class="sheet-company-tin">TIN: {{ \App\Tin::format($company['tin'] ?? '', $company['branch_code'] ?? '00000') ?: 'not set' }}</span><span aria-hidden="true">•</span><span>RDO {{ $company['rdo'] ?? 'not set' }}</span></p>
             </div>
         </div>

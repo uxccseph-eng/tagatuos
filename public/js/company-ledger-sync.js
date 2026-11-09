@@ -1,6 +1,27 @@
 (() => {
     'use strict';
     const database = window.CompanyLedgerDatabase;
+    const tenant = document.querySelector('meta[name="tenant-company"]')?.content;
+    const expectedSheets = ['sales','purchases','collections','payments','cwtCertificates','wtpCertificates','journalEntries'];
+    if (tenant && (!database || String(database.company_id) !== tenant || !Number.isInteger(database.revision) ||
+        !expectedSheets.every(sheet => Array.isArray(database.state?.[sheet])) || !Array.isArray(database.payroll) || !Array.isArray(database.journals) || !window.WorkspaceMasters || !Array.isArray(window.WorkspaceAccounts))) {
+        const message = 'Company data could not be loaded. Encoding and posting are disabled until the connection is restored. Your saved records and browser drafts have not been changed.';
+        const unavailable = () => { throw Error(message); };
+        const empty = () => ({...Object.fromEntries(expectedSheets.map(sheet => [sheet, []])), nextCollectionId: 1, nextCollectionNumber: 1});
+        window.CompanyLedger = {state: empty, payroll: () => [], journals: () => [], newId: () => 1, saveState: unavailable, savePayroll: unavailable, flush: async () => unavailable(), pending: () => true, postingLabel: () => 'Unavailable'};
+        const dialog = document.createElement('dialog'); dialog.className = 'company-load-dialog';
+        dialog.setAttribute('aria-labelledby', 'company-load-title'); dialog.setAttribute('aria-describedby', 'company-load-message');
+        const title = document.createElement('h2'); title.id = 'company-load-title'; title.textContent = 'Company book unavailable';
+        const description = document.createElement('p'); description.id = 'company-load-message'; description.textContent = message;
+        const retry = document.createElement('button'); retry.type = 'button'; retry.textContent = 'Retry loading book';
+        retry.addEventListener('click', () => location.reload());
+        const books = document.createElement('a'); books.href = document.querySelector('[data-role-home]')?.dataset.roleHome || '/account'; books.textContent = 'Company books';
+        const controls = document.createElement('div'); controls.append(retry, books);
+        dialog.append(title, description, controls); dialog.addEventListener('cancel', event => event.preventDefault());
+        document.addEventListener('keydown', event => event.stopImmediatePropagation(), true);
+        document.body.append(dialog); dialog.showModal();
+        return;
+    }
     if (!database) return;
     const clone = value => JSON.parse(JSON.stringify(value));
     const config = document.getElementById('workspace-ledger-config');

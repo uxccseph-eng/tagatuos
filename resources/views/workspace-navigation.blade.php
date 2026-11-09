@@ -1,6 +1,5 @@
 @php
     $navigationUser = auth()->user();
-    $navigationName = $previewMode ? 'Sample Manager' : $navigationUser->name;
     $navigationCompanyId = request()->attributes->get('active_company')?->id ?? session('active_company_id');
     $bookUrl = fn (string $name): string => $previewMode ? route('workspace.preview', ['page' => 'my-work']) : ($navigationCompanyId ? route($name, ['company_id' => $navigationCompanyId]) : route('account.dashboard'));
     $navigationGroups = $previewMode ? [
@@ -74,10 +73,6 @@
     <div class="workspace-header-actions">
         <a href="{{ $previewMode ? route('team.preview') : route('account.dashboard') }}" class="workspace-book-chooser"><span class="material-symbols-outlined" aria-hidden="true">business</span><span>Company books</span><span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></a>
         @include('theme-toggle')
-        <details class="workspace-profile"><summary aria-label="Account menu for {{ $navigationName }}"><span class="workspace-profile-name">{{ $navigationName }}</span><span class="workspace-profile-avatar" aria-hidden="true">{{ mb_strtoupper(mb_substr($navigationName, 0, 1)) }}</span></summary>
-            <div class="workspace-profile-menu"><strong>{{ $navigationName }}</strong>
-                @if(!$previewMode)<a href="{{ route('account.password.edit') }}">Change password</a><form method="POST" action="{{ route('logout') }}">@csrf<button type="submit">Sign out</button></form>@else<span>Presentation preview</span>@endif
-            </div>
-        </details>
+        @include('components.account-profile', ['variant' => 'workspace', 'previewMode' => $previewMode])
     </div>
 </header>

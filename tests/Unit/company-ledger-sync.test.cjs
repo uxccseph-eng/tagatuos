@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 const source = fs.readFileSync('public/js/company-ledger-sync.js', 'utf8');
 const empty = () => ({sales: [], purchases: [], collections: [], payments: [], cwtCertificates: [], wtpCertificates: [], journalEntries: [], nextCollectionId: 1, nextCollectionNumber: 1});
-function boot({initialized = true, legacy = null, canWrite = true, fetcher = null, collaborative = false, storage = new Map(), snapshot = {}} = {}) {
+function boot({initialized = true, legacy = null, canWrite = true, fetcher = null, collaborative = false, storage = new Map(), snapshot = {}, tenant = null, bootstrap, masters = {}, accounts = []} = {}) {
     class Element {
         constructor() { this.children = []; this.listeners = {}; this.dataset = {}; this.textContent = ''; }
         append(...items) { this.children.push(...items); }
@@ -20,11 +20,11 @@ function boot({initialized = true, legacy = null, canWrite = true, fetcher = nul
     const requests = [], intervals = [], database = {company_id: 1, revision: 0, initialized, state: empty(), payroll: [], journals: [], url: '/sheets/database', csrf: 'csrf', canWrite, ...snapshot};
     const body = new Element();
     let reloads = 0;
-    const document = {body, hidden: false, documentElement: {classList: {toggle() {}}}, getElementById: () => ({dataset: {key: 'company-test'}}), createElement: () => new Element(), querySelector: () => null, querySelectorAll: () => [], addEventListener() {}};
+    const document = {body, hidden: false, documentElement: {classList: {toggle() {}}}, getElementById: () => ({dataset: {key: 'company-test'}}), createElement: () => new Element(), querySelector: selector => selector === 'meta[name="tenant-company"]' && tenant ? {content: tenant} : null, querySelectorAll: () => [], addEventListener() {}};
     const sessionStorage = {getItem: key => storage.get(key) || null, setItem: (key, value) => storage.set(key, value), removeItem: key => storage.delete(key)};
     const local = new Map();
     const localStorage = {getItem: key => local.get(key) || null, setItem: (key, value) => local.set(key, value), removeItem: key => local.delete(key)};
-    const window = {localStorage, CompanyLedgerDatabase: database, addEventListener() {}, dispatchEvent() {}};
+    const window = {localStorage, CompanyLedgerDatabase: bootstrap === undefined ? database : bootstrap, WorkspaceMasters: masters, WorkspaceAccounts: accounts, addEventListener() {}, dispatchEvent() {}};
     let revision = database.revision;
     const fetch = async (url, options) => {
         const payload = options.body ? JSON.parse(options.body) : null;
@@ -37,8 +37,38 @@ function boot({initialized = true, legacy = null, canWrite = true, fetcher = nul
         vm.runInNewContext(fs.readFileSync('public/js/company-ledger-records.js', 'utf8'), {window});
     }
     vm.runInNewContext(source, {window, document, sessionStorage, fetch, crypto: require('node:crypto').webcrypto, location: {href: 'http://localhost/sheets/sales', origin: 'http://localhost', reload() { reloads++; }}, URL, Blob, CustomEvent: class {}, setTimeout: () => 1, clearTimeout() {}, setInterval: fn => intervals.push(fn), console});
-    return {api: window.CompanyLedger, local, storage, requests, sessionStorage, database, buttons: () => body.children[0].children[1].children, dialog: () => body.children.find(element => element.className === 'company-conflict-dialog'), reloads: () => reloads, intervals};
+    return {api: window.CompanyLedger, local, storage, requests, sessionStorage, database, buttons: () => body.children[0].children[1].children, dialog: () => body.children.find(element => element.className === 'company-conflict-dialog'), loadDialog: () => body.children.find(element => element.className === 'company-load-dialog'), reloads: () => reloads, intervals};
 }
+
+test('missing, wrong-company and incomplete database bootstrap block encoding without touching cached work', async () => {
+    for (const options of [{bootstrap: null}, {snapshot: {company_id: 2}}, {snapshot: {journals: null}}, {masters: null}, {accounts: null}]) {
+        const storage = new Map([['kontadurya.ledger.v1.company-test', 'existing draft'], ['other-company', 'keep']]);
+        const p = boot({tenant: '1', storage, ...options});
+        assert.equal(p.loadDialog().open, true);
+        assert.throws(() => p.api.saveState(empty()), /Encoding and posting are disabled/);
+        assert.throws(() => p.api.savePayroll([]), /Encoding and posting are disabled/);
+        await assert.rejects(p.api.flush(), /Encoding and posting are disabled/);
+        assert.equal(p.requests.length, 0);
+        assert.equal(p.intervals.length, 0);
+        assert.equal(p.reloads(), 0);
+        assert.equal(storage.get('kontadurya.ledger.v1.company-test'), 'existing draft');
+        assert.equal(storage.get('other-company'), 'keep');
+        let prevented = false;
+        p.loadDialog().listeners.cancel({preventDefault() { prevented = true; }});
+        assert.equal(prevented, true);
+        p.loadDialog().children[2].children[0].click();
+        assert.equal(p.reloads(), 1);
+    }
+});
+
+test('valid authenticated bootstrap opens normally and anonymous previews stay local', () => {
+    const authenticated = boot({tenant: '1'});
+    assert.equal(authenticated.loadDialog(), undefined);
+    assert.equal(authenticated.api.pending(), false);
+    const preview = boot({bootstrap: null});
+    assert.equal(preview.api, undefined);
+    assert.equal(preview.loadDialog(), undefined);
+});
 test('database bootstrap takes precedence over old browser cache', () => {
     const legacy = empty(); legacy.sales.push({id: 'old'});
     const p = boot({legacy});

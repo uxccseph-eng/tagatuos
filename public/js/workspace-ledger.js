@@ -6,9 +6,11 @@
     const clone = value => JSON.parse(JSON.stringify(value));
     const isCompanyBook = /^company-[a-f0-9]{64}$/.test(workspace.dataset.key);
     let state, storedState, numberedState;
-    try { storedState = sessionStorage.getItem(storageKey); state = JSON.parse(storedState); }
-    catch (error) { if (isCompanyBook) throw new Error('Company book storage could not be read. Existing data has not been replaced.'); state = null; }
     if (window.CompanyLedger) state = window.CompanyLedger.state();
+    else {
+        try { storedState = sessionStorage.getItem(storageKey); state = JSON.parse(storedState); }
+        catch (error) { if (isCompanyBook) throw new Error('Company book storage could not be read. Existing data has not been replaced.'); state = null; }
+    }
     if (!state || !Array.isArray(state.sales) || !Array.isArray(state.collections)) {
         if (isCompanyBook && storedState !== null) throw new Error('Company book storage is invalid. Existing data has not been replaced.');
         if (isCompanyBook) {

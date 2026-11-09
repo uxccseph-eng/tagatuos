@@ -81,7 +81,7 @@ function renderEntry(entry, existingRow) {
     const checkbox = cells[0].querySelector('input');
     checkbox.checked = false;
     checkbox.setAttribute('aria-label',`Select ${entry.number}`);
-    const values = [null, entry.status === 'posted' ? 'Posted (demo)' : entry.status === 'void' ? 'Voided' : 'Draft',entry.date,entry.number,entry.customer,null,null,entry.account,entry.cwt,entry.vatCwt,entry.terms,entry.reference,entry.classification,entry.bank,entry.memo];
+    const values = [null, entry.status === 'posted' ? (window.CompanyLedger ? 'Posted' : 'Posted (demo)') : entry.status === 'void' ? 'Voided' : 'Draft',entry.date,entry.number,entry.customer,null,null,entry.account,entry.cwt,entry.vatCwt,entry.terms,entry.reference,entry.classification,entry.bank,entry.memo];
     values.forEach((value,index) => { if (value !== null) cells[index].textContent = value; });
     cells[1].replaceChildren(Object.assign(document.createElement('span'),{className:entry.status==='draft'?'draft-status-badge':entry.status==='posted'?'posted-status-badge':'void-status-badge',textContent:entry.status==='draft'?'Drafting':entry.status==='posted'?'Posted':'Voided'}));
     window.CompanyLedger?.decorateBadge?.(cells[1].firstElementChild,'sales',entry);
@@ -383,7 +383,7 @@ function openEntryDrawer(entry=null,asNew=false,enableEdit=false) {
     statusBadge.classList.add(badgeStatus==='draft'?'draft-status-badge':badgeStatus==='posted'?'posted-status-badge':'void-status-badge');
     statusBadge.textContent=badgeStatus==='draft'?'Drafting':badgeStatus==='posted'?'Posted':'Voided';
     window.CompanyLedger?.decorateBadge?.(statusBadge,'sales',editingEntry || {status:'draft'});
-    document.getElementById('drawer-subtitle').textContent = editingEntry ? `${editingEntry.status === 'void' ? 'Voided' : editingEntry.status === 'posted' ? 'Posted (demo)' : 'Draft'} · ${locked ? 'View entry' : 'Editing entry'} · Tab only` : 'Single-line demo entry · Saved only in this tab';
+    document.getElementById('drawer-subtitle').textContent = editingEntry ? `${editingEntry.status === 'void' ? 'Voided' : editingEntry.status === 'posted' ? (window.CompanyLedger ? 'Posted' : 'Posted (demo)') : 'Draft'} · ${locked ? 'View entry' : 'Editing entry'} · Tab only` : 'Single-line demo entry · Saved only in this tab';
     const defaultDate = window.WorkingPeriod.matches(editorFields[0].value) ? editorFields[0].value : window.WorkingPeriod.entryDate();
     const values = {'Date':entry?.date || defaultDate,'Customer':entry?.customer || '', 'Gross amount':entry ? (entry.gross/100).toFixed(2) : '', 'Tax type':entry?.tax ?? '','Revenue account':entry?.account ?? '','Income withholding':entry?.cwt ?? salesDefaults.cwt,'VAT withholding':entry?.vatCwt ?? salesDefaults.vatCwt,'Terms':entry?.terms ?? salesDefaults.terms,'Classification':entry?.classification ?? salesDefaults.classification,'Invoice reference':entry?.reference || '', 'Deposit account':entry?.bank ?? salesDefaults.bank,'Description':entry?.memo || '', 'Particulars':entry?.notes || ''};
     Object.entries(values).forEach(([name,value]) => {
@@ -450,7 +450,7 @@ function saveEntryDrawer(posted=false) {
     filterInput.value='';globalSearch.value='';statusFilter.value='all';
     updatePeriod();
     entryDrawer.close();
-    announce(`${entry.number} ${posted?'marked Posted (demo)':editingEntry?'updated':'saved as draft'} in this tab. No real ledger entry was created.`);
+    announce(window.CompanyLedger ? `${entry.number || 'Draft'} submitted. Check the database save status below.` : `${entry.number} ${posted?'marked Posted (demo)':editingEntry?'updated':'saved as draft'} in this tab. No real ledger entry was created.`);
 }
 function suggestSalesFields(popup){
     if(popup && (!entryIsEditable || editingEntry && editingEntry.status!=='draft'))return;

@@ -50,7 +50,7 @@
         if(!candidates.length){announce('Select one or more draft payments to post.');return false;}
         for(const record of candidates){const error=ledger.paymentError(record,records);if(error){announce(record.number+': '+error);return false;}}
         const next=clone(records);for(const candidate of candidates){const target=next.find(record=>record.id===candidate.id);if(!target||target.status!=='draft')return false;Object.assign(target,candidate,{status:'posted',postedAt:new Date().toISOString()});history(target,'Posted');}
-        if(!store(next))return false;selected.clear();render();announce(candidates.length+' payment(s) posted in this local preview.');return true;
+        if(!store(next))return false;selected.clear();render();announce(window.CompanyLedger ? candidates.length+' payment(s) submitted. Check the database save status below.' : candidates.length+' payment(s) posted in this local preview.');return true;
     }
 
     function render(){

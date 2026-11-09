@@ -52,7 +52,7 @@
         for(const record of candidates){const error=window.SheetMasters.withholdingError({...record,ewtCode:ledger.wtpAtc(record),wvatCode:ledger.wtpVatAtc(record)});if(error){announce(record.number+': '+error);return false;}}
         if(candidates.some(invalid)){announce('Complete the date, supplier, amount, expense account and tax type before posting.');return false;}
         const next=clone(records);for(const candidate of candidates){const target=next.find(record=>record.id===candidate.id);if(!target||target.status!=='draft')return false;Object.assign(target,candidate,{ewtCode:ledger.wtpAtc(candidate),wvatCode:ledger.wtpVatAtc(candidate),status:'posted',postedAt:new Date().toISOString()});history(target,'Posted');}
-        if(!store(next))return false;selected.clear();render();announce(`${candidates.length} bill(s) posted in this local preview.`);return true;
+        if(!store(next))return false;selected.clear();render();announce(window.CompanyLedger ? `${candidates.length} bill(s) submitted. Check the database save status below.` : `${candidates.length} bill(s) posted in this local preview.`);return true;
     }
     function render(){
         table.classList.toggle('purchases-hide-wvat',purchaseDefaults.hideVatCwt && table.dataset.revealWvat!=='true');
