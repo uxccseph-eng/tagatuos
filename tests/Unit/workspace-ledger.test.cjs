@@ -243,8 +243,10 @@ test('discarding an older draft preserves posted numbering and record identities
     const voided={...ledger.newCollection(),number:'CR-000004',status:'void'};
     const archived={...ledger.newCollection(),number:'CR-000005',status:'archived'};
     ledger.saveCollections([...ledger.collections(),draft,posted,voided,archived]);
+    const numbers=Array.from(ledger.collections().slice(-3),record=>record.number);
     ledger.saveCollections(ledger.collections().filter(record=>record.id!==draft.id));
-    assert.deepEqual(Array.from(ledger.collections().slice(-3),record=>record.number),['CR-000005','CR-000004','CR-000005']);
+    assert.deepEqual(Array.from(ledger.collections().slice(-3),record=>record.number),numbers);
+    assert.deepEqual(numbers,['CR-000004','CR-000003','CR-000005']);
     assert.equal(ledger.newCollection().number,'');
     assert.deepEqual(Array.from(ledger.collections().slice(-3),record=>record.id),[posted.id,voided.id,archived.id]);
 });
@@ -729,6 +731,31 @@ test('deleting a void sale compacts transaction numbers and updates stable recei
  const records=ledger.sales();records.find(record=>record.id===99).status='posted';ledger.saveSales(records);
  assert.equal(records.find(record=>record.id===99).number,'SI-000003');
 });
+
+for(const [sheet,prefix,method] of [['sales','SI','sales'],['purchases','BILL','purchases'],['collections','CR','collections'],['payments','PV','payments'],['cwt','2307R','cwtCertificates'],['wtp','2307I','wtpCertificates'],['journal','GJ','journalEntries']]){
+ for(const historical of [false,true])test(`${sheet} reclaims numbers after ${historical?'an earlier':'a new'} void deletion`,()=>{
+  const key='company-'+'d'.repeat(64),storageKey='kontadurya.ledger.v1.'+key;
+  const state={sales:[],purchases:[],collections:[],payments:[],cwtCertificates:[],wtpCertificates:[],journalEntries:[],nextCollectionId:1};
+  state[method]=[
+   {id:'last',number:prefix+'-000003',status:'posted',gross:10000,tax:'Non-VAT',terms:'On Account'},
+   {id:'deleted',number:prefix+'-000002',status:historical?'archived':'void',gross:10000,tax:'Non-VAT',terms:'On Account'},
+   {id:'first',number:prefix+'-000001',status:'void',gross:10000,tax:'Non-VAT',terms:'On Account'},
+   {id:'draft',number:'',status:'draft',gross:0,tax:'Non-VAT',terms:'On Account'},
+   {id:'custom',number:'CUSTOM-099',status:'posted',gross:10000,tax:'Non-VAT',terms:'On Account'}
+  ];
+  const storage=new Map([[storageKey,JSON.stringify(state)]]),ledger=openLedger(storage,key);
+  if(historical)ledger.newCollection();else ledger.bulkTransactions(sheet,['deleted'],'delete-voids');
+  const rows=ledger[method]();
+  assert.equal(rows.find(row=>row.id==='last').number,prefix+'-000002');
+  assert.equal(rows.find(row=>row.id==='first').number,prefix+'-000001');
+  assert.equal(rows.find(row=>row.id==='deleted').number,prefix+'-000002');
+  assert.equal(rows.find(row=>row.id==='deleted').status,'archived');
+  assert.equal(rows.find(row=>row.id==='custom').number,'CUSTOM-099');
+  assert.equal(rows.find(row=>row.id==='draft').number,'');
+  assert.equal(openLedger(storage,key)[method]().find(row=>row.id==='last').number,prefix+'-000002');
+  if(sheet==='collections')assert.equal(JSON.parse(storage.get(storageKey)).nextCollectionNumber,3);
+ });
+}
 
 test('a posted cash purchase with EWT automatically creates one WTP entry and keeps it synchronized',()=>{
  const storage=new Map(),ledger=openLedger(storage,'company-'+'a'.repeat(64));

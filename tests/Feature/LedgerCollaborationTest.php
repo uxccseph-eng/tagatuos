@@ -9,6 +9,7 @@ use App\Models\CompanySetting;
 use App\Models\Party;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
 use Tests\TestCase;
@@ -131,6 +132,44 @@ class LedgerCollaborationTest extends TestCase
         $this->send([['sheet' => 'collections', 'id' => 'receipt-b', 'expected_version' => 0, 'record' => $receipt]], 1)->assertUnprocessable();
         $this->assertDatabaseCount('journal_entries', 2);
         $this->assertDatabaseCount('company_ledger_changes', 2);
+    }
+
+    public function test_deleting_a_void_entry_compacts_saved_journals_and_the_next_post_uses_the_available_number(): void
+    {
+        [$company, $a, $b] = $this->book();
+        $this->member($a, $company);
+        $saved = $this->send(array_map(fn (string $id): array => $this->operation($id, $this->journal($id, 'posted')), ['a', 'b', 'c']))->assertOk()->json();
+        $void = $saved['state']['journalEntries'][1];
+        $void['status'] = 'void';
+        $void['voidReason'] = 'Duplicate';
+        $this->send([$this->operation('b', $void, 1)], 1)->assertOk();
+        $void['status'] = 'archived';
+        $this->send([$this->operation('b', $void, 2)], 2)->assertOk()->assertJsonPath('state.journalEntries.2.number', 'GJ-000002');
+        $this->assertDatabaseHas('journal_entries', ['source_key' => 'journalEntries:c', 'number' => 'GJ-000002', 'reserved_number' => 'GJ-000002']);
+        $this->member($b, $company);
+        $this->send([$this->operation('d', $this->journal('d', 'posted'))], 1)->assertOk()->assertJsonPath('state.journalEntries.3.number', 'GJ-000003');
+        $this->getJson(route('sheets.database.show'))->assertOk()->assertJsonPath('state.journalEntries.2.number', 'GJ-000002');
+    }
+
+    public function test_a_save_repairs_a_previously_archived_gap_in_the_database_and_audits_the_renumber(): void
+    {
+        [$company, $a] = $this->book();
+        $this->member($a, $company);
+        $saved = $this->send(array_map(fn (string $id): array => $this->operation($id, $this->journal($id, 'posted')), ['a', 'b', 'c']))->assertOk()->json();
+        $state = $saved['state'];
+        $state['journalEntries'][1]['status'] = 'archived';
+        $state['journalEntries'][1]['voidReason'] = 'Legacy deleted duplicate';
+        CompanyLedger::query()->sole()->update(['state' => $state]);
+        DB::table('journal_entries')->where('source_key', 'journalEntries:b')->update(['status' => 'archived', 'reserved_number' => null]);
+        $journalId = DB::table('journal_entries')->where('source_key', 'journalEntries:c')->value('id');
+        $this->send([$this->operation('draft', $this->journal('draft'))], 1)->assertOk()->assertJsonPath('state.journalEntries.2.number', 'GJ-000002')->assertJsonPath('state.journalEntries.3.number', '');
+        $this->assertDatabaseHas('journal_entries', ['id' => $journalId, 'source_key' => 'journalEntries:c', 'number' => 'GJ-000002', 'reserved_number' => 'GJ-000002']);
+        $this->assertDatabaseHas('company_transaction_versions', ['record_id' => 'c', 'version' => 2]);
+        $changes = json_decode(DB::table('company_ledger_changes')->where('revision', 2)->value('changes'), true);
+        $change = collect($changes)->firstWhere('id', 'c');
+        $this->assertSame('GJ-000003', $change['before']['number']);
+        $this->assertSame('GJ-000002', $change['after']['number']);
+        $this->send([$this->operation('next', $this->journal('next', 'posted'))], 2)->assertOk()->assertJsonPath('state.journalEntries.4.number', 'GJ-000003');
     }
 
     private function operation(string $id, ?array $record, int $version = 0): array

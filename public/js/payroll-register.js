@@ -76,9 +76,9 @@
         return {id: root.crypto.randomUUID(), number: '', status: 'draft', draftTouched: false, date: dates.date, periodStart: dates.from, periodEnd: dates.to, name: '', employees: []};
     }
     function renumber(records, companyBook=false, previous=[]) {
-        const compact=records.some(record=>record.status==='archived'&&previous.some(old=>old.id===record.id&&old.status==='void'));
+        const compact=records.some(record=>record.status==='archived');
         if(compact){
-            const active=records.filter(record=>['posted','void'].includes(record.status)).sort((a,b)=>Number(String(a.number).split('-').at(-1))-Number(String(b.number).split('-').at(-1))||String(a.id).localeCompare(String(b.id)));
+            const active=records.filter(record=>['posted','void'].includes(record.status)&&/^PYRJ-\d+$/.test(record.number)).sort((a,b)=>Number(String(a.number).split('-').at(-1))-Number(String(b.number).split('-').at(-1))||String(a.id).localeCompare(String(b.id)));
             const numbers=new Map(active.map((record,index)=>[record.id,`PYRJ-${String(index+1).padStart(6,'0')}`]));
             records=records.map(record=>({...record,number:numbers.get(record.id)||record.number}));
         }

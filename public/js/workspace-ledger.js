@@ -5,7 +5,7 @@
     const storageKey = `kontadurya.ledger.v1.${workspace.dataset.key}`;
     const clone = value => JSON.parse(JSON.stringify(value));
     const isCompanyBook = /^company-[a-f0-9]{64}$/.test(workspace.dataset.key);
-    let state, storedState, numberedState;
+    let state, storedState;
     if (window.CompanyLedger) state = window.CompanyLedger.state();
     else {
         try { storedState = sessionStorage.getItem(storageKey); state = JSON.parse(storedState); }
@@ -41,14 +41,14 @@
         return records;
     }
     function synchronizeNumbers(key,input){for(const record of input){const saved=state[key].find(item=>item.id===record.id);if(saved){record.number=saved.number;if(['cwtCertificates','wtpCertificates'].includes(key))record.certificate=saved.certificate;}}}
-    function rememberNumbers(){return Object.fromEntries(['sales','purchases','collections','payments','cwtCertificates','wtpCertificates','journalEntries'].map(key=>[key,new Map(state[key].map(record=>[String(record.id),record.status]))]));}
     function persist() {
-        if(numberedState)for(const key of ['sales','purchases','collections','payments','cwtCertificates','wtpCertificates','journalEntries']){
-            if(state[key].some(record=>record.status==='archived'&&numberedState[key].get(String(record.id))==='void'))compactTransactions(key);
+        for(const key of ['sales','purchases','collections','payments','cwtCertificates','wtpCertificates','journalEntries']){
+            if(state[key].some(record=>record.status==='archived'))compactTransactions(key);
         }
         for(const key of ['sales','purchases','collections','payments','cwtCertificates','wtpCertificates','journalEntries'])for(const record of state[key])if(record.status==='draft')record.number='';
-        if (window.CompanyLedger) { window.CompanyLedger.saveState(state); numberedState=rememberNumbers(); return; }
-        try { sessionStorage.setItem(storageKey,JSON.stringify(state)); numberedState=rememberNumbers(); }
+        state.nextCollectionNumber=nextCollectionNumber();
+        if (window.CompanyLedger) { window.CompanyLedger.saveState(state); return; }
+        try { sessionStorage.setItem(storageKey,JSON.stringify(state)); }
         catch { throw new Error('Browser session storage is unavailable. Records cannot be shared between these pages.'); }
     }
     function normalizeTerms(sales) {
@@ -384,8 +384,7 @@
             return {count:imported.length,records:clone(imported),errors};
         }catch(error){state=previous;throw error;}
     }
-    numberedState=rememberNumbers();
-    window.addEventListener('company-ledger:saved',()=>{if(window.CompanyLedger){state=window.CompanyLedger.state();numberedState=rememberNumbers();}});
+    window.addEventListener('company-ledger:saved',()=>{if(window.CompanyLedger){state=window.CompanyLedger.state();}});
     window.KontaduryaLedger = {
         importFingerprint,
         previewImport:(sheet,records)=>processImport(sheet,records,false,'Import preview'),

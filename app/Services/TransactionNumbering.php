@@ -16,7 +16,7 @@ class TransactionNumbering
         $targets = [];
         foreach (self::PREFIXES as $sheet => $prefix) {
             $old = collect($previous[$sheet])->keyBy(fn (array $record): string => (string) $record['id']);
-            $compact = collect($sheets[$sheet])->contains(fn (array $record): bool => $record['status'] === 'archived' && ($old->get((string) $record['id'])['status'] ?? null) === 'void');
+            $compact = collect($sheets[$sheet])->contains(fn (array $record): bool => $record['status'] === 'archived');
             $active = array_values(array_filter($sheets[$sheet], fn (array $record): bool => in_array($record['status'], ['posted', 'void'], true)));
             $baseNumber = fn (array $record): string => ($old->get((string) $record['id'])['status'] ?? 'draft') !== 'draft' ? ($old->get((string) $record['id'])['number'] ?? '') : ($record['number'] ?? '');
             $used = [];
