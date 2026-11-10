@@ -15,7 +15,7 @@
     function choose(index){const current=active,option=matches[index];if(!current||!option)return;option.selected=true;close();current.select.dispatchEvent(new Event('input',{bubbles:true}));current.select.dispatchEvent(new Event('change',{bubbles:true}));current.sync();}
     function show(picker,query=''){
         if(picker.select.disabled)return;
-        if(active!==picker)close();active=picker;highlight=-1;
+        if(active!==picker){close();if(query==='')picker.input.value='';}active=picker;highlight=-1;
         const term=query.trim().toLowerCase();matches=Array.from(picker.select.options).filter(option=>!option.disabled&&(!term||option.textContent.toLowerCase().includes(term)));
         if(!popup){popup=document.createElement('div');popup.className='sheet-party-options sheet-master-options';popup.id='sheet-master-options-'+(++sequence);popup.setAttribute('popover','manual');popup.setAttribute('role','listbox');popup.setAttribute('aria-label','Search '+labels[picker.kind]+'s from Masters');(picker.select.closest('dialog')||document.body).append(popup);popup.addEventListener('pointerdown',event=>event.preventDefault());}
         popup.replaceChildren();
