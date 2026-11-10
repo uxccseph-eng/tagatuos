@@ -10,10 +10,10 @@
 .payroll-grid td { padding:10px; border-top:1px solid rgb(var(--sales-outline-variant) / .2); vertical-align:middle; }
 .payroll-grid input,.payroll-grid select { min-width:100px; width:100%; padding:8px; border:1px solid rgb(var(--sales-outline-variant) / .35); border-radius:6px; background:rgb(var(--sales-surface-container-lowest)); color:rgb(var(--sales-on-surface)); font:12px 'Manrope',sans-serif; }
 .payroll-grid input[type=checkbox] { min-width:15px; width:15px; accent-color:#00dfa0; }
-.payroll-grid input[type=date] { min-width:133px; }
+#payroll-main #payroll-rows input[type=date] { width:170px; min-width:170px; }
 .payroll-grid input:disabled,.payroll-grid select:disabled { opacity:1; background:transparent; border-color:transparent; }
 .payroll-grid input:focus,.payroll-grid select:focus { outline:2px solid rgb(var(--sales-primary) / .6); outline-offset:1px; }
-.payroll-run-name { min-width:180px!important; }
+.payroll-run-name { min-width:240px!important; }
 .payroll-number,.payroll-money { white-space:nowrap; font-family:'JetBrains Mono',monospace; }
 .payroll-number { color:rgb(var(--sales-secondary)); }
 .payroll-money { text-align:right; }
@@ -26,8 +26,8 @@
 .payroll-detail .payroll-employees { max-width:calc(100vw - 390px); }
 #payroll-main .sheet-utility-actions button { width:142px; }
 .payroll-employees table { min-width:1700px; }
-.payroll-employees .employee-name { min-width:200px; }
-.payroll-employees .employee-amount { text-align:right; }
+#payroll-main #payroll-rows .employee-name { width:280px; min-width:280px; }
+#payroll-main #payroll-rows .employee-amount { width:170px; min-width:170px; text-align:right; font-variant-numeric:tabular-nums; }
 .payroll-totals { display:flex; gap:24px; flex-wrap:wrap; justify-content:flex-end; padding-top:14px; color:rgb(var(--sales-on-surface-variant)); font-size:11px; }
 .payroll-totals strong { margin-left:8px; color:rgb(var(--sales-on-surface)); font-family:'JetBrains Mono',monospace; }
 .payroll-inline-button { display:inline-flex; gap:5px; align-items:center; padding:6px 9px; border-radius:6px; font-size:11px; color:rgb(var(--sales-secondary)); background:rgb(var(--sales-secondary) / .09); white-space:nowrap; }
@@ -137,4 +137,8 @@
 
 .payroll-incentive-note{font-size:11px;line-height:1.7;color:var(--theme-muted);margin:12px 0;max-width:1000px}
 
-.payroll-employees .employee-description{min-width:200px;width:220px}
+#payroll-main #payroll-rows .employee-description{min-width:260px;width:260px}
+
+/* Keep payroll entry controls readable inside the horizontally scrolling tables. */
+#payroll-main #payroll-rows input:not([type=checkbox]),#payroll-main #payroll-rows select{height:44px;min-height:44px;padding:10px 12px;font-size:14px;line-height:1.4;box-sizing:border-box}
+#payroll-main #payroll-rows select{min-width:230px;width:230px;padding-right:32px}
