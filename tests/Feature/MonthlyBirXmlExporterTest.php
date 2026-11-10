@@ -131,6 +131,41 @@ class MonthlyBirXmlExporterTest extends TestCase
         $this->assertNotEmpty(app(BirPayrollLedgerMapper::class)->map([[...$run, 'employees' => [['basic' => '1.00']]]], $this->context()['period'])['issues']);
     }
 
+    public function test_optional_blank_payroll_amounts_export_as_zero_without_rewriting_the_posted_run(): void
+    {
+        $employee = ['name' => 'Example Employee', 'payType' => 'Taxable', 'basic' => '40000.00', 'withholding' => '2608.40'];
+        $optional = ['taxableAllowance', 'deMinimis', 'benefits', 'sssEe', 'phicEe', 'hdmfEe'];
+        foreach (['missing', null, '', '   ', '0.00'] as $blank) {
+            $row = $blank === 'missing' ? $employee : [...$employee, ...array_fill_keys($optional, $blank)];
+            $run = ['id' => 'run-1', 'status' => 'posted', 'date' => '2026-08-15', 'employees' => [$row]];
+            $original = $run;
+            $mapped = app(BirPayrollLedgerMapper::class)->map([$run], $this->context()['period']);
+            $this->assertSame([], $mapped['issues']);
+            $this->assertSame(4000000, $mapped['values']['total_compensation']);
+            $this->assertSame(260840, $mapped['values']['tax_withheld']);
+            $this->assertSame(0, $mapped['values']['mandatory_contributions']);
+            $prepared = app(BirExporterFactory::class)->make('1601-C')->prepare([
+                ...$this->context(), 'payroll' => $mapped['values'], 'options' => ['payroll_reviewed' => true], 'calculation' => ['tax' => 260840],
+            ]);
+            $this->assertSame('40,000.00', $prepared['fields']['frm1601c:txtTax14']);
+            $this->assertSame('2,608.40', $prepared['fields']['frm1601c:txtTax25']);
+            $this->assertSame('0.00', $prepared['fields']['frm1601c:txtTax19']);
+            $this->assertSame($original, $run);
+        }
+    }
+
+    public function test_optional_zero_defaults_do_not_hide_invalid_amounts_or_missing_actual_withholding(): void
+    {
+        $employee = ['payType' => 'Taxable', 'basic' => '40000.00', 'withholding' => '2608.40'];
+        $mapper = app(BirPayrollLedgerMapper::class);
+        foreach ([['taxableAllowance' => 'invalid'], ['deMinimis' => '-1.00'], ['benefits' => '1.001'], ['sssEe' => []], ['withholding' => ''], ['basic' => null]] as $invalid) {
+            $run = ['id' => 'run-1', 'status' => 'posted', 'date' => '2026-08-15', 'employees' => [[...$employee, ...$invalid]]];
+            $this->assertNotEmpty($mapper->map([$run], $this->context()['period'])['issues']);
+        }
+        $imported = ['id' => 'run-1', 'status' => 'posted', 'date' => '2026-08-15', 'clientPayrollImport' => true, 'employees' => [$employee]];
+        $this->assertNotEmpty($mapper->map([$imported], $this->context()['period'])['issues']);
+    }
+
     public function test_monthly_endpoint_freezes_exports_and_never_marks_them_filed(): void
     {
         $owner = User::factory()->firm()->create(['must_change_password' => false]);
@@ -139,7 +174,7 @@ class MonthlyBirXmlExporterTest extends TestCase
         CompanySetting::factory()->create(['workspace_key' => $company->workspaceKey(), 'lookup_key' => $company->workspaceKey(), 'profile' => [...$this->profile(), 'full_name' => $owner->name]]);
         $state = CompanyLedgerService::emptyState();
         $state['wtpCertificates'] = [['id' => 1, 'date' => '2026-08-15', 'status' => 'posted', 'number' => 'WTP-1', 'ewtCode' => 'WC100', 'ewt' => '5.00', 'taxBase' => 10000000]];
-        $employee = ['payType' => 'Taxable', 'basic' => '40000.00', 'taxableAllowance' => '0.00', 'deMinimis' => '0.00', 'benefits' => '0.00', 'sssEe' => '2000.00', 'phicEe' => '900.00', 'hdmfEe' => '100.00', 'withholding' => '2608.40'];
+        $employee = ['payType' => 'Taxable', 'basic' => '40000.00', 'taxableAllowance' => '', 'deMinimis' => null, 'sssEe' => '2000.00', 'phicEe' => '900.00', 'hdmfEe' => '100.00', 'withholding' => '2608.40'];
         $ledger = CompanyLedger::factory()->create(['company_id' => $company->id, 'revision' => 1, 'state' => $state, 'payroll' => [['id' => 'run-1', 'number' => 'PYRJ-1', 'status' => 'posted', 'date' => '2026-08-15', 'employees' => [$employee]]]]);
         $this->actingAs($owner)->withSession(['active_company_id' => $company->id])->withHeader('X-Ledger-Revision', '1');
         foreach (['0619-E', '1601-C'] as $form) {

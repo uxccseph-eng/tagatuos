@@ -55,7 +55,8 @@ class TaxReturnService
                     foreach ($record['employees'] ?? [] as $employee) {
                         foreach (PayrollColumns::fields('earning') as $field) {
                             $raw = $employee[$field] ?? '0';
-                            $value = $this->money(! in_array($field, PayrollColumns::CORE, true) && $raw === '' ? '0' : $raw);
+                            $optional = ! in_array($field, PayrollColumns::CORE, true) || ($field !== 'basic' && ! ($record['clientPayrollImport'] ?? false));
+                            $value = $this->money($optional && (is_string($raw) && trim($raw) === '') ? '0' : $raw);
                             $gross += $value;
                             $details[$field] = ($details[$field] ?? 0) + $value;
                         }

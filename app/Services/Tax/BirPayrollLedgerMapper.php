@@ -43,7 +43,12 @@ class BirPayrollLedgerMapper
                 }
                 $row = [];
                 foreach (['basic', 'taxableAllowance', 'deMinimis', 'benefits', 'sssEe', 'phicEe', 'hdmfEe', 'withholding'] as $key) {
-                    $row[$key] = $this->money($employee[$key] ?? null);
+                    $amount = $employee[$key] ?? null;
+                    $optional = ! in_array($key, ['basic', 'withholding'], true) && ! ($run['clientPayrollImport'] ?? false);
+                    if ($optional && ($amount === null || (is_string($amount) && trim($amount) === ''))) {
+                        $amount = '0.00';
+                    }
+                    $row[$key] = $this->money($amount);
                     if ($row[$key] === null) {
                         $issues['amount_'.$key] = 'A posted payroll amount is missing or invalid: '.$key.'. Correct Payroll before XML export.';
                         $row[$key] = 0;
