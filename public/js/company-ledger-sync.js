@@ -32,7 +32,7 @@
     const restoreKey = recoveryKey + '.restore';
     let state = clone(database.state), payroll = clone(database.payroll), revision = database.revision;
     let pending = false, running = null, timer = null, failure = null, migration = false, retry = null, recoveryReview = false, leaving = false, restoreAvailable = false;
-    let recoveryExported = false, conflictDialog = null, resolutionRunning = false, dismissedFailure = null;
+    let conflictDialog = null, resolutionRunning = false, dismissedFailure = null;
     let recoveryUnavailable = false;
     const sheets = ['sales','purchases','collections','payments','cwtCertificates','wtpCertificates','journalEntries'];
     const validState = value => value && typeof value === 'object' && sheets.every(key => Array.isArray(value[key]));
@@ -92,7 +92,7 @@
     }
     let legacy = null, legacyPayroll = [];
     try { if (!database.initialized) { legacy = JSON.parse(sessionStorage.getItem(ledgerKey) || 'null'); legacyPayroll = JSON.parse(sessionStorage.getItem(payrollKey) || '[]'); } }
-    catch { failure = {message: 'Browser records could not be read. Existing data has been preserved. Download or recover the browser data before editing.', status: 409}; }
+    catch { failure = {message: 'Browser records could not be read. Choose Discard Local to load the latest saved book before editing.', status: 409}; }
     if (database.initialized) removeCachedSnapshots();
     if (database.canWrite && !database.initialized && (hasRecords(legacy) || legacyPayroll.length)) {
         state = {...clone(database.state), ...(legacy || {})}; payroll = legacyPayroll;
@@ -117,7 +117,7 @@
             failure = null;
         } else {
             restoreAvailable = Boolean(canRestore);
-            const reason = recoverableOperations ? 'Other accountants may have saved since this tab’s pending work. Restore it to review and save only your changed entries; conflicts will be checked.' : validRecovery && preserved.revision !== revision ? 'The database has a different version. Download the unsaved work and compare it with the saved book; it cannot safely overwrite newer records.' : 'This tab contains unsaved work from an earlier database save. Restore it to review and save, or download a backup.';
+            const reason = recoverableOperations ? 'Other accountants may have saved since this tab’s pending work. Restore it to review and save only your changed entries; conflicts will be checked.' : validRecovery && preserved.revision !== revision ? 'The database has a different version. Choose Discard Local to load the latest saved book.' : 'This tab contains unsaved work from an earlier database save. Restore it to review and save, or choose Discard Local to load the latest saved book.';
             failure = {message: reason + (preserved?.error?.message ? ' Last save error: ' + String(preserved.error.message) : ''), status: 409};
         }
     }
@@ -139,17 +139,6 @@
         const text = postingLabel(node.dataset.companyPostedSheet, {id: node.dataset.companyPostedId});
         node.textContent = (node.dataset.companyPostedLabel || 'Posted').replace(/^Posted/, text);
         node.classList?.toggle('company-posting-unconfirmed', text !== 'Posted');
-    }
-    function download() {
-        const blob = new Blob([JSON.stringify(localRecoveryPending && validRecovery ? preserved : {company_id: database.company_id, revision, state, payroll}, null, 2)], {type: 'application/json'});
-        const url = URL.createObjectURL(blob), link = document.createElement('a');
-        link.href = url; link.download = `company-${database.company_id}-unsaved-work.json`; link.click();
-        setTimeout(() => URL.revokeObjectURL(url), 1000);
-        clearRecovery();
-        recoveryExported = true;
-        restoreAvailable = false;
-        render();
-        showConflictDialog();
     }
     function clearRecovery() {
         // Clear only this company's recovery keys; never clear another book or login session.
@@ -179,7 +168,6 @@
         if (failure) {
             label.textContent = failure.record_conflict ? 'Changes need review: another accountant updated this entry. Your changes are kept in this tab. Choose how to resolve the unsaved changes.' : 'Not saved to the database: ' + failure.message;
             banner.dataset.state = failure.record_conflict ? 'warning' : 'error';
-            button('Export unsaved work (.json)', download);
             if (restoreAvailable) button('Restore unsaved work', restoreRecovery);
             button('Resolve save conflict', showConflictDialog);
             if (failure.status !== 409) button('Retry save', () => { failure = null; pending = true; flush().catch(() => {}); });
@@ -187,13 +175,11 @@
         } else if (recoveryReview) {
             label.textContent = 'Unsaved work restored in this tab. Review the entries, then save them to the company database.';
             banner.dataset.state = 'pending';
-            button('Download unsaved work', download);
             button('Save recovered work', () => { recoveryReview = false; pending = true; flush().catch(() => {}); });
         } else if (migration) {
             const count = Object.values(state).filter(Array.isArray).reduce((sum, rows) => sum + rows.length, 0) + payroll.length;
             label.textContent = `${count} browser records await transfer to this company database. Review them before transferring. Existing browser data is preserved.`;
             banner.dataset.state = 'pending';
-            button('Download browser backup', download);
             if (database.canWrite) button('Transfer reviewed records', () => { migration = false; pending = true; flush().catch(() => {}); });
         } else if (pending || running) {
             label.textContent = recoveryUnavailable ? 'Saving to the company database… Browser backup is unavailable. Keep this tab open until the save is confirmed.' : 'Saving to the company database… Entries are awaiting server confirmation.';
@@ -205,7 +191,6 @@
         for (const node of document.querySelectorAll?.('[data-company-posted-sheet]') || []) updateBadge(node);
     }
     function stash() {
-        if (recoveryExported) return;
         let value;
         if (collaborative && !migration) {
             const changes = operations(), before = new Map();
@@ -234,7 +219,6 @@
         } else if (section === 'state') state = clone(next); else payroll = clone(next);
         if (!running && failure?.status) retry = null;
         failure = null;
-        recoveryExported = false;
         stash();
         if (!migration && !recoveryReview) { pending = true; clearTimeout(timer); timer = setTimeout(() => flush().catch(() => {}), 300); }
         render();
@@ -327,9 +311,6 @@
         discard.textContent = 'Discard Local & Reload Latest'; overwrite.textContent = 'Force Overwrite Database';
         overwrite.disabled = !database.canWrite || (!collaborative && restoreAvailable && !validRecovery);
         controls.append(discard, overwrite); dialog.append(title, explanation, message, controls);
-        const exportButton = document.createElement('button'); exportButton.type = 'button'; exportButton.textContent = 'Export unsaved work (.json)';
-        exportButton.className = 'company-conflict-export';
-        exportButton.addEventListener('click', download); dialog.append(exportButton);
         discard.addEventListener('click', async () => {
             if (resolutionRunning) return;
             resolutionRunning = true; discard.disabled = overwrite.disabled = true;
@@ -340,7 +321,7 @@
                 revision = latest.revision; Object.assign(database, latest); state = clone(latest.state); payroll = clone(latest.payroll);
                 editorState = clone(state); editorPayroll = clone(payroll);
                 pending = false; retry = null; failure = null; recoveryReview = false; migration = false; restoreAvailable = false;
-                localRecoveryPending = false; recoveryUnavailable = false; recoveryExported = false;
+                localRecoveryPending = false; recoveryUnavailable = false;
                 for (const open of document.querySelectorAll?.('dialog[open]') || []) { if (open !== dialog) open.close(); }
                 dialog.close(); notify(); render();
             } catch (error) { message.textContent = error.message; }

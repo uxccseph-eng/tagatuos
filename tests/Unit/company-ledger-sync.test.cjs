@@ -261,20 +261,22 @@ test('a rejected posted edit shows Not saved even though the original entry was 
 });
 
 
-test('export removes company recovery data without reloading or clearing another company', async () => {
-    const p = boot({fetcher: async () => ({ok: false, status: 409, json: async () => ({message: 'Version conflict'})})});
+test('conflict resolution needs no downloaded files and discard clears only this company recovery', async () => {
+    const p = boot({fetcher: async payload => payload ? {ok: false, status: 409, json: async () => ({message: 'Version conflict'})} : {ok:true,json:async()=>({...p.database})}});
     const state = empty(); state.sales.push({id: 'a'}); p.api.saveState(state);
     await assert.rejects(p.api.flush(), /Version conflict/);
     p.storage.set('other-company.pending-database-save', 'keep');
     p.local.set(recoveryKey, 'draft'); p.local.set('other-company.pending-database-save', 'keep');
-    p.buttons().find(button => button.textContent === 'Export unsaved work (.json)').click();
+    assert.equal(p.buttons().some(button => /download|export|json/i.test(button.textContent)),false);
+    assert.equal(p.dialog().children.length,4);
+    await p.dialog().children[3].children[0].click();
     assert.equal(p.storage.has(recoveryKey), false);
     assert.equal(p.storage.get('other-company.pending-database-save'), 'keep');
     assert.equal(p.local.has(recoveryKey), false);
     assert.equal(p.local.get('other-company.pending-database-save'), 'keep');
     assert.equal(p.reloads(), 0);
-    assert.equal(p.api.state().sales[0].id, 'a');
-    assert.ok(p.dialog());
+    assert.equal(p.api.state().sales.length, 0);
+    assert.equal(p.dialog(),undefined);
     assert.equal(boot({storage: p.storage}).api.pending(), false);
 });
 
@@ -330,7 +332,7 @@ test('overwrite still shows server validation failures and does not reload', asy
 });
 
 
-test('exported recovery can be explicitly overwritten from its original entry history without restoring its storage', async () => {
+test('stored recovery can be explicitly overwritten from its original entry history without exporting a file', async () => {
     const base = empty(); base.sales = [{id:'a',gross:100}];
     const local = empty(); local.sales = [{id:'a',gross:500}];
     const latest = empty(); latest.sales = [{id:'a',gross:200},{id:'b',gross:300}];
@@ -341,7 +343,6 @@ test('exported recovery can be explicitly overwritten from its original entry hi
         saved = payload;
         return {ok:true,json:async()=>({...p.database,revision:3,state:{...latest,sales:[{id:'a',gross:500},{id:'b',gross:300}]},record_versions:{sales:{a:3,b:1}}})};
     }});
-    p.buttons().find(button=>button.textContent==='Export unsaved work (.json)').click();
     await p.dialog().children[3].children[1].click();
     assert.equal(saved.operations.length, 1);
     assert.equal(saved.operations[0].record.gross, 500);
