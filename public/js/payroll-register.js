@@ -38,6 +38,17 @@
     function validDate(value) {
         return /^\d{4}-\d{2}-\d{2}$/.test(value || '') && !Number.isNaN(Date.parse(value)) && new Date(value).toISOString().slice(0, 10) === value;
     }
+    function benefitError(employee, required = true) {
+        try {
+            const benefits = cents(employee.benefits);
+            if (benefits === 0) return '';
+            if (String(employee.taxableBenefits ?? '').trim() === '') {
+                return required ? 'Enter the taxable portion of 13th / other benefits, including 0.00 when fully exempt.' : '';
+            }
+            if (cents(employee.taxableBenefits) > benefits) return 'Taxable benefits cannot exceed total benefits.';
+        } catch (exception) { return exception.message; }
+        return '';
+    }
     function error(run) {
         if (run.automation && run.automationError) return run.automationError;
         if (![run.date, run.periodStart, run.periodEnd].every(validDate)) return 'Enter a valid pay date, period start and period end.';
@@ -50,6 +61,8 @@
             if (names.has(name)) return 'An employee appears more than once in this run.';
             names.add(name);
             try {
+                const benefitsProblem = benefitError(employee, Boolean(run.automation || run.clientPayrollImport));
+                if (benefitsProblem) return benefitsProblem;
                 const amounts = totals(employee);
                 if (amounts.gross <= 0) return 'Each employee must have positive gross pay.';
                 if (amounts.net < 0) return 'Deductions cannot exceed gross pay.';
@@ -118,7 +131,7 @@
         if (records.some(item => item.status === 'draft')) throw new Error('Finish or delete the existing draft before importing.');
         return run;
     }
-    const api = {columnFields,textFields,amountFields,allAmountFields,columnGroups,extraDefinitions,extraFields,earningFields,deductionFields,employerFields,taxableExtraFields,taxableExtras,extraSum, cents, totals, runTotals, validDate, error, createRun, renumber, reopenForEditing, correctPosted, post, importHeaders, importRun};
+    const api = {columnFields,textFields,amountFields,allAmountFields,columnGroups,extraDefinitions,extraFields,earningFields,deductionFields,employerFields,taxableExtraFields,taxableExtras,extraSum, cents, totals, runTotals, validDate, benefitError, error, createRun, renumber, reopenForEditing, correctPosted, post, importHeaders, importRun};
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     else root.PayrollRegister = api;
 })(globalThis);

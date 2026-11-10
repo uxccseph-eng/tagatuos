@@ -139,3 +139,20 @@ test('posted correction stays posted with its number and an independent audit sn
     }
     assert.throws(() => payroll.correctPosted({...original,status:'void'}, working));
 });
+
+
+test('automatic and imported payroll require an explicit benefits split and never add it to gross twice', () => {
+    for (const flags of [{automation:true}, {clientPayrollImport:true}]) {
+        const run = {...draft(),...flags,employees:[{...employee,benefits:'4300'}]};
+        assert.match(payroll.error(run), /taxable portion/);
+        run.employees[0].taxableBenefits = '0';
+        assert.equal(payroll.error(run), '');
+        assert.equal(payroll.runTotals(run).gross, 2430000);
+        run.employees[0].taxableBenefits = '1000';
+        assert.equal(payroll.error(run), '');
+        assert.equal(payroll.runTotals(run).gross, 2430000);
+        run.employees[0].taxableBenefits = '4300.01';
+        assert.match(payroll.error(run), /cannot exceed/);
+    }
+    assert.equal(payroll.benefitError({...employee,benefits:'0'}), '');
+});

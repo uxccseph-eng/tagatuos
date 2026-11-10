@@ -11,9 +11,9 @@
     const clone = value => JSON.parse(JSON.stringify(value));
     const labels = ['Basic', 'Taxable Allow', 'De Minimis', '13th & Other Benefits', 'SSS-EE', 'PHIC-EE', 'HDMF-EE', 'WTax (actual)', 'SSS-ER', 'PHIC-ER', 'HDMF-ER'];
     const fieldLabels=Object.fromEntries(api.amountFields.map((field,i)=>[field,labels[i]]));for(const [field,definition] of Object.entries(api.extraDefinitions))fieldLabels[field]=definition.label;
-    Object.assign(fieldLabels,{otherAllowanceDescription:'Others (Reg) Desc',otherSupplementaryDescription:'Others (Supp) Desc'});
+    Object.assign(fieldLabels,{otherAllowanceDescription:'Others (Reg) Desc',otherSupplementaryDescription:'Others (Supp) Desc',taxableBenefits:'Taxable portion of benefits'});
     const visibleAmounts=new Set(['kpiIncentive','commission',...api.amountFields,...Object.entries(api.columnGroups).flatMap(([group,definition])=>preferences['payroll_columns_'+group]?Object.keys(definition.fields):[])]);
-    const visibleAmountFields=api.columnFields.filter(field=>visibleAmounts.has(field)||(field==='otherAllowanceDescription'&&visibleAmounts.has('otherAllowance'))||(field==='otherSupplementaryDescription'&&visibleAmounts.has('otherSupplementary')));
+    const visibleAmountFields=api.columnFields.filter(field=>visibleAmounts.has(field)||(field==='otherAllowanceDescription'&&visibleAmounts.has('otherAllowance'))||(field==='otherSupplementaryDescription'&&visibleAmounts.has('otherSupplementary'))).flatMap(field => field === 'benefits' ? [field, 'taxableBenefits'] : [field]);
     const selected = new Set();
     const postedEdits = new Map();
     let savingCorrection = false;
@@ -62,11 +62,11 @@
         try { const editing=postedEdits.has(run.id);const result=automation.calculate({...run,status:editing?'draft':run.status,automationError:''},source);return editing?{...result,status:'posted'}:result; }
         catch (exception) { return {...run, automationError: exception.message}; }
     }
-    const salaryBaseLabels = {monthlyBasic: 'Monthly basic (PHIC)', monthlyCompensation: 'Monthly compensation (SSS)', monthlyFundSalary: 'Monthly fund salary (HDMF)', taxableBenefits: 'Taxable benefits this run'};
+    const salaryBaseLabels = {monthlyBasic: 'Monthly basic (PHIC)', monthlyCompensation: 'Monthly compensation (SSS)', monthlyFundSalary: 'Monthly fund salary (HDMF)'};
     function additionalEmployeeFields(run) {
         if (!run.automation) return [];
         return (run.frequency || preferences.payroll_frequency || 'monthly') === 'monthly'
-            ? ['taxableBenefits']
+            ? []
             : Object.keys(salaryBaseLabels);
     }
     function render() {
@@ -103,15 +103,42 @@
                 post:()=>post([run.id]),delete:()=>deleteRuns([run]),more:event=>entryOptions(run,event.currentTarget)
             });
         }
+        for (const run of runs) updateBenefitFields(run);
         updateToolbar();
+    }
+    function updateBenefitFields(run) {
+        const detail = [...body.children].find(node => node.dataset.run === String(run.id) && node.classList.contains('payroll-detail'));
+        if (!detail) return;
+        for (const row of detail.querySelectorAll('[data-employee]')) {
+            const employee = run.employees[Number(row.dataset.employee)];
+            const input = row.querySelector('[data-employee-field="taxableBenefits"]');
+            if (!input) continue;
+            const problem = api.benefitError(employee, Boolean(run.automation || run.clientPayrollImport));
+            const help = row.querySelector('[data-benefit-help]');
+            help.id = `payroll-benefit-help-${run.id}-${row.dataset.employee}`;
+            help.textContent = problem || 'Part of the benefits amount; enter 0.00 if fully exempt.';
+            input.setAttribute('aria-describedby', help.id);
+            input.setAttribute('aria-invalid', String(Boolean(problem)));
+        }
+    }
+    function focusBenefitIssue(run) {
+        const index = run.employees.findIndex(employee => api.benefitError(employee, Boolean(run.automation || run.clientPayrollImport)));
+        if (index < 0) return false;
+        updateBenefitFields(run);
+        const detail = [...body.children].find(node => node.dataset.run === String(run.id) && node.classList.contains('payroll-detail'));
+        const input = detail?.querySelector(`[data-employee="${index}"] [data-employee-field="taxableBenefits"]`);
+        input?.scrollIntoView({block: 'center', inline: 'center'});
+        input?.focus({preventScroll: true});
+        announce(`${run.employees[index].name}: ${api.benefitError(run.employees[index], Boolean(run.automation || run.clientPayrollImport))}`);
+        return true;
     }
     function employeeRow(employee, index, disabled, automatic, additionalFields, imported = false) {
         let net = '—';
         try { net = money(api.totals(employee).net); } catch (exception) { /* Invalid input remains visible for correction. */ }
         return `<tr data-employee="${index}"><td><input class="employee-name" data-employee-field="name" aria-label="Employee name" list="payroll-employee-options" value="${escape(employee.name)}" maxlength="150" placeholder="Search employee name" ${disabled ? 'disabled' : ''}></td>
             <td><select data-employee-field="payType" aria-label="Pay Type" ${disabled ? 'disabled' : ''}>${['Taxable', 'Non-taxable', 'Minimum Wage Earner'].map(type => `<option ${employee.payType === type ? 'selected' : ''}>${type}</option>`).join('')}</select></td>
-            ${visibleAmountFields.map((field, position) => api.textFields.includes(field)?`<td><input class="employee-description" data-employee-field="${field}" aria-label="${fieldLabels[field]}" type="text" maxlength="200" value="${escape(employee[field] ?? '')}" ${disabled ? 'disabled' : ''} placeholder="Describe other earnings"></td>`:`<td><input class="employee-amount" data-employee-field="${field}" aria-label="${fieldLabels[field]}" type="text" inputmode="decimal" value="${escape(employee[field] ?? '')}" ${disabled ? 'disabled' : ''} ${automatic && [...automation.fields, 'withholding'].includes(field) ? 'readonly aria-readonly="true"' : ''} placeholder="0.00"></td>`).join('')}
-            ${additionalFields.map(field => `<td><input class="employee-amount" data-employee-field="${field}" aria-label="${salaryBaseLabels[field]}" inputmode="decimal" value="${escape(employee[field] ?? '')}" ${disabled ? 'disabled' : ''} placeholder="${field === 'taxableBenefits' ? 'Review taxable portion' : 'Monthly salary base'}"></td>`).join('')}
+            ${visibleAmountFields.map((field, position) => field === 'taxableBenefits' ? `<td class="payroll-benefit-cell"><input class="employee-amount" data-employee-field="taxableBenefits" aria-label="Taxable portion of benefits" type="text" inputmode="decimal" value="${escape(employee.taxableBenefits ?? '')}" ${disabled ? 'disabled' : ''} placeholder="Enter 0.00 if exempt"><small data-benefit-help>Part of the benefits amount; enter 0.00 if fully exempt.</small></td>` : api.textFields.includes(field)?`<td><input class="employee-description" data-employee-field="${field}" aria-label="${fieldLabels[field]}" type="text" maxlength="200" value="${escape(employee[field] ?? '')}" ${disabled ? 'disabled' : ''} placeholder="Describe other earnings"></td>`:`<td><input class="employee-amount" data-employee-field="${field}" aria-label="${fieldLabels[field]}" type="text" inputmode="decimal" value="${escape(employee[field] ?? '')}" ${disabled ? 'disabled' : ''} ${automatic && [...automation.fields, 'withholding'].includes(field) ? 'readonly aria-readonly="true"' : ''} placeholder="0.00"></td>`).join('')}
+            ${additionalFields.map(field => `<td><input class="employee-amount" data-employee-field="${field}" aria-label="${salaryBaseLabels[field]}" inputmode="decimal" value="${escape(employee[field] ?? '')}" ${disabled ? 'disabled' : ''} placeholder="Monthly salary base"></td>`).join('')}
             ${imported ? `<td class="payroll-money">${employee.withholdingReview ? money(employee.withholdingReview.reference) : '—'}</td><td class="payroll-money">${employee.withholdingReview ? money(employee.withholdingReview.difference) : '—'}</td>` : ''}
             <td class="payroll-money" data-employee-net>${net}</td><td>${disabled ? '—' : button('remove-employee', 'Remove', 'person_remove')}</td></tr>`;
     }
@@ -151,6 +178,7 @@
                 const index = next.findIndex(item => item.id === id && item.status === 'draft');
                 if (index < 0) continue;
                 next[index] = calculateDraft(next[index], next);
+                if (focusBenefitIssue(next[index])) return;
                 next = api.post(next, [id]);
             }
             if (store(next)) { selected.clear(); render(); announce('Payroll posted. Use Edit payroll to make a correction.'); }
@@ -180,6 +208,7 @@
     async function savePostedEdit(id) {
         const original = postedEdits.get(id), working = records.find(run => run.id === id);
         if (savingCorrection || !original || !working) return;
+        if (focusBenefitIssue(working)) return;
         savingCorrection = true; render();
         try {
             if (window.CompanyLedger) await window.CompanyLedger.flush();
@@ -264,6 +293,7 @@
         const master = [...body.children].find(node => node.dataset.run === run.id && !node.classList.contains('payroll-detail'));
         const detail = master.nextElementSibling;
         detail.querySelector('[data-calculation-error]').textContent = saved.automationError || '';
+        updateBenefitFields(saved);
         if (saved.automation) detail.querySelectorAll('[data-employee]').forEach(employeeRow => {
             const employee = saved.employees[Number(employeeRow.dataset.employee)];
             for (const name of [...automation.fields, 'withholding']) employeeRow.querySelector(`[data-employee-field="${name}"]`).value = employee[name] || '';

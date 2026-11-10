@@ -145,3 +145,9 @@
 
 .payroll-actions [data-action="save-correction"] { background:rgb(var(--sales-primary-fixed)); color:rgb(var(--sales-on-primary-fixed)); margin-right:6px; }
 .payroll-actions [data-action="cancel-correction"] { margin-right:6px; }
+
+.payroll-benefit-cell small { display:block; max-width:210px; margin-top:6px; white-space:normal; font:11px/1.5 'Inter',sans-serif; color:rgb(var(--sales-on-surface-variant)); }
+#payroll-main #payroll-rows [data-employee-field="taxableBenefits"][aria-invalid="true"] { border-color:rgb(var(--sales-error)); }
+.payroll-benefit-cell:has([aria-invalid="true"]) small { color:rgb(var(--sales-error)); }
+
+.payroll-employees tbody tr:has(.payroll-benefit-cell) > td { vertical-align:top; }
