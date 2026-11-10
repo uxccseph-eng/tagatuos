@@ -43,6 +43,16 @@ class TaxReturnController extends Controller
             $card['filing'] = $filings->get($form.'|'.$card['from'].'|'.$card['to']);
             $card['versions'] = $workspace->preparations($company)->where('form', $form)->where('period_from', $card['from'])->where('period_to', $card['to'])->latest('id')->limit(5)->get(['id', 'form', 'period_from', 'period_to', 'amended', 'revision', 'status', 'created_at', 'updated_at', 'filing_reference', 'filed_on', 'settings_year', 'year_settings_revision']);
             $workspace->decorateArchive($company, $card['versions']);
+            $latest = $card['versions']->first();
+            $saved = $latest ? $workspace->preparations($company)->where('id', $latest->id)->value('snapshot') : null;
+            $snapshot = $saved ? json_decode($saved, true, 512, JSON_THROW_ON_ERROR) : [];
+            $card['generated'] = $latest ? [
+                'entry' => $latest,
+                'filename' => $snapshot['bir_xml']['filename'] ?? null,
+                'xml_available' => isset($snapshot['bir_xml']['fields']),
+                'tax' => $snapshot['calculation']['tax'] ?? null,
+                'payable' => $snapshot['calculation']['payable'] ?? null,
+            ] : null;
             $card['original'] = $workspace->preparations($company)->where('form', $form)->where('period_from', $card['from'])->where('period_to', $card['to'])->where('original_slot', 1)->first(['id', 'revision']);
             $card['proofs'] = $proofs->get($card['filing']?->id, collect());
             if ($card['filing']?->filed_on === null && ($legacy = $card['versions']->firstWhere('status', 'filed'))) {

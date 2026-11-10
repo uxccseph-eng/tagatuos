@@ -1,6 +1,6 @@
 (() => {
     const main=document.getElementById('tax-returns-main');if(!main)return;
-    const q=id=>document.getElementById(id),form=q('return-prepare-form');let preview=null,selection=null,requestId=null,busy=false,filingUrl=null,filingRevision=null,deleteSelection=null,wasXml=false,previousCredits='',previousTax='';
+    const q=id=>document.getElementById(id),form=q('return-prepare-form');let preview=null,selection=null,requestId=null,busy=false,filingUrl=null,filingRevision=null,filingAnchor='filing-archive',deleteSelection=null,wasXml=false,previousCredits='',previousTax='';
     const money=value=>new Intl.NumberFormat('en-PH',{style:'currency',currency:'PHP'}).format(value/100);
     const printDialog=q('return-print-dialog'),printFrame=q('return-print-frame'),printButton=q('return-print-pdf');
     let printRequest=0;
@@ -125,17 +125,17 @@
             input.amended=form.elements.amended.checked;
             input.xml_requested=Boolean(preview.xml_capable&&form.elements.xml_requested.checked);
             if(input.xml_requested){input.xml_vat_reviewed=form.elements.xml_vat_reviewed.checked;for(const key of ['xml_carryover_input','xml_remittance_month1','xml_remittance_month2','xml_prior_overremittance'])input[key]=form.elements[key].value.trim();input.xml_overpayment_action=form.elements.xml_overpayment_action.value||null;if(['0619-E','1601-C'].includes(selection.form))input.xml_line_of_business=form.elements.xml_line_of_business.value.trim();if(selection.form==='1601-C'){input.xml_payroll_reviewed=form.elements.xml_payroll_reviewed.checked;input.xml_payroll_other_description=form.elements.xml_payroll_other_description.value.trim();for(const field of q('return-xml-payroll').querySelectorAll('input[inputmode=decimal]'))input[field.name]=field.value.trim();}}
-            await request(main.dataset.save,input);location.hash='filing-archive';location.reload();
+            await request(main.dataset.save,input);location.hash='return-'+selection.form;location.reload();
         }catch(error){q('return-error').textContent=error.message;if(error.status===409){q('return-error').textContent+=' Use Refresh sources, review the updated totals, and confirm again.';preview=null;}}
         finally{busy=false;updateSaveReadiness();}
     });
-    document.querySelectorAll('[data-record-filing]').forEach(button=>button.addEventListener('click',()=>{if(busy)return;filingUrl=button.dataset.recordFiling;filingRevision=Number(button.dataset.revision);q('filing-form').reset();q('filing-label').textContent=button.dataset.filingLabel;q('filing-error').textContent='';q('filing-dialog').showModal();}));
+    document.querySelectorAll('[data-record-filing]').forEach(button=>button.addEventListener('click',()=>{if(busy)return;filingUrl=button.dataset.recordFiling;filingAnchor=button.closest('.return-card')?.id || 'filing-archive';filingRevision=Number(button.dataset.revision);q('filing-form').reset();q('filing-label').textContent=button.dataset.filingLabel;q('filing-error').textContent='';q('filing-dialog').showModal();}));
     for(const button of document.querySelectorAll('[data-delete-preparation]'))button.addEventListener('click',()=>{
-        if(busy)return;deleteSelection={url:button.dataset.deletePreparation,revision:Number(button.dataset.revision)};q('return-delete-label').textContent=button.dataset.deleteLabel;q('return-delete-error').textContent='';q('return-delete-dialog').showModal();
+        if(busy)return;deleteSelection={url:button.dataset.deletePreparation,revision:Number(button.dataset.revision),anchor:button.closest('.return-card')?.id || 'filing-archive'};q('return-delete-label').textContent=button.dataset.deleteLabel;q('return-delete-error').textContent='';q('return-delete-dialog').showModal();
     });
     q('return-delete-form').addEventListener('submit',async event=>{
         event.preventDefault();if(busy||!deleteSelection)return;busy=true;const button=event.submitter;button.disabled=true;
-        try{await request(deleteSelection.url,{confirmed:true,revision:deleteSelection.revision});location.hash='filing-archive';location.reload();}
+        try{await request(deleteSelection.url,{confirmed:true,revision:deleteSelection.revision});location.hash=deleteSelection.anchor;location.reload();}
         catch(error){q('return-delete-error').textContent=error.message;}finally{busy=false;button.disabled=false;}
     });
     function reloadCard(target){location.hash=target.closest('.return-card')?.id || 'year-settings-title';location.reload();}
@@ -158,11 +158,13 @@
             }catch(error){status.textContent=error.message;}finally{busy=false;button.disabled=false;}
         });
     }
+    document.querySelector('[data-return-guidance]')?.addEventListener('click',event=>{event.preventDefault();q('return-guidance').open=!q('return-guidance').open;if(q('return-guidance').open)q('return-guidance').scrollIntoView({block:'nearest'});});
+    if(location.hash==='#filing-archive')q('filing-archive').open=true;
     const selectedCard=location.hash.startsWith('#return-')?document.getElementById(location.hash.slice(1)):null;
     if(selectedCard?.matches('.return-card'))selectedCard.querySelector('.return-card-archive').open=true;
     q('filing-form').addEventListener('submit',async event=>{
         event.preventDefault();if(busy||!filingUrl)return;busy=true;const button=event.submitter;button.disabled=true;
-        try{const data=new FormData(event.currentTarget);await request(filingUrl,{reference:String(data.get('reference')).trim(),filed_on:data.get('filed_on'),confirmed:data.get('confirmed')==='on',revision:filingRevision});location.hash='filing-archive';location.reload();}
+        try{const data=new FormData(event.currentTarget);await request(filingUrl,{reference:String(data.get('reference')).trim(),filed_on:data.get('filed_on'),confirmed:data.get('confirmed')==='on',revision:filingRevision});location.hash=filingAnchor;location.reload();}
         catch(error){q('filing-error').textContent=error.message;}finally{busy=false;button.disabled=false;}
     });
 })();

@@ -28,9 +28,12 @@ class TaxReturnPrintPreviewTest extends TestCase
         $this->assertSame('123456789', $response->viewData('printData')['tin']);
         $this->assertSame('00000', $response->viewData('printData')['branch']);
         $this->assertDatabaseHas('tax_return_preparations', ['id' => $id, 'status' => 'prepared', 'filed_on' => null]);
-        $this->get(route('tax-returns.index', ['company_id' => $book->id]))->assertOk()
+        $workspace = $this->get(route('tax-returns.index', ['company_id' => $book->id, 'year' => 2026, 'period' => 10]))->assertOk()
             ->assertSee('data-print-preview="'.route('tax-returns.show', ['id' => $id, 'company_id' => $book->id]).'"', false)
-            ->assertSee('return-print-dialog')->assertSee('Print / Save as PDF');
+            ->assertSee('return-print-dialog')->assertSee('Print / Save as PDF')
+            ->assertSee('Return prepared')->assertSee('Save PDF…')->assertSee('Previous reporting period');
+        $this->assertSame(2650, $workspace->viewData('cards')['0619-E']['generated']['payable']);
+        $this->assertSame($id, $workspace->viewData('cards')['0619-E']['generated']['entry']->id);
     }
 
     public function test_unmapped_credits_remain_on_the_worksheet_and_other_companies_cannot_preview(): void
