@@ -7,9 +7,11 @@ use App\Models\CompanyLedger;
 use App\Models\CompanySetting;
 use App\Models\User;
 use App\Services\CompanyLedgerService;
+use App\Services\Tax\Bir1601CPrintData;
 use App\Services\Tax\BirExporterFactory;
 use App\Services\Tax\BirPayrollLedgerMapper;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
@@ -156,6 +158,29 @@ class MonthlyBirXmlExporterTest extends TestCase
                 $this->postJson($url, [...$input, 'xml_payroll_mandatory_contributions' => '999999.00'])->assertUnprocessable();
             }
             $id = $this->postJson($url, $input)->assertCreated()->json('id');
+            if ($form === '1601-C') {
+                $print = $this->get(route('tax-returns.show', ['company_id' => $company->id, 'id' => $id]))->assertOk()
+                    ->assertViewIs('tax-return-1601c-print')
+                    ->assertSee('bir-1601c-jan2018-page1.png')->assertSee('bir-1601c-jan2018-page2.png')
+                    ->assertSee('data-bir-amount="14" data-cents="4000000"', false)
+                    ->assertSee('data-bir-amount="19" data-cents="300000"', false)
+                    ->assertSee('data-bir-amount="24" data-cents="3700000"', false)
+                    ->assertSee('data-bir-amount="36" data-cents="260840"', false);
+                $this->assertCount(23, $print->viewData('printData')['amounts']);
+                $record = DB::table('tax_return_preparations')->find($id);
+                $snapshot = json_decode($record->snapshot, true, 512, JSON_THROW_ON_ERROR);
+                $unmapped = $snapshot;
+                unset($unmapped['bir_xml']);
+                $this->assertFalse(app(Bir1601CPrintData::class)->build($record, $unmapped)['mapped']);
+                $unmapped = $snapshot;
+                $unmapped['bir_xml']['fields']['frm1601c:txtTax21'] = '0.00';
+                $this->assertFalse(app(Bir1601CPrintData::class)->build($record, $unmapped)['mapped']);
+                $unmapped = $snapshot;
+                $unmapped['calculation']['credits'] = 100;
+                $this->assertFalse(app(Bir1601CPrintData::class)->build($record, $unmapped)['mapped']);
+                CompanySetting::query()->where('company_id', $company->id)->update(['profile' => [...$this->profile(), 'company_name' => 'CHANGED LIVE COMPANY']]);
+                $this->get(route('tax-returns.show', ['company_id' => $company->id, 'id' => $id]))->assertOk()->assertSee('DEMO MONTHLY CORP.')->assertDontSee('CHANGED LIVE COMPANY');
+            }
             $this->postJson($url, $input)->assertOk()->assertJsonPath('replayed', true);
             $xmlUrl = route('tax-returns.xml', ['company_id' => $company->id, 'id' => $id]);
             $text = $this->get($xmlUrl)->assertOk()->assertHeader('X-BIR-Validation', 'not-verified')->streamedContent();
