@@ -9,6 +9,7 @@ use App\Models\Employee;
 use App\Models\User;
 use App\PayrollColumns;
 use App\Services\CompanyLedgerService;
+use App\Services\SheetImportWorkbookReader;
 use App\Services\Tax\BirPayrollLedgerMapper;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -83,16 +84,35 @@ class PayrollColumnsTest extends TestCase
     public function test_kpi_and_commission_are_preserved_separately_and_post_once_to_the_books_and_monthly_tax_totals(): void
     {
         [$company, , $employee] = $this->book();
-        $row = [...array_fill_keys([...PayrollColumns::CORE, ...array_keys(PayrollColumns::extras())], '0.00'), 'name' => $employee->name, 'payType' => 'Taxable', 'basic' => '1000.00', 'kpiIncentive' => '100.00', 'commission' => '200.00'];
+        $row = [...array_fill_keys([...PayrollColumns::CORE, ...array_keys(PayrollColumns::extras())], '0.00'), 'name' => $employee->name, 'payType' => 'Taxable', 'basic' => '1000.00', 'kpiIncentive' => '100.00', 'commission' => '200.00', 'otherAllowanceDescription' => 'Travel adjustment', 'otherSupplementaryDescription' => 'Performance bonus'];
         $run = ['id' => 'payroll-incentives-test', 'number' => '', 'date' => '2026-11-04', 'periodStart' => '2026-11-01', 'periodEnd' => '2026-11-30', 'status' => 'posted', 'employees' => [$row], 'automation' => false];
         $this->postJson(route('sheets.database.save', ['company_id' => $company->id]), ['state' => CompanyLedgerService::emptyState(), 'payroll' => [$run], 'revision' => 0, 'request_id' => (string) Str::uuid()])->assertOk()
             ->assertJsonPath('payroll.0.employees.0.basic', '1000.00')
             ->assertJsonPath('payroll.0.employees.0.kpiIncentive', '100.00')
-            ->assertJsonPath('payroll.0.employees.0.commission', '200.00');
+            ->assertJsonPath('payroll.0.employees.0.commission', '200.00')
+            ->assertJsonPath('payroll.0.employees.0.otherAllowanceDescription', 'Travel adjustment')
+            ->assertJsonPath('payroll.0.employees.0.otherSupplementaryDescription', 'Performance bonus');
         $this->assertEquals(1300, DB::table('journal_entry_lines')->sum('debit'));
         $this->assertEquals(1300, DB::table('journal_entry_lines')->sum('credit'));
         $mapped = app(BirPayrollLedgerMapper::class)->map([$run], ['from' => '2026-11-01', 'to' => '2026-11-30']);
         $this->assertSame([], $mapped['issues']);
         $this->assertSame(130000, $mapped['values']['total_compensation']);
+    }
+
+    public function test_downloadable_workbook_uses_the_approved_column_order_and_preserves_dropdowns(): void
+    {
+        $path = resource_path('templates/sheets-payroll-import.xlsx');
+        $workbook = app(SheetImportWorkbookReader::class)->read($path);
+        $headers = $workbook['rows'][0];
+        $this->assertSame(['Import', 'Examples', 'Choices'], $workbook['worksheets']);
+        $this->assertSame(['basic', 'kpiIncentive', 'commission', 'holidayPay', 'overtimePay', 'nightDifferential', 'hazardPay', 'taxableAllowance'], array_slice($headers, 6, 8));
+        $this->assertTrue(array_search('otherAllowanceDescription', $headers, true) < array_search('otherAllowance', $headers, true));
+        $this->assertTrue(array_search('otherSupplementaryDescription', $headers, true) < array_search('otherSupplementary', $headers, true));
+        $archive = new \ZipArchive;
+        $this->assertTrue($archive->open($path));
+        $sheet = $archive->getFromName('xl/worksheets/sheet1.xml');
+        $this->assertStringContainsString('sqref="F2:F501"', $sheet);
+        $this->assertStringContainsString('Minimum Wage Earner', $sheet);
+        $archive->close();
     }
 }

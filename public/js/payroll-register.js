@@ -6,7 +6,10 @@
     const amountFields = [...earnings, ...deductions, ...contributions];
     const columnGroups=typeof module!=='undefined'&&module.exports?require('../../resources/templates/payroll-columns.json'):JSON.parse(document.getElementById('payroll-column-schema').textContent);
     const extraDefinitions=Object.assign({},...Object.values(columnGroups).map(group=>group.fields));
-    const extraFields=Object.keys(extraDefinitions),allAmountFields=['basic','kpiIncentive','commission',...amountFields.filter(field=>field!=='basic'),...extraFields.filter(field=>!['kpiIncentive','commission'].includes(field))];
+    const extraFields=Object.keys(extraDefinitions);
+    const textFields=['otherAllowanceDescription','otherSupplementaryDescription'];
+    const columnFields=['basic','kpiIncentive','commission','holidayPay','overtimePay','nightDifferential','hazardPay','taxableAllowance','representationAllowance','transportationAllowance','cola','housingAllowance','otherAllowanceDescription','otherAllowance','profitSharing','directorsFees','otherSupplementaryDescription','otherSupplementary','deMinimis','otherNonTaxable','benefits','sssEe','phicEe','hdmfEe','gsisEe','unionDues','withholding','pera','sssEr','phicEr','hdmfEr','gsisEr'];
+    const allAmountFields=columnFields.filter(field=>!textFields.includes(field));
     const fieldsOf=kind=>extraFields.filter(field=>extraDefinitions[field].kind===kind);
     const earningFields=[...earnings,...fieldsOf('earning')],deductionFields=[...deductions,...fieldsOf('deduction')],employerFields=[...contributions,...fieldsOf('employer')];
     const taxableExtraFields=(mwe=false)=>fieldsOf('earning').filter(field=>extraDefinitions[field].tax==='taxable'||(!mwe&&extraDefinitions[field].tax==='premium'));
@@ -106,7 +109,7 @@
         if (records.some(item => item.status === 'draft')) throw new Error('Finish or delete the existing draft before importing.');
         return run;
     }
-    const api = {amountFields,allAmountFields,columnGroups,extraDefinitions,extraFields,earningFields,deductionFields,employerFields,taxableExtraFields,taxableExtras,extraSum, cents, totals, runTotals, validDate, error, createRun, renumber, reopenForEditing, post, importHeaders, importRun};
+    const api = {columnFields,textFields,amountFields,allAmountFields,columnGroups,extraDefinitions,extraFields,earningFields,deductionFields,employerFields,taxableExtraFields,taxableExtras,extraSum, cents, totals, runTotals, validDate, error, createRun, renumber, reopenForEditing, post, importHeaders, importRun};
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     else root.PayrollRegister = api;
 })(globalThis);

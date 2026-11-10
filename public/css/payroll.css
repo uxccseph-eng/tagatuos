@@ -136,3 +136,5 @@
 @media print { body>*:not(main) { display:none!important; } #payroll-main { margin:0; padding:0; } .sheet-heading,.sheet-tabs,.sheet-toolbar,.payroll-note,#payroll-status,.payroll-actions { display:none!important; } .payroll-grid,.payroll-employee-scroll { overflow:visible; } }
 
 .payroll-incentive-note{font-size:11px;line-height:1.7;color:var(--theme-muted);margin:12px 0;max-width:1000px}
+
+.payroll-employees .employee-description{min-width:200px;width:220px}

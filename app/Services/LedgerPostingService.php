@@ -167,6 +167,11 @@ class LedgerPostingService
                 $this->fail('A payroll run needs between 1 and 1000 employees.');
             }
             foreach ($run['employees'] as $employee) {
+                foreach (['otherAllowanceDescription', 'otherSupplementaryDescription'] as $description) {
+                    if (isset($employee[$description]) && (! is_string($employee[$description]) || mb_strlen($employee[$description]) > 200)) {
+                        $this->fail('Keep other-earnings descriptions within 200 characters.');
+                    }
+                }
                 $name = trim((string) ($employee['name'] ?? ''));
                 if (isset($names[mb_strtolower($name)]) || ! isset($this->employees[$name])) {
                     $this->fail('Select distinct active employees from this company’s Masters.');

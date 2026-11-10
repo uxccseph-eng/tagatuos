@@ -63,3 +63,13 @@ test('provided incentive deductions and explicit monthly bases retain precedence
  assert.equal(person.sssEe,'400.00');assert.equal(person.phicEe,'0.00');assert.equal(person.hdmfEe,'12.00');assert.equal(person.withholding,'100.00');
  assert.equal(person.kpiIncentive,'200.00');
 });
+
+
+test('full template order and client Others descriptions survive import without becoming numeric earnings',()=>{
+ const financial=engine.headers.filter(field=>payroll.columnFields.includes(field));assert.deepEqual(financial,payroll.columnFields);
+ const result=engine.preview(rows({otherAllowanceDescription:'Travel adjustment',otherAllowance:'100.00',otherSupplementaryDescription:'Performance bonus',otherSupplementary:'50.00'}),context);
+ assert.deepEqual(result.errors,[]);const person=result.run.employees[0];
+ assert.equal(person.otherAllowanceDescription,'Travel adjustment');assert.equal(person.otherSupplementaryDescription,'Performance bonus');assert.equal(payroll.totals(person).gross,3015000);
+ const map=engine.guessMapping(['Basic *','Overtime','Night Diff','Representation','Transportation','Housing Allow','Others (Reg) Desc','Others (Reg)','Others (Supp) Desc','Others (Supp)']);
+ for(const field of ['basic','overtimePay','nightDifferential','representationAllowance','transportationAllowance','housingAllowance','otherAllowanceDescription','otherAllowance','otherSupplementaryDescription','otherSupplementary'])assert.notEqual(map[field],null);
+});

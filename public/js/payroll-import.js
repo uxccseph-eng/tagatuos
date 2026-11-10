@@ -5,7 +5,7 @@
     const importer=typeof module!=='undefined'&&module.exports?require('./sheet-import.js'):root.SheetImport;
     const requiredHeaders=['pay_date','period_start','period_end','basic','withholding'];
     const simpleHeaders=['pay_date','period_start','period_end','employee','pay_type','basic','kpiIncentive','commission','withholding'];
-    const headers=[...payroll.importHeaders,...payroll.extraFields,'employee_code','taxable_benefits','review_basis','monthlyBasic','monthlyCompensation','monthlyFundSalary','contribution_share'];
+    const headers=[...payroll.importHeaders.filter(field=>!payroll.amountFields.includes(field)),...payroll.columnFields,'employee_code','taxable_benefits','review_basis','monthlyBasic','monthlyCompensation','monthlyFundSalary','contribution_share'];
     function template(withSamples=false,detailed=false){
         const outputHeaders=detailed?headers:simpleHeaders;
         const sample={...Object.fromEntries(payroll.extraFields.map(field=>[field,'0.00'])),pay_date:'2026-10-31',run_name:'SAMPLE Monthly Payroll - REPLACE',period_start:'2026-10-01',period_end:'2026-10-31',employee:'REPLACE WITH EMPLOYEE NAME',employee_code:'REPLACE WITH EMPLOYEE CODE',pay_type:'Taxable',basic:'20000.00',taxableAllowance:'0.00',deMinimis:'0.00',benefits:'0.00',sssEe:'',phicEe:'',hdmfEe:'',withholding:'0.00',sssEr:'',phicEr:'',hdmfEr:'',taxable_benefits:'0.00',review_basis:'regular'};
@@ -23,6 +23,7 @@
     Object.assign(aliases,{monthlyBasic:['monthly basic','monthly philhealth basic'],monthlyCompensation:['monthly sss compensation'],monthlyFundSalary:['monthly pag ibig fund salary','monthly hdmf fund salary'],contribution_share:['monthly contribution share']});
     for(const [field,definition] of Object.entries(payroll.extraDefinitions))aliases[field]=[definition.label];
     aliases.kpiIncentive=['KPI','KPI / Incentives','KPI incentives','Performance incentive','KPI/Comissions','KPI/Commissions','KPI / Commissions'];
+    Object.assign(aliases,{overtimePay:['Overtime','Overtime pay'],nightDifferential:['Night Diff','Night differential'],representationAllowance:['Representation','Representation allowance'],transportationAllowance:['Transportation','Transportation allowance'],housingAllowance:['Housing Allow','Housing allowance'],otherAllowance:['Others (Reg)','Other allowances (44)'],otherSupplementary:['Others (Supp)','Other supplementary (51)'],otherAllowanceDescription:['Others (Reg) Desc','Other allowance description'],otherSupplementaryDescription:['Others (Supp) Desc','Other supplementary description']});
     function guessMapping(sourceHeaders){
         const names=sourceHeaders.map(headerKey),mapping={},used=new Set();
         for(const field of headers){const matches=names.flatMap((name,index)=>name&&[field,...(aliases[field]||[])].map(headerKey).includes(name)?[index]:[]);mapping[field]=matches.length===1&&!used.has(matches[0])?matches[0]:null;if(mapping[field]!==null)used.add(mapping[field]);}
@@ -69,7 +70,8 @@
             if(matches.length!==1)throw Error('Match this employee to one active record in Masters. Use employee_code for ambiguous names.');
             const person=matches[0];if(value.employee_code&&value.employee&&normalize(value.employee)!==normalize(person.name)&&normalize(value.employee)!==normalize(person.code))throw Error('Employee name and code identify different records.');
             if(seen.has(String(person.id)))throw Error('This employee appears more than once in the batch.');seen.add(String(person.id));
-            let employee={employeeId:person.id,name:person.name,payType:value.pay_type||'Taxable',...Object.fromEntries(payroll.allAmountFields.map(field=>[field,amountText(['basic','withholding',...automation.fields].includes(field)?value[field]:(value[field]||'0.00'))])),taxableBenefits:amountText(value.taxable_benefits),reviewBasis:value.review_basis||'regular',monthlyBasic:amountText(value.monthlyBasic),monthlyCompensation:amountText(value.monthlyCompensation),monthlyFundSalary:amountText(value.monthlyFundSalary),contributionShare:value.contribution_share||''};
+            if(payroll.textFields.some(field=>String(value[field]||'').length>200))throw Error('Keep other-earnings descriptions within 200 characters.');
+            let employee={...Object.fromEntries(payroll.textFields.map(field=>[field,String(value[field]||'').trim()])),employeeId:person.id,name:person.name,payType:value.pay_type||'Taxable',...Object.fromEntries(payroll.allAmountFields.map(field=>[field,amountText(['basic','withholding',...automation.fields].includes(field)?value[field]:(value[field]||'0.00'))])),taxableBenefits:amountText(value.taxable_benefits),reviewBasis:value.review_basis||'regular',monthlyBasic:amountText(value.monthlyBasic),monthlyCompensation:amountText(value.monthlyCompensation),monthlyFundSalary:amountText(value.monthlyFundSalary),contributionShare:value.contribution_share||''};
             employee=automation.fillImportedContributions(employee,{frequency,date:meta[0],id,records,share:contributionShare,periodStart:meta[2],periodEnd:meta[3]});
             const amounts=payroll.totals(employee);if(amounts.gross<=0||amounts.net<0)throw Error('Earnings must be positive and cover actual deductions.');
             const comparison=compare(employee,frequency,meta[0]);
@@ -81,7 +83,7 @@
         if(records.some(other=>other.status==='draft'))errors.push({row:0,message:'Finish or delete the existing draft before importing payroll.'});
         return {errors,checks,run,reviewCount:0,totalActual:checks.reduce((sum,item)=>sum+item.actual,0),totalReference:checks.reduce((sum,item)=>sum+item.reference,0)};
     }
-    function signature(run){return JSON.stringify([run.date,run.periodStart,run.periodEnd,run.frequency,run.employees.map(employee=>[employee.employeeId,employee.payType,...payroll.allAmountFields.map(field=>payroll.cents(employee[field])),employee.taxableBenefits,employee.reviewBasis]).sort((a,b)=>String(a[0]).localeCompare(String(b[0])))]);}
+    function signature(run){return JSON.stringify([run.date,run.periodStart,run.periodEnd,run.frequency,run.employees.map(employee=>[employee.employeeId,employee.payType,...payroll.allAmountFields.map(field=>payroll.cents(employee[field])),employee.taxableBenefits,employee.reviewBasis,...payroll.textFields.map(field=>employee[field]||'')]).sort((a,b)=>String(a[0]).localeCompare(String(b[0])))]);}
     function cumulative(records,year,employees=[]){
         const totals=new Map(),names=new Map();
         for(const employee of [...employees,...records.flatMap(run=>run.employees)]){

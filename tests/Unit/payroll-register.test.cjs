@@ -112,3 +112,10 @@ test('detailed earnings and government deductions count even without visibility 
     assert.deepEqual(payroll.totals({...person,holidayPay:''}),{gross:102500,net:100000,cost:105500});
     assert.throws(()=>payroll.totals({...person,holidayPay:'-1.00'}));
 });
+
+
+test('payroll columns follow the approved earnings, deductions and employer-share lineup',()=>{
+ assert.deepEqual(payroll.columnFields,['basic','kpiIncentive','commission','holidayPay','overtimePay','nightDifferential','hazardPay','taxableAllowance','representationAllowance','transportationAllowance','cola','housingAllowance','otherAllowanceDescription','otherAllowance','profitSharing','directorsFees','otherSupplementaryDescription','otherSupplementary','deMinimis','otherNonTaxable','benefits','sssEe','phicEe','hdmfEe','gsisEe','unionDues','withholding','pera','sssEr','phicEr','hdmfEr','gsisEr']);
+ assert.equal(new Set(payroll.columnFields).size,payroll.columnFields.length);
+ assert.deepEqual(payroll.totals({basic:'1000',otherAllowance:'100',otherAllowanceDescription:'Transport adjustment',otherSupplementary:'50',otherSupplementaryDescription:'Performance bonus'}),{gross:115000,net:115000,cost:115000});
+});
