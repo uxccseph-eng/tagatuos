@@ -151,15 +151,20 @@ test('existing browser records are preserved and require an explicit reviewed tr
     p.buttons().find(button => button.textContent === 'Transfer reviewed records').click();
     await p.api.flush();
     assert.equal(p.requests[0].state.sales[0].id, 'legacy-sale');
-    assert.equal(p.storage.has('kontadurya.ledger.v1.company-test.before-database-transfer'), true);
+    assert.equal(p.storage.has('kontadurya.ledger.v1.company-test.before-database-transfer'), false);
 });
-test('read-only members cannot stage changes and storage failure cannot leave a hidden mutation', () => {
+test('read-only members cannot stage changes and a full browser quota does not block a database save', async () => {
     const readOnly = boot({canWrite: false});
     assert.throws(() => readOnly.api.savePayroll([]), /permission/);
     const p = boot(); p.sessionStorage.setItem = () => { throw Error('Quota exceeded'); };
-    const state = empty(); state.sales.push({id: 'never-staged'});
-    assert.throws(() => p.api.saveState(state), /preserve/);
-    assert.equal(p.api.state().sales.length, 0);
+    const state = empty(); state.sales.push({id: 'staged-in-memory'});
+    p.api.saveState(state);
+    assert.equal(p.api.pending(), true);
+    assert.equal(p.api.state().sales.length, 1);
+    await p.api.flush();
+    assert.equal(p.requests.length, 1);
+    assert.equal(p.api.pending(), false);
+    assert.equal(p.api.state().sales[0].id, 'staged-in-memory');
 });
 
 const recoveryKey = 'kontadurya.ledger.v1.company-test.pending-database-save';
@@ -273,14 +278,18 @@ test('export removes company recovery data without reloading or clearing another
     assert.equal(boot({storage: p.storage}).api.pending(), false);
 });
 
-test('only an explicit discard clears the draft and reloads', async () => {
-    const p = boot({fetcher: async () => ({ok: false, status: 409, json: async () => ({message: 'Conflict'})})});
+test('explicit discard loads the latest book in place and clears the draft without a page reload', async () => {
+    const p = boot({fetcher: async payload => payload ? {ok: false, status: 409, json: async () => ({message: 'Conflict'})} : {ok: true, json: async () => ({...p.database, state: empty()})}});
     const state = empty(); state.sales.push({id: 'a'}); p.api.saveState(state);
     await assert.rejects(p.api.flush(), /Conflict/);
     assert.equal(p.reloads(), 0);
-    p.dialog().children[3].children[0].click();
-    assert.equal(p.reloads(), 1);
+    await p.dialog().children[3].children[0].click();
+    assert.equal(p.reloads(), 0);
     assert.equal(p.storage.has(recoveryKey), false);
+    assert.equal(p.api.state().sales.length, 0);
+    assert.equal(p.api.pending(), false);
+    assert.equal(p.dialog(), undefined);
+    assert.equal(boot({storage:p.storage}).api.pending(), false);
 });
 
 test('explicit overwrite replaces changed entries only and uses fresh versions with a new request id', async () => {
@@ -351,4 +360,126 @@ test('a second writer racing an explicit overwrite still produces a conflict ins
     assert.equal(p.dialog().children[2].textContent, 'Changed again; review latest');
     assert.equal(p.api.pending(), true);
     assert.equal(p.reloads(), 0);
+});
+
+test('recovery stores only changed entries instead of repeated copies of a large book', async () => {
+    const base = empty();
+    base.sales = Array.from({length:1000},(_,index)=>({id:String(index),gross:100,memo:'x'.repeat(1000)}));
+    const p=boot({collaborative:true,snapshot:{state:base},fetcher:async()=>{throw Error('Offline');}});
+    const next=p.api.state();next.sales[500].gross=200;p.api.saveState(next);
+    await assert.rejects(p.api.flush(),/Offline/);
+    const encoded=p.storage.get(recoveryKey),saved=JSON.parse(encoded);
+    assert.equal(saved.format,2);
+    assert.equal(saved.state,undefined);
+    assert.equal(saved.base_state,undefined);
+    assert.equal(saved.request.state,undefined);
+    assert.equal(saved.changes.length,1);
+    assert.equal(saved.before.length,1);
+    assert.ok(encoded.length<10000);
+    assert.equal(saved.changes[0].record.gross,200);
+    assert.equal(saved.before[0].record.gross,100);
+});
+
+test('compact recovery restores original versions and retries its original request without removing newer rows', async()=>{
+    const base=empty();base.sales=[{id:'a',gross:100}];
+    const first=boot({collaborative:true,snapshot:{state:base,revision:1,record_versions:{sales:{a:1}}},fetcher:async()=>{throw Error('Offline');}});
+    const local=first.api.state();local.sales[0].gross=500;first.api.saveState(local);
+    await assert.rejects(first.api.flush(),/Offline/);
+    const latest=empty();latest.sales=[{id:'a',gross:100},{id:'b',gross:700}];
+    let submitted;
+    const restored=boot({collaborative:true,storage:first.storage,snapshot:{state:latest,revision:2,record_versions:{sales:{a:1,b:1}}},fetcher:async payload=>{
+        submitted=payload;
+        return {ok:true,json:async()=>({...restored.database,revision:3,state:{...latest,sales:[{id:'a',gross:500},{id:'b',gross:700}]},record_versions:{sales:{a:2,b:1}}})};
+    }});
+    restored.buttons().find(button=>button.textContent==='Restore unsaved work').click();
+    restored.buttons().find(button=>button.textContent==='Save recovered work').click();
+    await restored.api.flush();
+    assert.equal(submitted.request_id,first.requests[0].request_id);
+    assert.equal(submitted.operations.length,1);
+    assert.equal(submitted.operations[0].expected_version,1);
+    assert.equal(restored.api.state().sales[1].gross,700);
+    assert.equal(restored.api.pending(),false);
+    assert.equal(restored.storage.has(recoveryKey),false);
+});
+
+test('full browser quota during Force Overwrite cannot stop the server save or return on sheet switches',async()=>{
+    const base=empty();base.sales=[{id:'a',gross:100}];
+    const latest=empty();latest.sales=[{id:'a',gross:200},{id:'other',gross:800}];
+    const p=boot({collaborative:true,snapshot:{state:base,revision:1,record_versions:{sales:{a:1}}},fetcher:async(payload,count)=>{
+        if(!payload)return {ok:true,json:async()=>({...p.database,state:latest,revision:2,record_versions:{sales:{a:2,other:1}}})};
+        if(count===1)return {ok:false,status:409,json:async()=>({message:'Changed by another accountant',record_conflict:true})};
+        return {ok:true,json:async()=>({...p.database,state:{...latest,sales:[{id:'a',gross:500},{id:'other',gross:800}]},revision:3,record_versions:{sales:{a:3,other:1}}})};
+    }});
+    const next=p.api.state();next.sales[0].gross=500;p.api.saveState(next);
+    await assert.rejects(p.api.flush(),/Changed by another accountant/);
+    p.sessionStorage.setItem=()=>{throw Error('Quota exceeded');};
+    await p.dialog().children[3].children[1].click();
+    assert.equal(p.requests.length,3);
+    assert.equal(p.api.pending(),false);
+    assert.equal(p.api.state().sales[0].gross,500);
+    assert.equal(p.api.state().sales[1].gross,800);
+    assert.equal(p.storage.has(recoveryKey),false);
+    for(let index=0;index<5;index++){
+        const sheet=boot({storage:p.storage,collaborative:true,snapshot:p.database});
+        assert.equal(sheet.api.pending(),false);
+        assert.equal(sheet.dialog(),undefined);
+        assert.equal(sheet.requests.length,0);
+    }
+});
+
+test('discard keeps local work when fetching the latest book fails and resolves only after a valid response',async()=>{
+    let online=false;
+    const p=boot({collaborative:true,fetcher:async payload=>payload?{ok:false,status:409,json:async()=>({message:'Conflict'})}:online?{ok:true,json:async()=>({...p.database,revision:1})}:{ok:false,status:503}});
+    const next=p.api.state();next.sales=[{id:'a'}];p.api.saveState(next);
+    await assert.rejects(p.api.flush(),/Conflict/);
+    const dialog=p.dialog();
+    await dialog.children[3].children[0].click();
+    assert.equal(p.api.state().sales[0].id,'a');
+    assert.equal(p.storage.has(recoveryKey),true);
+    assert.equal(p.dialog().open,true);
+    online=true;
+    await dialog.children[3].children[0].click();
+    assert.equal(p.api.pending(),false);
+    assert.equal(p.api.state().sales.length,0);
+    assert.equal(p.storage.has(recoveryKey),false);
+    assert.equal(p.reloads(),0);
+});
+
+test('acknowledged saves do not become failures if browser storage removal is blocked',async()=>{
+    const p=boot();
+    const next=p.api.state();next.sales=[{id:'a',status:'posted'}];p.api.saveState(next);
+    p.sessionStorage.removeItem=()=>{throw Error('Storage blocked');};
+    await p.api.flush();
+    assert.equal(p.api.pending(),false);
+    assert.equal(p.dialog(),undefined);
+    assert.equal(p.api.postingLabel('sales',{id:'a'}),'Posted');
+});
+
+test('confirmed database pages remove obsolete snapshots without interpreting corrupt caches as a conflict',()=>{
+    const storage=new Map([['kontadurya.ledger.v1.company-test','{invalid'],['kontadurya.payroll.v1.company-test','{invalid'],['another-company','keep']]);
+    const p=boot({storage,collaborative:true});
+    assert.equal(p.api.pending(),false);
+    assert.equal(p.dialog(),undefined);
+    assert.equal(storage.has('kontadurya.ledger.v1.company-test'),false);
+    assert.equal(storage.has('kontadurya.payroll.v1.company-test'),false);
+    assert.equal(storage.get('another-company'),'keep');
+});
+
+test('a previously acknowledged recovery cannot replace a later edit during Force Overwrite',async()=>{
+    const base=empty();base.sales=[{id:'a',gross:100}];
+    const storage=new Map([[recoveryKey,JSON.stringify({company_id:1,revision:1,state:base,payroll:[],base_state:base,base_payroll:[],base_versions:{sales:{a:1}}})]]);
+    let submitted;
+    const p=boot({storage,collaborative:true,snapshot:{state:base,revision:1,record_versions:{sales:{a:1}}},fetcher:async(payload,count)=>{
+        if(count===1)return {ok:false,status:409,json:async()=>({message:'Conflict',record_conflict:true})};
+        if(!payload)return {ok:true,json:async()=>({...p.database,revision:2,record_versions:{sales:{a:2}}})};
+        submitted=payload;
+        return {ok:true,json:async()=>({...p.database,revision:3,state:{...base,sales:[{id:'a',gross:900}]},record_versions:{sales:{a:3}}})};
+    }});
+    assert.equal(p.api.pending(),false);
+    const next=p.api.state();next.sales[0].gross=900;p.api.saveState(next);
+    await assert.rejects(p.api.flush(),/Conflict/);
+    await p.dialog().children[3].children[1].click();
+    assert.equal(submitted.operations[0].record.gross,900);
+    assert.equal(p.api.state().sales[0].gross,900);
+    assert.equal(p.api.pending(),false);
 });
