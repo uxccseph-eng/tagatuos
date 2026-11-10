@@ -41,6 +41,7 @@ use App\Http\Controllers\TaxPreflightController;
 use App\Http\Controllers\TaxReportsController;
 use App\Http\Controllers\TaxReturnController;
 use App\Http\Controllers\TaxReturnWorkspaceController;
+use App\Http\Controllers\TaxSummaryController;
 use App\Http\Controllers\TeamController;
 use App\Http\Controllers\WorkspacePreviewController;
 use App\Http\Controllers\WtpController;
@@ -218,6 +219,8 @@ Route::get('/reports/{report}', [FinancialReportsController::class, 'index'])->n
 
 Route::post('/reports/form-2316/{employeeId}', [Form2316Controller::class, 'print2316'])->whereNumber('employeeId')->name('reports.form2316');
 Route::post('/reports/form-2307/{supplierId}', [Form2307Controller::class, 'print2307'])->whereNumber('supplierId')->name('reports.form2307');
+
+Route::get('/tax-summary', [TaxSummaryController::class, 'index'])->middleware(['auth', 'throttle:60,1'])->name('tax-summary.index');
 
 Route::middleware(['auth', 'throttle:60,1'])->prefix('tax-returns')->name('tax-returns.')->group(function (): void {
     Route::get('/', [TaxReturnController::class, 'index'])->name('index');

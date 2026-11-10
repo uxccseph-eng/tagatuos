@@ -153,7 +153,7 @@
       </span>
       <span>Tax Returns</span>
     </a>
-    <a href="#workspace-dialog" data-workspace-topic="Tax Summary" class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100/70 dark:hover:bg-[#1d2433] text-xs font-medium transition-colors">
+    <a href="{{ route('tax-summary.index', ['company_id' => $company['company_id'] ?? request('company_id')]) }}" class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100/70 dark:hover:bg-[#1d2433] text-xs font-medium transition-colors">
       <span class="w-5 h-5 flex items-center justify-center shrink-0">
         <span class="material-symbols-outlined text-[18px]">query_stats</span>
       </span>

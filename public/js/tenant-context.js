@@ -4,7 +4,7 @@
     if (!/^[1-9][0-9]*$/.test(companyId || '')) return;
     const scoped = value => {
         const url = new URL(value, location.href);
-        return url.origin === location.origin && /^\/(?:company\/setup|dashboard|sheets|books|masters|reports|tax-reports|settings|lapsing)(?:\/|$)/.test(url.pathname) ? url : null;
+        return url.origin === location.origin && /^\/(?:company\/setup|dashboard|sheets|books|masters|reports|tax-reports|tax-returns|tax-summary|settings|lapsing)(?:\/|$)/.test(url.pathname) ? url : null;
     };
     const pin = value => {
         const url = scoped(value);

@@ -30,6 +30,7 @@
             ['Financial Reports', 'bar_chart', $bookUrl('reports'), false],
             ['Tax Reports', 'receipt_long', $bookUrl('tax-reports'), false],
             ['Tax Returns', 'description', $bookUrl('tax-returns.index'), false],
+            ['Tax Summary', 'analytics', $bookUrl('tax-summary.index'), request()->routeIs('tax-summary.*')],
         ],
         'Admin' => [
             ['Settings', 'settings', $bookUrl('settings'), false],
