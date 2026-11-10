@@ -134,3 +134,5 @@
 @media(prefers-reduced-motion:no-preference) { #payroll-entry[open] { animation:sales-entry-in .18s ease-out; } }
 @media(max-width:1023px) { #payroll-main { margin-left:0; padding:84px 16px 24px; } .payroll-detail .payroll-employees { max-width:calc(100vw - 68px); } }
 @media print { body>*:not(main) { display:none!important; } #payroll-main { margin:0; padding:0; } .sheet-heading,.sheet-tabs,.sheet-toolbar,.payroll-note,#payroll-status,.payroll-actions { display:none!important; } .payroll-grid,.payroll-employee-scroll { overflow:visible; } }
+
+.payroll-incentive-note{font-size:11px;line-height:1.7;color:var(--theme-muted);margin:12px 0;max-width:1000px}

@@ -26,6 +26,7 @@
             </div></details>
         </div>
     </div>
+    <p class="payroll-incentive-note">Basic salary, KPI / Incentives and Commission are separate earnings. Enter each amount once. Automatic monthly contributions keep PhilHealth on basic salary; SSS and Pag-IBIG use their compensation bases.</p>
     <p id="payroll-status" role="status" aria-live="polite">Add a payroll run to enter employee earnings and deductions.</p>
     <div class="payroll-grid"><table aria-label="Payroll runs">
         <thead><tr><th><input id="payroll-select-all" type="checkbox" aria-label="Select all visible payroll runs"></th><th>Status</th><th>Pay Date</th><th>Txn No.</th><th>Run Name</th><th>Period Start</th><th>Period End</th><th>Gross</th><th>Net Pay</th><th>Employer Cost</th><th>Flag</th><th>Row actions</th></tr></thead>

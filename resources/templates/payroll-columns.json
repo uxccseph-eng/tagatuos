@@ -64,7 +64,7 @@
     }
   },
   "supplementary": {
-    "label": "Supplementary — Commission, Profit Sharing, Director’s Fees, Others (51)",
+    "label": "Additional supplementary pay — Profit Sharing, Director’s Fees, Others (51)",
     "fields": {
       "commission": {
         "label": "Commission",
@@ -86,6 +86,12 @@
       },
       "otherSupplementary": {
         "label": "Other supplementary (51)",
+        "kind": "earning",
+        "tax": "taxable",
+        "bir_item": 51
+      },
+      "kpiIncentive": {
+        "label": "KPI / Incentives",
         "kind": "earning",
         "tax": "taxable",
         "bir_item": 51

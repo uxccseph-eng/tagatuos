@@ -11,7 +11,7 @@
     const clone = value => JSON.parse(JSON.stringify(value));
     const labels = ['Basic', 'Taxable Allow', 'De Minimis', '13th & Other Benefits', 'SSS-EE', 'PHIC-EE', 'HDMF-EE', 'WTax (actual)', 'SSS-ER', 'PHIC-ER', 'HDMF-ER'];
     const fieldLabels=Object.fromEntries(api.amountFields.map((field,i)=>[field,labels[i]]));for(const [field,definition] of Object.entries(api.extraDefinitions))fieldLabels[field]=definition.label;
-    const visibleAmountFields=[...api.amountFields,...Object.entries(api.columnGroups).flatMap(([group,definition])=>preferences['payroll_columns_'+group]?Object.keys(definition.fields):[])];
+    const visibleAmountFields=['basic','kpiIncentive','commission',...api.amountFields.filter(field=>field!=='basic'),...Object.entries(api.columnGroups).flatMap(([group,definition])=>preferences['payroll_columns_'+group]?Object.keys(definition.fields):[]).filter(field=>!['kpiIncentive','commission'].includes(field))];
     const selected = new Set();
     let details = null, remittanceDialog = null, payrollImportDialog = null;
     let records = [], status = 'all', descending = false, voidAction = null, storageAvailable = true;

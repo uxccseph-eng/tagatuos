@@ -37,7 +37,7 @@
         const employees = run.employees.map(employee => {
             if(amount(employee.gsisEe)||amount(employee.gsisEr)||amount(employee.pera))throw Error('Use Manual mode for GSIS / government payroll and enter reviewed actual contributions and tax.');
             if(employee.payType==='Minimum Wage Earner'&&register.taxableExtras(employee,true)>0)throw Error('Review MWE eligibility with additional taxable compensation in Manual mode.');
-            if(register.extraSum(employee,'earning')>0&&(!String(employee.monthlyCompensation??'').trim()||!String(employee.monthlyFundSalary??'').trim()))throw Error('Enter reviewed monthly SSS compensation and Pag-IBIG fund salary bases when detailed earnings are entered.');
+            if(register.extraSum(employee,'earning')-amount(employee.kpiIncentive)-amount(employee.commission)>0&&(!String(employee.monthlyCompensation??'').trim()||!String(employee.monthlyFundSalary??'').trim()))throw Error('Enter reviewed monthly SSS compensation and Pag-IBIG fund salary bases when detailed earnings are entered.');
             const basic = amount(employee.basic), allowance = amount(employee.taxableAllowance)+register.taxableExtras(employee,employee.payType==='Minimum Wage Earner');
             let taxableBenefits = 0;
             if (amount(employee.benefits) > 0) {
@@ -80,11 +80,12 @@
         const fullMonth = !periodStart || (periodStart === date.slice(0,7)+'-01' && periodEnd === lastDay);
         const monthly = frequency === 'monthly' && fullMonth;
         const basic = amount(employee.basic), allowance = amount(employee.taxableAllowance);
-        const detailed = register.extraSum(employee, 'earning') + amount(employee.benefits) > 0;
+        const incentives = amount(employee.kpiIncentive) + amount(employee.commission);
+        const detailed = register.extraSum(employee, 'earning') - incentives + amount(employee.benefits) > 0;
         const base = (field, fallback) => String(employee[field] ?? '').trim() ? amount(employee[field]) : monthly ? fallback : 0;
         const monthlyBasic = base('monthlyBasic', basic);
-        const compensation = base('monthlyCompensation', detailed ? 0 : basic + allowance);
-        const fundSalary = base('monthlyFundSalary', detailed ? 0 : basic + allowance);
+        const compensation = base('monthlyCompensation', detailed ? 0 : basic + allowance + incentives);
+        const fundSalary = base('monthlyFundSalary', detailed ? 0 : basic + allowance + incentives);
         const contribution = monthlyContributions(monthlyBasic, compensation, fundSalary);
         const selectedShare = String(employee.contributionShare || share || (monthly ? '100' : ''));
         if (!['100', '50', '25', '20', '0', 'remaining'].includes(selectedShare)) throw Error('Select the share of monthly contributions for this payroll.');

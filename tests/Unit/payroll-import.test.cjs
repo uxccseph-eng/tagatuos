@@ -16,12 +16,12 @@ test('frequency changes affect only the comparison and existing runs and drafts 
 test('skipped errors stay excluded and signatures keep actuals independent from review acknowledgements',()=>{const list=rows();list.push({row:3,values:{},skip:true});const first=engine.preview(list,context);list[0].note='Reviewed';list[0].acknowledged=true;assert.equal(engine.signature(first.run),engine.signature(engine.preview(list,context).run));list[0].values.withholding='1100.00';assert.notEqual(engine.signature(first.run),engine.signature(engine.preview(list,context).run));});
 test('annual review keeps actual tax from older payroll without inventing missing reference amounts',()=>{const run=engine.preview(rows(),context).run;const totals=engine.cumulative([{...run,status:'posted'},{...run,clientPayrollImport:false,status:'posted'},{...run,status:'void'}],2026);assert.equal(totals[0].actual,200000);assert.equal(totals[0].reference,100755);assert.equal(totals[0].uncompared,1);});
 
-test('simple seven-column template computes blank monthly contributions and preserves actual tax',()=>{
+test('simple payroll template with incentive columns computes blank monthly contributions and preserves actual tax',()=>{
  const headers=engine.simpleHeaders, values={pay_date:'2026-10-31',period_start:'2026-10-01',period_end:'2026-10-31',employee:'Sample Employee',basic:'30000.00',withholding:'1000.00'};
  const result=engine.preview(engine.rowsFromMatrix([headers,headers.map(key=>values[key]||'')]),context);
  assert.deepEqual(result.errors,[]);const employee=result.run.employees[0];
  assert.equal(employee.payType,'Taxable');assert.equal(employee.sssEe,'1500.00');assert.equal(employee.sssEr,'3030.00');assert.equal(employee.phicEe,'750.00');assert.equal(employee.hdmfEe,'200.00');assert.equal(employee.withholding,'1000.00');assert.equal(employee.contributionSources.sssEe,'calculated');assert.equal(result.checks[0].reference,100755);
- assert.equal(engine.template(true).split('\r\n')[0].split(',').length,7);
+ assert.equal(engine.template(true).split('\r\n')[0].split(',').length,9);
 });
 test('provided zero and client contributions are preserved while only missing amounts calculate',()=>{
  const result=engine.preview(rows({sssEe:'0.00',phicEe:'450.00',hdmfEe:'',sssEr:'',phicEr:'',hdmfEr:''}),context);
@@ -40,4 +40,26 @@ test('automatic contribution inputs cannot guess government, detailed earnings o
  for(const changes of [{...missing,pera:'100.00'},{...missing,holidayPay:'100.00'},{...missing,period_start:'2026-10-15'}])assert.ok(engine.preview(rows(changes),context).errors.length);
  const later={...engine.preview(rows(),context).run,id:'later',status:'posted',date:'2026-10-31',periodStart:'2026-10-16'};
  assert.ok(engine.preview(rows(missing),{...context,records:[later]}).errors.length);
+});
+
+
+test('KPI/Comissions header maps separately from basic and commission and computes the correct contribution bases',()=>{
+ const headers=['Pay Date','Period Start','Period End','Employee','Pay Type','Basic','KPI/Comissions','Commission','WTax (actual)'];
+ const mapping=engine.guessMapping(headers);
+ assert.equal(mapping.kpiIncentive,6);assert.equal(mapping.commission,7);assert.equal(mapping.withholding,8);
+ const result=engine.preview(engine.rowsFromMatrix([headers,['2026-10-31','2026-10-01','2026-10-31','Sample Employee','Taxable','10000','2000','3000','0']],mapping),context);
+ assert.deepEqual(result.errors,[]);
+ const person=result.run.employees[0];
+ assert.equal(person.basic,'10000.00');assert.equal(person.kpiIncentive,'2000.00');assert.equal(person.commission,'3000.00');
+ assert.equal(person.sssEe,'750.00');assert.equal(person.phicEe,'250.00');assert.equal(person.hdmfEe,'200.00');
+ assert.equal(person.contributionCalculation.monthlyBasic,'10000.00');assert.equal(person.contributionCalculation.monthlyCompensation,'15000.00');
+ assert.equal(payroll.runTotals(result.run).gross,1500000);assert.equal(person.withholding,'0.00');
+});
+
+test('provided incentive deductions and explicit monthly bases retain precedence over automatic defaults',()=>{
+ const missing={sssEe:'',phicEe:'',hdmfEe:'',sssEr:'',phicEr:'',hdmfEr:''};
+ const result=engine.preview(rows({...missing,basic:'1000.00',kpiIncentive:'200.00',commission:'100.00',monthlyBasic:'12000.00',monthlyCompensation:'8000.00',monthlyFundSalary:'1200.00',phicEe:'0.00',withholding:'100.00'}),context);
+ assert.deepEqual(result.errors,[]);const person=result.run.employees[0];
+ assert.equal(person.sssEe,'400.00');assert.equal(person.phicEe,'0.00');assert.equal(person.hdmfEe,'12.00');assert.equal(person.withholding,'100.00');
+ assert.equal(person.kpiIncentive,'200.00');
 });

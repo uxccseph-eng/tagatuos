@@ -4,7 +4,7 @@
     const automation=typeof module!=='undefined'&&module.exports?require('./payroll-automation.js'):root.PayrollAutomation;
     const importer=typeof module!=='undefined'&&module.exports?require('./sheet-import.js'):root.SheetImport;
     const requiredHeaders=['pay_date','period_start','period_end','basic','withholding'];
-    const simpleHeaders=['pay_date','period_start','period_end','employee','pay_type','basic','withholding'];
+    const simpleHeaders=['pay_date','period_start','period_end','employee','pay_type','basic','kpiIncentive','commission','withholding'];
     const headers=[...payroll.importHeaders,...payroll.extraFields,'employee_code','taxable_benefits','review_basis','monthlyBasic','monthlyCompensation','monthlyFundSalary','contribution_share'];
     function template(withSamples=false,detailed=false){
         const outputHeaders=detailed?headers:simpleHeaders;
@@ -19,9 +19,10 @@
         if(text.includes(',')&&!/^\d{1,3}(?:,\d{3})+(?:\.\d{0,2})?$/.test(text))throw Error('Use commas only as thousands separators in payroll amounts.');
         return money(payroll.cents(text.replaceAll(',','')));
     }
-    const aliases={pay_date:['pay date','payment date'],run_name:['run name','payroll name'],period_start:['period start','start date'],period_end:['period end','end date'],employee:['employee name','full name','name'],employee_code:['employee code','employee id','staff code'],pay_type:['pay type','tax classification'],basic:['basic salary','basic pay'],taxableAllowance:['taxable allowance','taxable allowances'],deMinimis:['de minimis','de minimis benefits'],benefits:['benefits','total benefits'],sssEe:['sss employee','employee sss'],phicEe:['philhealth employee','employee philhealth'],hdmfEe:['pag ibig employee','employee pag ibig'],withholding:['tax deducted','withholding tax','tax withheld','wtax'],sssEr:['sss employer','employer sss'],phicEr:['philhealth employer','employer philhealth'],hdmfEr:['pag ibig employer','employer pag ibig'],taxable_benefits:['taxable benefits'],review_basis:['review basis']};
-    Object.assign(aliases,{monthlyBasic:['monthly basic','monthly philhealth basic'],monthlyCompensation:['monthly sss compensation'],monthlyFundSalary:['monthly pag ibig fund salary'],contribution_share:['monthly contribution share']});
+    const aliases={pay_date:['pay date','payment date'],run_name:['run name','payroll name'],period_start:['period start','start date'],period_end:['period end','end date'],employee:['employee name','full name','name'],employee_code:['employee code','employee id','staff code'],pay_type:['pay type','tax classification'],basic:['basic salary','basic pay'],taxableAllowance:['taxable allowance','taxable allowances','taxable allow'],deMinimis:['de minimis','de minimis benefits'],benefits:['benefits','total benefits','13th & other benefits'],sssEe:['sss employee','employee sss'],phicEe:['philhealth employee','employee philhealth'],hdmfEe:['pag ibig employee','employee pag ibig'],withholding:['tax deducted','withholding tax','tax withheld','wtax','wtax (actual)'],sssEr:['sss employer','employer sss'],phicEr:['philhealth employer','employer philhealth'],hdmfEr:['pag ibig employer','employer pag ibig'],taxable_benefits:['taxable benefits'],review_basis:['review basis']};
+    Object.assign(aliases,{monthlyBasic:['monthly basic','monthly philhealth basic'],monthlyCompensation:['monthly sss compensation'],monthlyFundSalary:['monthly pag ibig fund salary','monthly hdmf fund salary'],contribution_share:['monthly contribution share']});
     for(const [field,definition] of Object.entries(payroll.extraDefinitions))aliases[field]=[definition.label];
+    aliases.kpiIncentive=['KPI','KPI / Incentives','KPI incentives','Performance incentive','KPI/Comissions','KPI/Commissions','KPI / Commissions'];
     function guessMapping(sourceHeaders){
         const names=sourceHeaders.map(headerKey),mapping={},used=new Set();
         for(const field of headers){const matches=names.flatMap((name,index)=>name&&[field,...(aliases[field]||[])].map(headerKey).includes(name)?[index]:[]);mapping[field]=matches.length===1&&!used.has(matches[0])?matches[0]:null;if(mapping[field]!==null)used.add(mapping[field]);}

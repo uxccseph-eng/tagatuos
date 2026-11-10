@@ -100,3 +100,13 @@ test('government payroll requires reviewed manual contributions', () => {
         assert.throws(()=>automation.calculate(source), /manual/i);
     }
 });
+
+
+test('monthly KPI and commission increase compensation without inflating PhilHealth basic salary',()=>{
+ const original=draft({employees:[{...employee(),basic:'10000.00',kpiIncentive:'2000.00',commission:'3000.00'}]});
+ const run=automation.calculate(original);const person=run.employees[0];
+ assert.equal(person.basic,'10000.00');assert.equal(person.sssEe,'750.00');assert.equal(person.phicEe,'250.00');assert.equal(person.hdmfEe,'200.00');
+ assert.equal(register.runTotals(run).gross,1500000);assert.equal(person.withholding,'0.00');assert.equal(original.employees[0].sssEe,undefined);
+ const low=automation.calculate(draft({employees:[{...employee(),basic:'1000.00',kpiIncentive:'200.00',commission:'100.00'}]}));
+ assert.equal(low.employees[0].hdmfEe,'13.00');assert.equal(low.employees[0].hdmfEr,'26.00');
+});

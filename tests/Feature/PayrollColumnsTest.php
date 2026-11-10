@@ -79,4 +79,20 @@ class PayrollColumnsTest extends TestCase
         $this->assertSame(150000, $mapped['values']['mwe_premium']);
         $this->assertSame(30000, $mapped['values']['other_exempt']);
     }
+
+    public function test_kpi_and_commission_are_preserved_separately_and_post_once_to_the_books_and_monthly_tax_totals(): void
+    {
+        [$company, , $employee] = $this->book();
+        $row = [...array_fill_keys([...PayrollColumns::CORE, ...array_keys(PayrollColumns::extras())], '0.00'), 'name' => $employee->name, 'payType' => 'Taxable', 'basic' => '1000.00', 'kpiIncentive' => '100.00', 'commission' => '200.00'];
+        $run = ['id' => 'payroll-incentives-test', 'number' => '', 'date' => '2026-11-04', 'periodStart' => '2026-11-01', 'periodEnd' => '2026-11-30', 'status' => 'posted', 'employees' => [$row], 'automation' => false];
+        $this->postJson(route('sheets.database.save', ['company_id' => $company->id]), ['state' => CompanyLedgerService::emptyState(), 'payroll' => [$run], 'revision' => 0, 'request_id' => (string) Str::uuid()])->assertOk()
+            ->assertJsonPath('payroll.0.employees.0.basic', '1000.00')
+            ->assertJsonPath('payroll.0.employees.0.kpiIncentive', '100.00')
+            ->assertJsonPath('payroll.0.employees.0.commission', '200.00');
+        $this->assertEquals(1300, DB::table('journal_entry_lines')->sum('debit'));
+        $this->assertEquals(1300, DB::table('journal_entry_lines')->sum('credit'));
+        $mapped = app(BirPayrollLedgerMapper::class)->map([$run], ['from' => '2026-11-01', 'to' => '2026-11-30']);
+        $this->assertSame([], $mapped['issues']);
+        $this->assertSame(130000, $mapped['values']['total_compensation']);
+    }
 }
