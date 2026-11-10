@@ -82,6 +82,15 @@
         delete edited.postedAt;
         return records.map(record => record.id === id ? edited : record);
     }
+    function correctPosted(original, working) {
+        if (original.status !== 'posted' || working.status !== 'posted' || working.id !== original.id || working.number !== original.number) {
+            throw Error('A payroll correction must keep the original posted identity and transaction number.');
+        }
+        const problem = error(working);
+        if (problem) throw Error(problem);
+        const {editHistory, ...snapshot} = original;
+        return {...working, status: 'posted', number: original.number, editHistory: [...(editHistory || []), {editedAt: new Date().toISOString(), previous: JSON.parse(JSON.stringify(snapshot))}]};
+    }
     function post(records, ids) {
         const runs = records.filter(record => ids.includes(record.id) && record.status === 'draft');
         if (!runs.length) throw new Error('Select a draft payroll run to post.');
@@ -109,7 +118,7 @@
         if (records.some(item => item.status === 'draft')) throw new Error('Finish or delete the existing draft before importing.');
         return run;
     }
-    const api = {columnFields,textFields,amountFields,allAmountFields,columnGroups,extraDefinitions,extraFields,earningFields,deductionFields,employerFields,taxableExtraFields,taxableExtras,extraSum, cents, totals, runTotals, validDate, error, createRun, renumber, reopenForEditing, post, importHeaders, importRun};
+    const api = {columnFields,textFields,amountFields,allAmountFields,columnGroups,extraDefinitions,extraFields,earningFields,deductionFields,employerFields,taxableExtraFields,taxableExtras,extraSum, cents, totals, runTotals, validDate, error, createRun, renumber, reopenForEditing, correctPosted, post, importHeaders, importRun};
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     else root.PayrollRegister = api;
 })(globalThis);

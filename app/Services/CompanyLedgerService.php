@@ -196,7 +196,7 @@ class CompanyLedgerService
                             $this->fail('A posted transaction keeps its original transaction number.');
                         }
                         if ($record['status'] === 'posted' && $replacement['status'] === 'posted') {
-                            $this->validatePostedEdit($locked, $sheet, $comparison, $replacement);
+                            $this->validatePostedEdit($locked, $sheet, $comparison, $replacement, $state);
                             if ($this->postingContent($comparison) !== $this->postingContent($replacement)) {
                                 $rebuild[$sheet.':'.$id] = true;
                             }
@@ -359,7 +359,7 @@ class CompanyLedgerService
         return $this->financial($record).json_encode($this->canonical(array_intersect_key($record, array_flip(['reference', 'certificate', 'particulars', 'memo', 'description', 'notes']))), JSON_THROW_ON_ERROR);
     }
 
-    private function validatePostedEdit(Company $company, string $sheet, array $before, array $after): void
+    private function validatePostedEdit(Company $company, string $sheet, array $before, array $after, array $state): void
     {
         foreach (['origin', 'importBatchKey', 'clientPayrollImport', 'saleId', 'payrollRunId', 'payrollAllocations'] as $field) {
             if (($before[$field] ?? null) !== ($after[$field] ?? null)) {
@@ -368,6 +368,19 @@ class CompanyLedgerService
         }
         if ($sheet === 'wtpCertificates' && (string) ($before['billId'] ?? '') !== (string) ($after['billId'] ?? '')) {
             $this->fail('Void and replace the issued certificate to change its source purchase.');
+        }
+        if ($sheet === 'payroll' && $this->financial($before) !== $this->financial($after)) {
+            foreach ($state['journalEntries'] as $entry) {
+                if (($entry['origin'] ?? '') !== 'payroll-remittance' || ! in_array($entry['status'], ['draft', 'posted'], true)) {
+                    continue;
+                }
+                $allocations = $entry['payrollAllocations'] ?? [['runId' => $entry['payrollRunId'] ?? null]];
+                foreach ($allocations as $allocation) {
+                    if ((string) ($allocation['runId'] ?? '') === (string) $before['id']) {
+                        $this->fail('Void the posted payroll remittance or delete its draft before correcting this payroll.');
+                    }
+                }
+            }
         }
         if (($before['origin'] ?? '') === 'payroll-remittance' && $this->financial($before) !== $this->financial($after)) {
             $this->fail('Void this generated payroll remittance and generate a replacement from Payroll to change its date or amounts.');

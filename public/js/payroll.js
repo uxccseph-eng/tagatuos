@@ -15,6 +15,8 @@
     const visibleAmounts=new Set(['kpiIncentive','commission',...api.amountFields,...Object.entries(api.columnGroups).flatMap(([group,definition])=>preferences['payroll_columns_'+group]?Object.keys(definition.fields):[])]);
     const visibleAmountFields=api.columnFields.filter(field=>visibleAmounts.has(field)||(field==='otherAllowanceDescription'&&visibleAmounts.has('otherAllowance'))||(field==='otherSupplementaryDescription'&&visibleAmounts.has('otherSupplementary')));
     const selected = new Set();
+    const postedEdits = new Map();
+    let savingCorrection = false;
     let details = null, remittanceDialog = null, payrollImportDialog = null;
     let records = [], status = 'all', descending = false, voidAction = null, storageAvailable = true;
     const announce = message => { element('payroll-status').textContent = message; };
@@ -30,7 +32,8 @@
         if (!storageAvailable) { announce('Payroll storage is unavailable. Reload this tab before editing.'); return false; }
         const numbered = api.renumber(next, Boolean(window.CompanyLedger), records);
         try {
-            const saved = numbered.filter(run => run.status !== 'draft' || run.draftTouched);
+            const confirmed = window.CompanyLedger?.payroll() || [];
+            const saved = numbered.filter(run => run.status !== 'draft' || run.draftTouched).map(run => postedEdits.has(run.id) ? (confirmed.find(row => row.id === run.id) || postedEdits.get(run.id)) : run);
             if (window.CompanyLedger) window.CompanyLedger.savePayroll(saved);
             else sessionStorage.setItem(key, JSON.stringify(saved));
             records = numbered;
@@ -44,7 +47,7 @@
     }
     function candidates() { return window.SheetPosting.candidates(visible(), [...selected]); }
     function button(action, label, icon = '') {
-        return `<button type="button" class="payroll-inline-button" data-action="${action}">${icon ? `<span class="material-symbols-outlined" aria-hidden="true">${icon}</span>` : ''}${label}</button>`;
+        return `<button type="button" class="payroll-inline-button" data-action="${action}" ${savingCorrection ? 'disabled' : ''}>${icon ? `<span class="material-symbols-outlined" aria-hidden="true">${icon}</span>` : ''}${label}</button>`;
     }
     function input(field, value, disabled, type = 'text', extra = '') {
         return `<input data-field="${field}" aria-label="${escape(({date: 'Pay Date', name: 'Run Name', periodStart: 'Period Start', periodEnd: 'Period End'})[field] || field)}" type="${type}" value="${escape(value)}" ${disabled ? 'disabled' : ''} ${extra}>`;
@@ -56,7 +59,7 @@
         } catch (exception) { return escape(exception.message); }
     }
     function calculateDraft(run, source = records) {
-        try { return automation.calculate({...run, automationError: ''}, source); }
+        try { const editing=postedEdits.has(run.id);const result=automation.calculate({...run,status:editing?'draft':run.status,automationError:''},source);return editing?{...result,status:'posted'}:result; }
         catch (exception) { return {...run, automationError: exception.message}; }
     }
     const salaryBaseLabels = {monthlyBasic: 'Monthly basic (PHIC)', monthlyCompensation: 'Monthly compensation (SSS)', monthlyFundSalary: 'Monthly fund salary (HDMF)', taxableBenefits: 'Taxable benefits this run'};
@@ -69,20 +72,20 @@
     function render() {
         const runs = visible();
         body.innerHTML = runs.length ? runs.map(run => {
-            const disabled = run.status !== 'draft';
+            const disabled = savingCorrection || (run.status !== 'draft' && !postedEdits.has(run.id));
             const additionalFields = additionalEmployeeFields(run);
             let total;
             try { total = api.runTotals(run); } catch (exception) { total = null; }
             const flag = run.status === 'void' ? run.voidReason : api.error(run);
             return `<tr data-run="${run.id}">
                 <td><input type="checkbox" data-select="${run.id}" aria-label="Select ${run.number}" ${selected.has(run.id) ? 'checked' : ''}></td>
-                <td><span class="payroll-badge ${run.status}">${{draft: 'Drafting', posted: 'Posted', void: 'Void'}[run.status]}</span></td>
+                <td><span class="payroll-badge ${run.status}">${postedEdits.has(run.id)?'Editing':{draft:'Drafting',posted:'Posted',void:'Void'}[run.status]}</span></td>
                 <td>${input('date', run.date, disabled, 'date')}</td><td class="payroll-number"><button type="button" class="payroll-open-entry" data-action="details" aria-label="Open payroll entry ${escape(run.number)}">${run.number}</button></td>
                 <td>${input('name', run.name, disabled, 'text', 'class="payroll-run-name" maxlength="120" placeholder="e.g. Monthly payroll"')}</td>
                 <td>${input('periodStart', run.periodStart, disabled, 'date')}</td><td>${input('periodEnd', run.periodEnd, disabled, 'date')}</td>
                 ${['gross', 'net', 'cost'].map(field => `<td class="payroll-money" data-run-total="${field}">${total ? money(total[field]) : '—'}</td>`).join('')}
                 <td data-flag title="${escape(flag)}">${flag ? (run.status === 'void' ? 'Voided' : 'Review') : '—'}</td>
-                <td class="payroll-actions"><button type="button" class="payroll-more-button" data-action="more" aria-label="More options for ${run.number}" title="More options" aria-haspopup="menu" aria-expanded="false"><span class="material-symbols-outlined" aria-hidden="true">more_horiz</span></button></td>
+                <td class="payroll-actions">${postedEdits.has(run.id)?button('save-correction','Save changes')+button('cancel-correction','Cancel edit'):''}<button type="button" class="payroll-more-button" data-action="more" aria-label="More options for ${run.number}" title="More options" aria-haspopup="menu" aria-expanded="false"><span class="material-symbols-outlined" aria-hidden="true">more_horiz</span></button></td>
             </tr><tr class="payroll-detail" data-run="${run.id}"><td colspan="12"><section class="payroll-employees" aria-label="Employees for ${run.number}">
                 <h2>Employee breakdown · ${run.number}</h2><p class="payroll-calculation-error" data-calculation-error role="alert">${escape(run.automationError || '')}</p><div class="payroll-employee-scroll"><table aria-label="Employees for ${run.number}"><thead><tr><th>Employee</th><th>Pay Type</th>${visibleAmountFields.map(field => `<th>${fieldLabels[field]}</th>`).join('')}${additionalFields.map(field => `<th>${salaryBaseLabels[field]}</th>`).join('')}${run.clientPayrollImport ? '<th>Periodic reference tax</th><th>Actual minus reference</th>' : ''}<th>Net Pay</th><th>Employee actions</th></tr></thead>
                 <tbody>${run.employees.map((employee, index) => employeeRow(employee, index, disabled, run.automation, additionalFields, run.clientPayrollImport)).join('') || `<tr><td colspan="${4 + visibleAmountFields.length + additionalFields.length + (run.clientPayrollImport ? 2 : 0)}" class="payroll-empty">No employees yet. Add an employee to begin.</td></tr>`}</tbody></table></div>
@@ -122,6 +125,7 @@
         element('payroll-select-all').indeterminate = current.some(run => selected.has(run.id)) && !element('payroll-select-all').checked;
     }
     function add(template) {
+        if(savingCorrection||postedEdits.size){showInfo('Payroll edit in progress','Save or cancel the posted payroll edit before adding another run.');return;}
         const pending = records.find(run => run.status === 'draft');
         if (pending) {
             window.WorkingPeriod.revealDate(pending.date); status = 'all'; element('payroll-search').value = ''; element('sales-global-search').value = '';
@@ -149,8 +153,61 @@
                 next[index] = calculateDraft(next[index], next);
                 next = api.post(next, [id]);
             }
-            if (store(next)) { selected.clear(); render(); announce('Payroll posted. Employee amounts are now locked.'); }
+            if (store(next)) { selected.clear(); render(); announce('Payroll posted. Use Edit payroll to make a correction.'); }
         } catch (exception) { announce(exception.message); }
+    }
+    function beginPostedEdit(run) {
+        if (savingCorrection || postedEdits.has(run.id)) return;
+        if (postedEdits.size || records.some(item => item.status === 'draft')) {
+            showInfo('Finish the current edit', 'Post or delete the current draft, or finish the other payroll edit first.');
+            return;
+        }
+        try { window.PayrollRemittance.assertUnremitted(run.id, window.KontaduryaLedger); }
+        catch (error) { showInfo('Void the remittance first', error.message); return; }
+        postedEdits.set(run.id, clone(run));
+        details.close(); render();
+        body.querySelector(`[data-run="${run.id}"].payroll-detail`)?.scrollIntoView({block: 'nearest'});
+        announce('Editing ' + run.number + '. The existing posting stays in the books until you choose Save changes. Cancel edit restores the saved run.');
+    }
+    function cancelPostedEdit(id) {
+        const original = postedEdits.get(id);
+        if (savingCorrection || !original) return;
+        const latest = window.CompanyLedger?.payroll().find(run => run.id === id) || original;
+        postedEdits.delete(id);
+        store(records.map(run => run.id === id ? latest : run));
+        render(); announce('Payroll edit cancelled.');
+    }
+    async function savePostedEdit(id) {
+        const original = postedEdits.get(id), working = records.find(run => run.id === id);
+        if (savingCorrection || !original || !working) return;
+        savingCorrection = true; render();
+        try {
+            if (window.CompanyLedger) await window.CompanyLedger.flush();
+            const latest = window.CompanyLedger?.payroll().find(run => run.id === id) || original;
+            if (JSON.stringify(latest) !== JSON.stringify(original)) {
+                throw Error('Another accountant changed this payroll. Cancel edit to load the latest entry, then review the correction again.');
+            }
+            window.PayrollRemittance.assertUnremitted(id, window.KontaduryaLedger);
+            let corrected = api.correctPosted(original, working);
+            if (corrected.clientPayrollImport) {
+                corrected = {...corrected, employees: corrected.employees.map(employee => {
+                    const comparison = window.PayrollImport.compare(employee, corrected.frequency, corrected.date);
+                    return {...employee, withholdingReview: {...employee.withholdingReview, reference: comparison.reference, difference: comparison.difference}};
+                })};
+            }
+            postedEdits.delete(id);
+            if (!store(records.map(run => run.id === id ? corrected : run))) {
+                postedEdits.set(id, original);
+                return;
+            }
+            render(); announce('Saving payroll correction…');
+            if (window.CompanyLedger) {
+                await window.CompanyLedger.flush();
+                if (window.CompanyLedger.pending()) throw Error('The correction is awaiting database confirmation. Keep this tab open and use the save warning to resolve it.');
+            }
+            announce('Payroll correction saved with the same transaction number. The journal has been updated.');
+        } catch (error) { showInfo('Payroll correction not saved', error.message); }
+        finally { savingCorrection = false; render(); }
     }
     function openRemittance(run) {
         try { remittanceDialog.open(run.id); }
@@ -162,6 +219,8 @@
         if (!element('payroll-info').open) element('payroll-info').showModal();
     }
     function voidRuns(runs) {
+        if (savingCorrection) return;
+        if(runs.some(run=>postedEdits.has(run.id))){showInfo('Payroll edit in progress','Save or cancel the edit before voiding this payroll.');return;}
         if (!runs.length) { announce('Select posted payroll runs to void.'); return; }
         try { for (const run of runs) window.PayrollRemittance.assertUnremitted(run.id, window.KontaduryaLedger); }
         catch (exception) { showInfo('Void the remittance first', exception.message); return; }
@@ -189,7 +248,7 @@
         if (!field.dataset.field && !field.dataset.employeeField) return;
         const row = field.closest('[data-run]');
         const next = clone(records), run = next.find(item => item.id === row.dataset.run);
-        if (!run || run.status !== 'draft') return;
+        if (savingCorrection || !run || (run.status !== 'draft' && !postedEdits.has(run.id))) return;
         if (field.dataset.employeeField) {
             const index = Number(field.closest('[data-employee]').dataset.employee);
             run.employees[index][field.dataset.employeeField] = field.inputMode === 'decimal' ? field.value.replace(/,/g, '') : field.value;
@@ -219,7 +278,7 @@
             catch (exception) { node.querySelector('[data-employee-net]').textContent = '—'; }
         });
         const error = api.error(saved); master.querySelector('[data-flag]').textContent = error ? 'Review' : '—'; master.querySelector('[data-flag]').title = error;
-        updateToolbar(); announce('Draft saved in this browser tab.');
+        updateToolbar(); announce(postedEdits.has(run.id) ? 'Unsaved payroll correction. Choose Save changes or Cancel edit.' : 'Draft saved in this browser tab.');
     });
     body.addEventListener('change', event => {
         if (!event.target.dataset.select) return;
@@ -231,12 +290,14 @@
         const action = event.target.closest('[data-action]');
         if (!action) {
             const row = event.target.closest('[data-run]'), run = records.find(item => item.id === row?.dataset.run);
-            if (run && run.status !== 'draft' && event.target.closest('td') && !event.target.closest('input[type=checkbox], button, a, select, label')) details.open(run.id);
+            if (run && !postedEdits.has(run.id) && run.status !== 'draft' && event.target.closest('td') && !event.target.closest('input[type=checkbox], button, a, select, label')) details.open(run.id);
             return;
         }
         const run = records.find(item => item.id === action.closest('[data-run]').dataset.run); if (!run) return;
         switch (action.dataset.action) {
-            case 'details': details.open(run.id); break;
+            case 'details': if(postedEdits.has(run.id))showInfo('Payroll edit in progress','Save changes or cancel this edit before opening the entry details.');else details.open(run.id);break;
+            case 'save-correction': savePostedEdit(run.id);break;
+            case 'cancel-correction': cancelPostedEdit(run.id);break;
             case 'more':
                 event.stopPropagation();
                 entryOptions(run,action);
@@ -247,7 +308,7 @@
             case 'delete': deleteRuns([run]); break;
             case 'employee':
             case 'remove-employee': {
-                if (run.status !== 'draft') return;
+                if (savingCorrection || (run.status !== 'draft' && !postedEdits.has(run.id))) return;
                 const next = clone(records), edited = next.find(item => item.id === run.id);
                 if (action.dataset.action === 'employee') edited.employees.push({name: '', payType: 'Taxable', ...Object.fromEntries(api.allAmountFields.map(field => [field, '']))});
                 else edited.employees.splice(Number(action.closest('[data-employee]').dataset.employee), 1);
@@ -258,10 +319,12 @@
         }
     });
     function entryOptions(run,anchor){
+        if (savingCorrection) return;
         window.SheetEntryActions.open(anchor, run, {
             post: () => post([run.id]),
-            edit: () => details.open(run.id),
-            editLabel: run.status === 'draft' ? 'Edit entry' : 'View entry',
+            edit: () => run.status==='posted'?beginPostedEdit(run):details.open(run.id),
+            editLabel: run.status === 'draft' ? 'Edit entry' : 'Edit payroll',
+            allowPostedEdit: true,
             duplicate: () => add(run),
             delete: () => deleteRuns([run]),
             deleteVoid: () => deleteRuns([run]),
@@ -323,8 +386,11 @@
     });
     backdrop?.addEventListener('click', closeMenu);
     window.matchMedia('(min-width: 1024px)').addEventListener('change', closeMenu);
-    new window.DraftLeaveGuard({hasChanges: () => records.some(run => run.status === 'draft' && run.draftTouched), discard: () => {
-        if (!store(records.filter(run => run.status !== 'draft'))) throw new Error('Could not discard payroll draft.');
+    new window.DraftLeaveGuard({hasChanges: () => postedEdits.size>0 || records.some(run => run.status === 'draft' && run.draftTouched), discard: () => {
+        const latest=window.CompanyLedger?.payroll() || [];
+        const restored=records.filter(run=>run.status!=='draft').map(run=>postedEdits.has(run.id)?(latest.find(row=>row.id===run.id)||postedEdits.get(run.id)):run);
+        postedEdits.clear();
+        if (!store(restored)) throw new Error('Could not discard payroll draft.');
     }});
     let taxReconciliation = null;
     element('payroll-tax-reconciliation')?.addEventListener('click',()=>{
@@ -356,7 +422,7 @@
         remittances: id => window.PayrollRemittance.linked(id, window.KontaduryaLedger),
         canRemit: id => {
             const run = records.find(item => item.id === id);
-            return Boolean(run && window.PayrollRemittance.remaining(run, window.KontaduryaLedger).some(item => item.amount > 0));
+            return Boolean(run && !postedEdits.has(id) && window.PayrollRemittance.remaining(run, window.KontaduryaLedger).some(item => item.amount > 0));
         },
         update: (id, changes) => {
             const run = records.find(item => item.id === id);
@@ -379,32 +445,12 @@
             if (action === 'delete') deleteRuns([run]);
             if (action === 'duplicate') { details.close(); add(run); }
             if (action === 'edit' && run.status !== 'void') {
-                if (window.CompanyLedger && run.status === 'posted') { showInfo('Correct a posted run', 'Posted payroll records are preserved. Void this run and duplicate it to make a correction.'); return; }
-                try { window.PayrollRemittance.assertUnremitted(run.id, window.KontaduryaLedger); }
-                catch (exception) { showInfo('Void the remittance first', exception.message); return; }
-                const edit = () => {
-                    try {
-                        const next = api.reopenForEditing(records, id);
-                        if (!store(next)) return;
-                        render(); details.close();
-                        const row = body.querySelector(`[data-run="${run.id}"].payroll-detail`);
-                        row?.scrollIntoView({block: 'nearest'});
-                        row?.querySelector('[data-employee-field="name"]')?.focus();
-                        announce(`${run.number} is ready to edit. Changes save as a draft; post it when finished.`);
-                        if (element('payroll-info').open) element('payroll-info').close();
-                    } catch (exception) { element('payroll-dialog-error').textContent = exception.message; }
-                };
-                if (run.status === 'draft') edit();
-                else {
-                    showInfo('Edit posted payroll?', `${run.number} will return to draft with the same transaction number. Its previous posted details are retained in edit history. Edit the employee amounts, then post the run again when finished.`);
-                    element('payroll-confirm').hidden = false;
-                    element('payroll-confirm').textContent = 'Edit entry';
-                    voidAction = edit;
-                }
+                if(run.status==='posted')beginPostedEdit(run);
+                else { details.close();body.querySelector(`[data-run="${run.id}"].payroll-detail`)?.scrollIntoView({block:'nearest'}); }
             }
         },
     });
-    window.addEventListener('company-ledger:refreshed', () => { if (window.CompanyLedger) { records = window.CompanyLedger.payroll(); render(); } });
+    window.addEventListener('company-ledger:refreshed', () => { if (window.CompanyLedger) { const working=new Map(records.filter(run=>postedEdits.has(run.id)).map(run=>[run.id,run]));records=window.CompanyLedger.payroll().map(run=>working.get(run.id)||run);if(!postedEdits.size)render(); } });
     document.querySelector('#sales-header button')?.addEventListener('click', () => add());
     render();
     document.querySelector('.sheet-tabs [aria-current="page"]')?.scrollIntoView({block: 'nearest', inline: 'nearest'});

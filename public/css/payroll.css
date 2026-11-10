@@ -142,3 +142,6 @@
 /* Keep payroll entry controls readable inside the horizontally scrolling tables. */
 #payroll-main #payroll-rows input:not([type=checkbox]),#payroll-main #payroll-rows select{height:44px;min-height:44px;padding:10px 12px;font-size:14px;line-height:1.4;box-sizing:border-box}
 #payroll-main #payroll-rows select{min-width:230px;width:230px;padding-right:32px}
+
+.payroll-actions [data-action="save-correction"] { background:rgb(var(--sales-primary-fixed)); color:rgb(var(--sales-on-primary-fixed)); margin-right:6px; }
+.payroll-actions [data-action="cancel-correction"] { margin-right:6px; }

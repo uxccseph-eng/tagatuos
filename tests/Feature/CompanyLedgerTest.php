@@ -318,6 +318,9 @@ class CompanyLedgerTest extends TestCase
         $this->asMember($first, $company);
         $this->save($state, 0, [$run])->assertOk();
         $this->assertDatabaseCount('journal_entries', 2);
+        $correction = $run;
+        $correction['employees'][0]['basic'] = '1500.00';
+        $this->save($state, 1, [$correction])->assertUnprocessable()->assertJsonValidationErrors('ledger');
         $run['status'] = 'void';
         $run['voidReason'] = 'Correction';
         $this->save($state, 1, [$run])->assertUnprocessable();
@@ -497,6 +500,51 @@ class CompanyLedgerTest extends TestCase
         $this->save($state, 1)->assertOk();
         $this->assertDatabaseHas('journal_entries', ['id' => $headerId, 'reference' => 'Ref-2']);
         $this->assertDatabaseHas('journal_entry_lines', ['journal_entry_id' => $headerId, 'remarks' => 'Correct explanation']);
+    }
+
+    public function test_posted_payroll_correction_rebuilds_one_journal_and_retains_audit_and_concurrency_protection(): void
+    {
+        [$company, $owner, $accountant] = $this->book();
+        Employee::factory()->create(['workspace_key' => $company->workspaceKey(), 'name' => 'Example Employee']);
+        $run = ['id' => 'run', 'number' => 'PYRJ-000001', 'date' => '2026-10-31', 'periodStart' => '2026-10-01', 'periodEnd' => '2026-10-31', 'status' => 'posted', 'employees' => [['name' => 'Example Employee', 'basic' => '1000.00', 'payType' => 'Taxable']]];
+        $state = CompanyLedgerService::emptyState();
+        $this->asMember($owner, $company);
+        $this->save($state, 0, [$run])->assertOk();
+        $journalId = DB::table('journal_entries')->sole()->id;
+        $run['employees'][0]['basic'] = '1500.00';
+        $this->asMember($accountant, $company);
+        $this->save($state, 1, [$run])->assertOk()->assertJsonPath('payroll.0.number', 'PYRJ-000001')->assertJsonPath('payroll.0.status', 'posted');
+        $this->assertDatabaseCount('journal_entries', 1);
+        $this->assertDatabaseHas('journal_entry_lines', ['journal_entry_id' => $journalId, 'debit' => '1500.0000']);
+        $this->assertDatabaseHas('journal_entry_lines', ['journal_entry_id' => $journalId, 'credit' => '1500.0000']);
+        $change = json_decode(DB::table('company_ledger_changes')->where('revision', 2)->value('changes'), true)[0];
+        $this->assertSame('1000.00', $change['before']['employees'][0]['basic']);
+        $this->assertSame('1500.00', $change['after']['employees'][0]['basic']);
+        $run['employees'][0]['basic'] = '2000.00';
+        $this->save($state, 1, [$run])->assertConflict();
+        MonthlyClosing::factory()->create(['company_id' => $company->id, 'month' => '2026-10', 'status' => 'completed']);
+        $this->save($state, 2, [$run])->assertUnprocessable();
+        $this->assertSame('1500.00', CompanyLedger::query()->sole()->payroll[0]['employees'][0]['basic']);
+    }
+
+    public function test_posted_payroll_cannot_be_corrected_while_a_remittance_is_reserved(): void
+    {
+        [$company, $owner] = $this->book();
+        Employee::factory()->create(['workspace_key' => $company->workspaceKey(), 'name' => 'Example Employee']);
+        $run = ['id' => 'run', 'number' => 'PYRJ-000001', 'date' => '2026-10-31', 'periodStart' => '2026-10-01', 'periodEnd' => '2026-10-31', 'status' => 'posted', 'employees' => [['name' => 'Example Employee', 'basic' => '1000.00']]];
+        $state = CompanyLedgerService::emptyState();
+        $remittance = $this->journal('remittance', '', 'draft');
+        $remittance['origin'] = 'payroll-remittance';
+        $remittance['payrollAllocations'] = [['runId' => 'run', 'amounts' => ['salary' => 100000]]];
+        $state['journalEntries'] = [$remittance];
+        $this->asMember($owner, $company);
+        $this->save($state, 0, [$run])->assertOk();
+        $run['employees'][0]['basic'] = '1500.00';
+        $this->save($state, 1, [$run])->assertUnprocessable()->assertJsonValidationErrors('ledger');
+        $this->assertSame(1, CompanyLedger::query()->sole()->revision);
+        $state['journalEntries'] = [];
+        $this->save($state, 1, [$run])->assertOk();
+        $this->assertDatabaseCount('journal_entries', 1);
     }
 
     private function journal(string $id = 'first', string $number = 'GJ-000001', string $status = 'posted'): array

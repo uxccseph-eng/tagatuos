@@ -119,3 +119,23 @@ test('payroll columns follow the approved earnings, deductions and employer-shar
  assert.equal(new Set(payroll.columnFields).size,payroll.columnFields.length);
  assert.deepEqual(payroll.totals({basic:'1000',otherAllowance:'100',otherAllowanceDescription:'Transport adjustment',otherSupplementary:'50',otherSupplementaryDescription:'Performance bonus'}),{gross:115000,net:115000,cost:115000});
 });
+
+
+test('posted correction stays posted with its number and an independent audit snapshot', () => {
+    const original = {...draft(), status:'posted', postedAt:'2026-10-20T00:00:00.000Z'};
+    const working = structuredClone(original);
+    working.employees[0].basic = '25000';
+    const corrected = payroll.correctPosted(original, working);
+    assert.equal(corrected.status, 'posted');
+    assert.equal(corrected.number, original.number);
+    assert.equal(corrected.id, original.id);
+    assert.equal(corrected.postedAt, original.postedAt);
+    assert.equal(corrected.employees[0].basic, '25000');
+    assert.deepEqual(corrected.editHistory[0].previous, original);
+    corrected.editHistory[0].previous.employees[0].basic = '999';
+    assert.equal(original.employees[0].basic, '20000');
+    for (const change of [{id:'other'}, {number:'PYRJ-000002'}, {status:'draft'}, {employees:[]}]) {
+        assert.throws(() => payroll.correctPosted(original, {...working,...change}));
+    }
+    assert.throws(() => payroll.correctPosted({...original,status:'void'}, working));
+});
