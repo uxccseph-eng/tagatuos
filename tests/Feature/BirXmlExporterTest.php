@@ -175,6 +175,8 @@ class BirXmlExporterTest extends TestCase
         $snapshot = json_decode(DB::table('tax_return_preparations')->find($id)->snapshot, true);
         $this->assertSame(0, $snapshot['calculation']['payable']);
         $this->assertSame(20000, $snapshot['calculation']['credit_balance']);
+        $this->get(route('tax-returns.show', ['company_id' => $company->id, 'id' => $id]))->assertOk()->assertViewIs('tax-return-2550q-print')->assertSee('bir-2550q-apr2024-page1.png')->assertSee('bir-2550q-apr2024-page2.png')->assertSee('data-bir-amount="26" data-cents="-20000"', false);
+
         $this->assertDatabaseCount('tax_return_preparations', 1);
     }
 

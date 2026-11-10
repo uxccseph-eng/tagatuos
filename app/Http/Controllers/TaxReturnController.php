@@ -6,6 +6,7 @@ use App\Http\Requests\PrepareTaxReturnRequest;
 use App\Models\CompanySetting;
 use App\Services\Tax\Bir0619EPrintData;
 use App\Services\Tax\Bir1601CPrintData;
+use App\Services\Tax\Bir2550QPrintData;
 use App\Services\Tax\BirExporterFactory;
 use App\Services\Tax\TaxReturnCatalog;
 use App\Services\Tax\TaxReturnService;
@@ -92,9 +93,12 @@ class TaxReturnController extends Controller
         $printData = match ($record->form) {
             '0619-E' => app(Bir0619EPrintData::class)->build($record, $snapshot),
             '1601-C' => app(Bir1601CPrintData::class)->build($record, $snapshot),
+            '2550Q' => app(Bir2550QPrintData::class)->build($record, $snapshot),
             default => null,
         };
-        $view = $printData && $printData['mapped'] ? ($record->form === '1601-C' ? 'tax-return-1601c-print' : 'tax-return-0619e-print') : 'tax-return-print';
+        $view = $printData && $printData['mapped'] ? match ($record->form) {
+            '2550Q' => 'tax-return-2550q-print', '1601-C' => 'tax-return-1601c-print', default => 'tax-return-0619e-print',
+        } : 'tax-return-print';
 
         return response()->view($view, ['record' => $record, 'snapshot' => $snapshot, 'printData' => $printData])->header('Cache-Control', 'no-store, private');
     }
