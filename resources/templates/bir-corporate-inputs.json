@@ -1,0 +1,368 @@
+{
+  "1702Q": {
+    "sales": {
+      "label": "Sales / receipts / revenue",
+      "group": "Income",
+      "signed": false
+    },
+    "cost": {
+      "label": "Cost of sales / services",
+      "group": "Income",
+      "signed": false
+    },
+    "other_income": {
+      "label": "Other taxable income not subject to final tax",
+      "group": "Income",
+      "signed": false
+    },
+    "deductions": {
+      "label": "Itemized deductions this quarter",
+      "group": "Quarterly computation",
+      "signed": false
+    },
+    "previous_taxable": {
+      "label": "Taxable income / loss from previous quarters",
+      "group": "Quarterly computation",
+      "signed": true
+    },
+    "gross_q1": {
+      "label": "MCIT gross income \u2014 previous Q1",
+      "group": "Quarterly computation",
+      "signed": true
+    },
+    "gross_q2": {
+      "label": "MCIT gross income \u2014 previous Q2",
+      "group": "Quarterly computation",
+      "signed": true
+    },
+    "credit_prior_year": {
+      "label": "Prior-year excess credits other than MCIT",
+      "group": "Tax credits and payments",
+      "signed": false
+    },
+    "credit_regular_previous": {
+      "label": "Previous-quarter regular income tax payments",
+      "group": "Tax credits and payments",
+      "signed": false
+    },
+    "credit_mcit_previous": {
+      "label": "Previous-quarter MCIT payments",
+      "group": "Tax credits and payments",
+      "signed": false
+    },
+    "credit_cwt_previous": {
+      "label": "Creditable withholding from previous quarters",
+      "group": "Tax credits and payments",
+      "signed": false
+    },
+    "credit_cwt_current": {
+      "label": "Creditable withholding for current / fourth quarter",
+      "group": "Tax credits and payments",
+      "signed": false
+    }
+  },
+  "1702-RT": {
+    "sales": {
+      "label": "Sales / receipts / revenue",
+      "group": "Income",
+      "signed": false
+    },
+    "cost": {
+      "label": "Cost of sales / services",
+      "group": "Income",
+      "signed": false
+    },
+    "other_income": {
+      "label": "Other taxable income not subject to final tax",
+      "group": "Income",
+      "signed": false
+    },
+    "returns": {
+      "label": "Sales returns, allowances and discounts",
+      "group": "Income",
+      "signed": false
+    },
+    "expense_1": {
+      "label": "Amortization",
+      "group": "Ordinary itemized deductions",
+      "signed": false,
+      "xml": "frm1702RT:txtPg3Sc1I1Amortization"
+    },
+    "expense_2": {
+      "label": "Bad debts",
+      "group": "Ordinary itemized deductions",
+      "signed": false,
+      "xml": "frm1702RT:txtPg3Sc1I2BadDebts"
+    },
+    "expense_3": {
+      "label": "Charitable contributions",
+      "group": "Ordinary itemized deductions",
+      "signed": false,
+      "xml": "frm1702RT:txtPg3Sc1I3CharitableContributions"
+    },
+    "expense_4": {
+      "label": "Depletion",
+      "group": "Ordinary itemized deductions",
+      "signed": false,
+      "xml": "frm1702RT:txtPg3Sc1I4Depletion"
+    },
+    "expense_5": {
+      "label": "Depreciation",
+      "group": "Ordinary itemized deductions",
+      "signed": false,
+      "xml": "frm1702RT:txtPg3Sc1I5Depreciation"
+    },
+    "expense_6": {
+      "label": "Entertainment, amusement and recreation",
+      "group": "Ordinary itemized deductions",
+      "signed": false,
+      "xml": "frm1702RT:txtPg3Sc1I6Entertainment"
+    },
+    "expense_7": {
+      "label": "Fringe benefits",
+      "group": "Ordinary itemized deductions",
+      "signed": false,
+      "xml": "frm1702RT:txtPg3Sc1I7FringeBenefits"
+    },
+    "expense_8": {
+      "label": "Interest",
+      "group": "Ordinary itemized deductions",
+      "signed": false,
+      "xml": "frm1702RT:txtPg3Sc1I8Interest"
+    },
+    "expense_9": {
+      "label": "Losses",
+      "group": "Ordinary itemized deductions",
+      "signed": false,
+      "xml": "frm1702RT:txtPg3Sc1I9Losses"
+    },
+    "expense_10": {
+      "label": "Pension trusts",
+      "group": "Ordinary itemized deductions",
+      "signed": false,
+      "xml": "frm1702RT:txtPg3Sc1I10PensionTrust"
+    },
+    "expense_11": {
+      "label": "Rental",
+      "group": "Ordinary itemized deductions",
+      "signed": false,
+      "xml": "frm1702RT:txtPg3Sc1I11Rental"
+    },
+    "expense_12": {
+      "label": "Research and development",
+      "group": "Ordinary itemized deductions",
+      "signed": false,
+      "xml": "frm1702RT:txtPg3Sc1I12Research"
+    },
+    "expense_13": {
+      "label": "Salaries, wages and allowances",
+      "group": "Ordinary itemized deductions",
+      "signed": false,
+      "xml": "frm1702RT:txtPg3Sc1I13Salaries"
+    },
+    "expense_14": {
+      "label": "SSS / GSIS / PhilHealth / HDMF contributions",
+      "group": "Ordinary itemized deductions",
+      "signed": false,
+      "xml": "frm1702RT:txtPg3Sc1I14Contributions"
+    },
+    "expense_15": {
+      "label": "Taxes and licenses",
+      "group": "Ordinary itemized deductions",
+      "signed": false,
+      "xml": "frm1702RT:txtPg3Sc1I15TaxesandLicenses"
+    },
+    "expense_16": {
+      "label": "Transportation and travel",
+      "group": "Ordinary itemized deductions",
+      "signed": false,
+      "xml": "frm1702RT:txtPg3Sc1I16TransportationandTravel"
+    },
+    "expense_17": {
+      "label": "Janitorial and messengerial services",
+      "group": "Ordinary itemized deductions",
+      "signed": false,
+      "xml": "frm1702RT:txtPg3Sc1I17aJanitorial"
+    },
+    "expense_18": {
+      "label": "Professional fees",
+      "group": "Ordinary itemized deductions",
+      "signed": false,
+      "xml": "frm1702RT:txtPg3Sc1I17bProfessionalFees"
+    },
+    "expense_19": {
+      "label": "Security services",
+      "group": "Ordinary itemized deductions",
+      "signed": false,
+      "xml": "frm1702RT:txtPg3Sc1I17cSecurityServices"
+    },
+    "expense_other1": {
+      "label": "Other expense 1",
+      "group": "Ordinary itemized deductions",
+      "signed": false,
+      "xml": "frm1702RT:txtPg3Sc1I17dC2"
+    },
+    "description_expense_other1": {
+      "label": "Description \u2014 Other expense 1",
+      "group": "Ordinary itemized deductions",
+      "signed": false,
+      "type": "text"
+    },
+    "expense_other2": {
+      "label": "Other expense 2",
+      "group": "Ordinary itemized deductions",
+      "signed": false,
+      "xml": "frm1702RT:txtPg3Sc1I17eC2"
+    },
+    "description_expense_other2": {
+      "label": "Description \u2014 Other expense 2",
+      "group": "Ordinary itemized deductions",
+      "signed": false,
+      "type": "text"
+    },
+    "expense_other3": {
+      "label": "Other expense 3",
+      "group": "Ordinary itemized deductions",
+      "signed": false,
+      "xml": "frm1702RT:txtPg3Sc1I17fC2"
+    },
+    "description_expense_other3": {
+      "label": "Description \u2014 Other expense 3",
+      "group": "Ordinary itemized deductions",
+      "signed": false,
+      "type": "text"
+    },
+    "expense_other4": {
+      "label": "Other expense 4",
+      "group": "Ordinary itemized deductions",
+      "signed": false,
+      "xml": "frm1702RT:txtPg3Sc1I17gC2"
+    },
+    "description_expense_other4": {
+      "label": "Description \u2014 Other expense 4",
+      "group": "Ordinary itemized deductions",
+      "signed": false,
+      "type": "text"
+    },
+    "expense_other5": {
+      "label": "Other expense 5",
+      "group": "Ordinary itemized deductions",
+      "signed": false,
+      "xml": "frm1702RT:txtPg3Sc1I17hC2"
+    },
+    "description_expense_other5": {
+      "label": "Description \u2014 Other expense 5",
+      "group": "Ordinary itemized deductions",
+      "signed": false,
+      "type": "text"
+    },
+    "expense_other6": {
+      "label": "Other expense 6",
+      "group": "Ordinary itemized deductions",
+      "signed": false,
+      "xml": "frm1702RT:txtPg3Sc1I17iC2"
+    },
+    "description_expense_other6": {
+      "label": "Description \u2014 Other expense 6",
+      "group": "Ordinary itemized deductions",
+      "signed": false,
+      "type": "text"
+    },
+    "book_net": {
+      "label": "Net income / loss per books",
+      "group": "Book-to-tax reconciliation",
+      "signed": true
+    },
+    "addback1": {
+      "label": "Non-deductible expense / taxable other income 1",
+      "group": "Book-to-tax reconciliation",
+      "signed": false
+    },
+    "description_addback1": {
+      "label": "Description \u2014 Non-deductible expense / taxable other income 1",
+      "group": "Book-to-tax reconciliation",
+      "signed": false,
+      "type": "text"
+    },
+    "addback2": {
+      "label": "Non-deductible expense / taxable other income 2",
+      "group": "Book-to-tax reconciliation",
+      "signed": false
+    },
+    "description_addback2": {
+      "label": "Description \u2014 Non-deductible expense / taxable other income 2",
+      "group": "Book-to-tax reconciliation",
+      "signed": false,
+      "type": "text"
+    },
+    "recon_less1": {
+      "label": "Non-taxable / final-tax income 1",
+      "group": "Book-to-tax reconciliation",
+      "signed": false
+    },
+    "description_recon_less1": {
+      "label": "Description \u2014 Non-taxable / final-tax income 1",
+      "group": "Book-to-tax reconciliation",
+      "signed": false,
+      "type": "text"
+    },
+    "recon_less2": {
+      "label": "Non-taxable / final-tax income 2",
+      "group": "Book-to-tax reconciliation",
+      "signed": false
+    },
+    "description_recon_less2": {
+      "label": "Description \u2014 Non-taxable / final-tax income 2",
+      "group": "Book-to-tax reconciliation",
+      "signed": false,
+      "type": "text"
+    },
+    "recon_less3": {
+      "label": "Other reconciliation deduction 1",
+      "group": "Book-to-tax reconciliation",
+      "signed": false
+    },
+    "description_recon_less3": {
+      "label": "Description \u2014 Other reconciliation deduction 1",
+      "group": "Book-to-tax reconciliation",
+      "signed": false,
+      "type": "text"
+    },
+    "recon_less4": {
+      "label": "Other reconciliation deduction 2",
+      "group": "Book-to-tax reconciliation",
+      "signed": false
+    },
+    "description_recon_less4": {
+      "label": "Description \u2014 Other reconciliation deduction 2",
+      "group": "Book-to-tax reconciliation",
+      "signed": false,
+      "type": "text"
+    },
+    "credit_prior_year": {
+      "label": "Prior-year excess credits other than MCIT",
+      "group": "Tax credits and payments",
+      "signed": false
+    },
+    "credit_regular_previous": {
+      "label": "Previous-quarter regular income tax payments",
+      "group": "Tax credits and payments",
+      "signed": false
+    },
+    "credit_mcit_previous": {
+      "label": "Previous-quarter MCIT payments",
+      "group": "Tax credits and payments",
+      "signed": false
+    },
+    "credit_cwt_previous": {
+      "label": "Creditable withholding from previous quarters",
+      "group": "Tax credits and payments",
+      "signed": false
+    },
+    "credit_cwt_current": {
+      "label": "Creditable withholding for current / fourth quarter",
+      "group": "Tax credits and payments",
+      "signed": false
+    }
+  }
+}

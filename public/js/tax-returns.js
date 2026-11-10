@@ -29,10 +29,50 @@
         button.title=issues.length?issues.join(' '):'';
         if(q('return-settings-link'))q('return-settings-link').hidden=issues.length===0;
     }
+    function corporateInput(){
+        const input={method:preview?.annual_settings?.settings?.deduction_method||'itemized'};
+        for(const field of q('return-xml-corporate').querySelectorAll('[data-corporate-input]')){
+            if(field.dataset.corporateInput==='incorporation_date'&&selection?.form!=='1702-RT')continue;
+            input[field.dataset.corporateInput]=field.type==='checkbox'?field.checked:field.value.trim();
+        }
+        return input;
+    }
+    function renderCorporate(data){
+        const root=q('corporate-inputs');root.replaceChildren();
+        const saved=data.corporate_saved||{},groups=new Map();
+        for(const field of q('return-xml-corporate').querySelectorAll('[data-corporate-input]')){
+            if(field.type==='checkbox')field.checked=Boolean(saved[field.dataset.corporateInput]);else field.value=saved[field.dataset.corporateInput]||'';
+        }
+        for(const [key,definition] of Object.entries(data.corporate_inputs||{})){
+            if(!groups.has(definition.group)){
+                const details=document.createElement('details'),summary=document.createElement('summary'),grid=document.createElement('div');
+                details.className='corporate-input-group';details.open=definition.group==='Income';summary.textContent=definition.group;grid.className='return-review-grid';details.append(summary,grid);root.append(details);groups.set(definition.group,grid);
+            }
+            const label=document.createElement('label'),input=document.createElement('input');label.textContent=definition.label;input.dataset.corporateInput=key;input.type='text';input.value=saved[key]??(definition.type==='text'?'':'0.00');
+            if(definition.type==='text')input.maxLength=150;else{input.inputMode='decimal';input.pattern=definition.signed?'-?[0-9]{1,9}(\\.00)?':'[0-9]{1,9}(\\.00)?';input.required=true;}
+            label.append(input);groups.get(definition.group).append(label);
+        }
+        q('corporate-method').textContent='Deduction method from year settings: '+(data.annual_settings?.settings?.deduction_method||'itemized')+'. Change year settings first if the election is incorrect.';
+        q('corporate-incorporation').hidden=selection?.form!=='1702-RT';q('corporate-overpayment').hidden=selection?.form!=='1702-RT';form.elements.xml_corporate_reviewed.checked=false;
+    }
+    function syncCorporate(enabled){
+        q('return-xml-corporate').hidden=!enabled;
+        for(const field of q('return-xml-corporate').querySelectorAll('input,select'))field.disabled=!enabled;
+        form.elements.xml_corporate_reviewed.required=enabled;
+        const date=q('corporate-incorporation').querySelector('input');date.required=enabled&&selection.form==='1702-RT';date.disabled=!date.required;
+        if(!enabled)return;
+        for(const key of ['rate','mcit'])q('return-xml-corporate').querySelector('[data-corporate-input="'+key+'"]').required=true;
+        try{
+            const result=window.CorporateIncomeWorksheet.calculate(selection.form,corporateInput(),selection.period,preview.annual_settings?.settings?.deduction_method||'itemized',preview.corporate_inputs);
+            form.elements.reviewed_tax.value=decimal(result.tax);form.elements.credits.value=decimal(result.credits);
+            q('corporate-calculation').textContent='Gross income '+money(result.gross*100)+' · Taxable income / loss '+money(result.taxable*100)+' · RCIT '+money(result.rcit*100)+' · MCIT '+money(result.mcit*100)+' · Tax due '+money(result.tax)+'.';
+        }catch(error){form.elements.reviewed_tax.value='';q('corporate-calculation').textContent=error.message;}
+        form.elements.additional_tax.value='0.00';
+    }
     function syncXml(){
         q('return-save').textContent=form.elements.amended.checked?'Save amendment':(preview?.original_id?'Update original':'Save original');
         if(form.elements.amended.checked)form.elements.xml_requested.checked=false;
-        const enabled=Boolean(preview?.xml_capable&&form.elements.xml_requested.checked&&!form.elements.amended.checked),vat=selection?.form==='2550Q',eq=selection?.form==='1601-EQ',payroll=selection?.form==='1601-C',monthly=['0619-E','1601-C'].includes(selection?.form);
+        const enabled=Boolean(preview?.xml_capable&&form.elements.xml_requested.checked&&!form.elements.amended.checked),vat=selection?.form==='2550Q',eq=selection?.form==='1601-EQ',payroll=selection?.form==='1601-C',monthly=['0619-E','1601-C'].includes(selection?.form),corporate=['1702Q','1702-RT'].includes(selection?.form);
         if(enabled&&!wasXml){previousCredits=form.elements.credits.value;previousTax=form.elements.reviewed_tax.value;}
         if(!enabled&&wasXml){form.elements.credits.value=previousCredits;form.elements.reviewed_tax.value=previousTax;}
         wasXml=enabled;q('return-xml-vat').hidden=!enabled||!vat;q('return-xml-ewt').hidden=!enabled||!eq;q('return-xml-monthly').hidden=!enabled||!monthly;q('return-xml-payroll').hidden=!enabled||!payroll;
@@ -41,6 +81,9 @@
         for(const key of ['xml_carryover_input','xml_vat_reviewed'])form.elements[key].disabled=!enabled||!vat;
         for(const key of ['xml_remittance_month1','xml_remittance_month2','xml_prior_overremittance','xml_overpayment_action'])form.elements[key].disabled=!enabled||!eq;
         form.elements.xml_vat_reviewed.required=enabled&&vat;form.elements.credits.readOnly=enabled&&eq;form.elements.reviewed_tax.readOnly=enabled&&vat;
+        form.elements.additional_tax.readOnly=enabled&&corporate;
+        if(corporate&&enabled){form.elements.reviewed_tax.readOnly=true;form.elements.credits.readOnly=true;}
+        syncCorporate(enabled&&corporate);
         if(!enabled)return;
         if(vat){const v=preview.xml_vat_ledger.values,carry=cents(form.elements.xml_carryover_input.value);q('return-xml-vat-summary').textContent='Mapped output VAT '+money(v.outputVatSales)+' · Input VAT '+money(v.domesticInputTax+v.serviceInputTax+v.importInputTax)+' · Non-creditable VAT '+money(v.non_creditable)+'.';if(carry!==null)form.elements.reviewed_tax.value=decimal(v.outputVatSales-v.domesticInputTax-v.serviceInputTax-v.importInputTax+v.non_creditable-carry);}
         else if(eq){const values=['xml_remittance_month1','xml_remittance_month2','xml_prior_overremittance'].map(key=>cents(form.elements[key].value));if(values.every(value=>value!==null))form.elements.credits.value=decimal(values.reduce((sum,value)=>sum+value,0));}
@@ -79,6 +122,8 @@
             form.elements.xml_payroll_reviewed.checked=false;
             if(reset)form.elements.xml_line_of_business.value=data.taxpayer.line_of_business || '';
             if(data.xml_payroll_ledger)q('return-xml-payroll-summary').textContent='Posted compensation '+money(data.xml_payroll_ledger.values.total_compensation)+' · Actual withholding '+money(data.xml_payroll_ledger.values.tax_withheld)+'.';
+            if(reset)renderCorporate(data);
+            else q('corporate-method').textContent='Deduction method from year settings: '+(data.annual_settings?.settings?.deduction_method||'itemized')+'. Change year settings first if the election is incorrect.';
             wasXml=false;previousCredits='';previousTax='';q('return-xml-options').hidden=!data.xml_capable;q('return-xml-unavailable').hidden=data.xml_capable;form.elements.xml_requested.disabled=!data.xml_capable;form.elements.reviewed_tax.pattern=code==='2550Q'?'-?[0-9]+(\\.[0-9]{1,2})?':'[0-9]+(\\.[0-9]{1,2})?';
             q('return-title').textContent=code+' — '+data.definition.label;q('return-period').textContent=data.period.label+' · '+data.period.from+' to '+data.period.to;
             q('return-summary').textContent=data.information_return&&data.definition.source==='manual'?'Reconcile the annual remittance schedule separately and record the review below. This information return creates no additional tax payable.':(data.manual||data.definition.source==='manual')?'Source totals are not automatically calculated for this form. Enter the tax due from a separately reviewed computation.':data.source_count+' posted source record(s) · Gross / income payments '+money(data.source_totals.gross)+' · Recorded withholding '+money(data.source_totals.withheld)+' · Tax before credits '+money(data.tax_before_credits);
@@ -104,13 +149,14 @@
     form.addEventListener('input',()=>{q('return-error').textContent='';updateSaveReadiness();});
     form.addEventListener('change',updateSaveReadiness);
     form.addEventListener('invalid',event=>{
+        const details=event.target.closest('details');if(details)details.open=true;
         q('return-error').textContent=event.target.name==='review_note'?'Add a review note of at least 3 characters before saving.':event.target.name==='reviewed'?'Confirm that you reviewed the sources and tax computation before saving.':'Complete the highlighted required field before saving: '+(event.target.closest('label')?.textContent.trim() || event.target.name)+'.';
     },true);
     q('return-xml-options').addEventListener('input',syncXml);q('return-xml-options').addEventListener('change',syncXml);
     document.querySelectorAll('[data-xml-download]').forEach(button=>button.addEventListener('click',async()=>{
         if(busy)return;busy=true;button.disabled=true;q('returns-status').textContent='Preparing the archived XML save file…';
         try{const response=await fetch(button.dataset.xmlDownload,{credentials:'same-origin',headers:{Accept:'application/json'}});if(!response.ok){const problem=await response.json().catch(()=>({}));throw Error(Object.values(problem.errors || {}).flat()[0] || problem.message || 'Unable to export XML.');}
-            const filename=(response.headers.get('Content-Disposition') || '').match(/filename="?([^";]+)"?/i)?.[1];if(!filename||!/^\d{14}-(?:(?:2550Qv2024-\d{6}|1601EQ-\d{4})Q[1-4]|(?:0619E|1601Cv2018)-(?:0[1-9]|1[0-2])\d{4})\.xml$/.test(filename))throw Error('Invalid XML filename returned by the server.');
+            const filename=(response.headers.get('Content-Disposition') || '').match(/filename="?([^";]+)"?/i)?.[1];if(!filename||!/^\d{14}-(?:(?:2550Qv2024-\d{6}|1601EQ-\d{4})Q[1-4]|1702Qv2018C-\d{4}Q[1-3]|(?:0619E|1601Cv2018|1702RTv2018C)-(?:0[1-9]|1[0-2])\d{4})\.xml$/.test(filename))throw Error('Invalid XML filename returned by the server.');
             const url=URL.createObjectURL(await response.blob()),link=document.createElement('a');link.href=url;link.download=filename;document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);q('returns-status').textContent='XML save file downloaded. Import and validate it in eBIRForms before submission. No return has been filed by this app.';
         }catch(error){q('returns-status').textContent=error.message;}finally{busy=false;button.disabled=false;}
     }));
@@ -124,7 +170,7 @@
             for(const key of ['additional_tax','credits','surcharge','interest','compromise'])input[key]=form.elements[key].value.trim();
             input.amended=form.elements.amended.checked;
             input.xml_requested=Boolean(preview.xml_capable&&form.elements.xml_requested.checked);
-            if(input.xml_requested){input.xml_vat_reviewed=form.elements.xml_vat_reviewed.checked;for(const key of ['xml_carryover_input','xml_remittance_month1','xml_remittance_month2','xml_prior_overremittance'])input[key]=form.elements[key].value.trim();input.xml_overpayment_action=form.elements.xml_overpayment_action.value||null;if(['0619-E','1601-C'].includes(selection.form))input.xml_line_of_business=form.elements.xml_line_of_business.value.trim();if(selection.form==='1601-C'){input.xml_payroll_reviewed=form.elements.xml_payroll_reviewed.checked;input.xml_payroll_other_description=form.elements.xml_payroll_other_description.value.trim();for(const field of q('return-xml-payroll').querySelectorAll('input[inputmode=decimal]'))input[field.name]=field.value.trim();}}
+            if(input.xml_requested){input.xml_vat_reviewed=form.elements.xml_vat_reviewed.checked;for(const key of ['xml_carryover_input','xml_remittance_month1','xml_remittance_month2','xml_prior_overremittance'])input[key]=form.elements[key].value.trim();input.xml_overpayment_action=['1702Q','1702-RT'].includes(selection.form)?(q('return-xml-corporate').querySelector('[data-corporate-action]').value||null):(form.elements.xml_overpayment_action.value||null);if(['1702Q','1702-RT'].includes(selection.form)){input.xml_corporate=corporateInput();input.xml_corporate_reviewed=form.elements.xml_corporate_reviewed.checked;}if(['0619-E','1601-C'].includes(selection.form))input.xml_line_of_business=form.elements.xml_line_of_business.value.trim();if(selection.form==='1601-C'){input.xml_payroll_reviewed=form.elements.xml_payroll_reviewed.checked;input.xml_payroll_other_description=form.elements.xml_payroll_other_description.value.trim();for(const field of q('return-xml-payroll').querySelectorAll('input[inputmode=decimal]'))input[field.name]=field.value.trim();}}
             await request(main.dataset.save,input);location.hash='return-'+selection.form;location.reload();
         }catch(error){q('return-error').textContent=error.message;if(error.status===409){q('return-error').textContent+=' Use Refresh sources, review the updated totals, and confirm again.';preview=null;}}
         finally{busy=false;updateSaveReadiness();}

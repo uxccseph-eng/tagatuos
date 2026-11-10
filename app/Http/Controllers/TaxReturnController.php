@@ -135,6 +135,9 @@ class TaxReturnController extends Controller
             if (isset($snapshot['xml_payroll_review'])) {
                 $row(['Other non-taxable compensation description', $snapshot['xml_payroll_review']['other_description']]);
             }
+            foreach ($snapshot['xml_corporate_review']['values'] ?? [] as $key => $value) {
+                $row(['Corporate worksheet: '.($snapshot['corporate_inputs'][$key]['label'] ?? $key), $value]);
+            }
             $row(['Return basis', ! empty($snapshot['amended']) ? 'Amended worksheet' : 'Original worksheet']);
             foreach ($snapshot['annual_settings']['settings'] ?? [] as $key => $value) {
                 $row(['Annual setting: '.str_replace('_', ' ', $key), $value ?? 'Not specified']);

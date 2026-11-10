@@ -37,3 +37,12 @@ html,html.dark{--return-card:var(--theme-panel);--return-line:var(--theme-line);
 .return-card .return-period-filing{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:end;padding-top:12px}.return-card .return-period-filing .return-review-grid{grid-column:1;grid-row:1;margin:0;grid-template-columns:minmax(0,1fr) 145px}.return-period-filing>.returns-button{grid-column:2;grid-row:1;background:var(--return-accent);color:var(--theme-on-accent);border-color:var(--return-accent);align-self:end}.return-card .return-period-filing>.return-check,.return-period-filing>p{grid-column:1/-1;margin:0}.return-period-filing>.return-check{align-self:start}.return-version{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between}.return-version>span{flex:1}.return-version>small{flex-basis:100%}.return-version>div{display:flex;align-items:center}.return-proof-upload .return-inline-status:empty,.return-period-filing .return-inline-status:empty{display:none}@media(max-width:700px){.return-card .return-period-filing{grid-template-columns:1fr}.return-card .return-period-filing .return-review-grid{grid-template-columns:1fr}.return-period-filing>.returns-button{grid-column:1;grid-row:auto;order:3}.return-period-filing>.return-check{order:2}.return-period-filing>p{order:4}.return-card .return-period-filing>.returns-button{min-height:40px}.return-version>span{flex-basis:100%}}
 /* Keep the healthy database status quiet on this read-only preparation page. */
 body:has(#tax-returns-main) .company-database-status[data-state=saved]{display:none}
+
+.corporate-input-group { border:1px solid rgb(var(--sales-outline-variant) / .35); border-radius:8px; padding:12px; margin:12px 0; }
+.corporate-input-group summary { cursor:pointer; font-weight:600; margin-bottom:8px; }
+#corporate-calculation { padding:12px; background:rgb(var(--sales-surface-container)); border-radius:8px; line-height:1.6; }
+
+#return-xml-corporate .return-review-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+#return-xml-corporate .return-review-grid > label { grid-template-rows:1fr auto; align-self:stretch; }
+#return-xml-corporate .return-review-grid input,#return-xml-corporate .return-review-grid select { min-height:42px; width:100%; min-width:0; }
+@media(max-width:600px){#return-xml-corporate .return-review-grid { grid-template-columns:1fr; }}

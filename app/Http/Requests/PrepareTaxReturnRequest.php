@@ -37,6 +37,8 @@ class PrepareTaxReturnRequest extends FormRequest
             'xml_payroll_mandatory_contributions' => ['sometimes', 'string', 'regex:/^[0-9]{1,9}(?:\.[0-9]{1,2})?$/D'],
             'xml_payroll_other_exempt' => ['sometimes', 'string', 'regex:/^[0-9]{1,9}(?:\.[0-9]{1,2})?$/D'],
             'xml_payroll_no_withholding_compensation' => ['sometimes', 'string', 'regex:/^[0-9]{1,9}(?:\.[0-9]{1,2})?$/D'],
+            'xml_corporate' => ['sometimes', 'array', 'max:90'],
+            'xml_corporate_reviewed' => ['sometimes', 'boolean'],
             'xml_requested' => ['sometimes', 'boolean'],
             'xml_vat_reviewed' => ['sometimes', 'boolean'],
             'xml_carryover_input' => ['sometimes', 'string', 'regex:/^[0-9]{1,9}(?:\.[0-9]{1,2})?$/D'],

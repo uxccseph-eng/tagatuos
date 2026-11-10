@@ -52,7 +52,8 @@ abstract class BaseBirExporter
         $layout = $this->layout();
         yield $layout['prefix'];
         $first = true;
-        foreach ($prepared['fields'] as $key => $value) {
+        foreach ($layout['order'] ?? array_keys($prepared['fields']) as $key) {
+            $value = $prepared['fields'][$key];
             if (! $first) {
                 yield $layout['separator'];
             }
@@ -70,6 +71,8 @@ abstract class BaseBirExporter
             throw new \LogicException('The archived XML layout does not match this exporter version.');
         }
         $filenamePattern = match ($this->form()) {
+            '1702Q' => '/^[0-9]{14}-1702Qv2018C-[0-9]{4}Q[1-3]\.xml$/D',
+            '1702-RT' => '/^[0-9]{14}-1702RTv2018C-(?:0[1-9]|1[0-2])[0-9]{4}\.xml$/D',
             '2550Q' => '/^[0-9]{14}-2550Qv2024-[0-9]{6}Q[1-4]\.xml$/D',
             '1601-EQ' => '/^[0-9]{14}-1601EQ-[0-9]{4}Q[1-4]\.xml$/D',
             '0619-E' => '/^[0-9]{14}-0619E-(?:0[1-9]|1[0-2])[0-9]{4}\.xml$/D',
@@ -91,7 +94,7 @@ abstract class BaseBirExporter
         }
     }
 
-    /** @return array{prefix: string, separator: string, suffix: string, fields: array<string, string>} */
+    /** @return array{prefix: string, separator: string, suffix: string, fields: array<string, string>, order?: list<string>} */
     private function layout(): array
     {
         return json_decode(file_get_contents(resource_path('templates/bir-'.$this->schema().'.json')), true, 512, JSON_THROW_ON_ERROR);
@@ -139,6 +142,20 @@ abstract class BaseBirExporter
      */
     private function period(array $period, array $profile): array
     {
+        if ($this->form() === '1702-RT') {
+            Validator::make($period, ['from' => ['required', 'date_format:Y-m-d'], 'to' => ['required', 'date_format:Y-m-d'], 'year' => ['required', 'integer', 'between:2024,2099']])->validate();
+            $fiscal = ($profile['accounting_period'] ?? 'calendar') === 'fiscal';
+            $endMonth = $fiscal ? (int) ($profile['fiscal_end_month'] ?? 0) : 12;
+            if ($endMonth < 1 || $endMonth > 12) {
+                $this->fail('period', 'Confirm the taxable year ending month.');
+            }
+            $end = CarbonImmutable::create((int) $period['year'], $endMonth, 1)->endOfMonth();
+            if ($period['from'] !== $end->subMonthsNoOverflow(11)->startOfMonth()->toDateString() || $period['to'] !== $end->toDateString()) {
+                $this->fail('period', '1702-RT XML requires a complete taxable year; short-period XML needs separate preparation.');
+            }
+
+            return [...$period, 'fiscal' => $fiscal, 'year_end_month' => $endMonth];
+        }
         if (in_array($this->form(), ['0619-E', '1601-C'], true)) {
             Validator::make($period, ['from' => ['required', 'date_format:Y-m-d'], 'to' => ['required', 'date_format:Y-m-d', 'after_or_equal:from'], 'year' => ['required', 'integer', 'between:2023,2199'], 'month' => ['required', 'integer', 'between:1,12']])->validate();
             $start = CarbonImmutable::create((int) $period['year'], (int) $period['month'], 1)->startOfMonth();
@@ -152,7 +169,7 @@ abstract class BaseBirExporter
             return [...$period, 'fiscal' => false, 'year_end_month' => 12];
         }
         Validator::make($period, ['from' => ['required', 'date_format:Y-m-d'], 'to' => ['required', 'date_format:Y-m-d', 'after_or_equal:from'], 'year' => ['required', 'integer', 'between:2023,2199'], 'quarter' => ['required', 'integer', 'between:1,4']])->validate();
-        $fiscal = $this->form() === '2550Q' && ($profile['accounting_period'] ?? 'calendar') === 'fiscal';
+        $fiscal = in_array($this->form(), ['2550Q', '1702Q'], true) && ($profile['accounting_period'] ?? 'calendar') === 'fiscal';
         $endMonth = $fiscal ? (int) ($profile['fiscal_end_month'] ?? 0) : 12;
         if ($endMonth < 1 || $endMonth > 12) {
             $this->fail('taxpayer.fiscal_end_month', 'Confirm the fiscal year ending month.');

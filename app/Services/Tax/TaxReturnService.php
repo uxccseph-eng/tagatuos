@@ -109,6 +109,8 @@ class TaxReturnService
             $warnings = ['Confirm the form and filing obligations against the company Certificate of Registration.', 'This is a preparation worksheet. No eBIRForms XML validation, electronic submission or payment has occurred.'];
             if ($definition['source'] === 'manual' && $definition['category'] === 'Information return') {
                 $warnings[] = 'The annual final withholding summary is not automatically computed. Reconcile your remittance schedule separately and describe the review in the note. Zero automatic source totals do not establish a nil return.';
+            } elseif ($manual && in_array($input['form'], ['1702Q', '1702-RT'], true)) {
+                $warnings[] = 'The XML worksheet calculates reviewed regular corporate income tax inputs. Reconcile them to tax working papers; book deductions, MCIT eligibility and prior credits are not inferred.';
             } elseif ($manual) {
                 $warnings[] = 'Automatic tax computation is unavailable for this form. Enter the tax due from a separately reviewed computation; it will not be inferred as zero.';
             } elseif ($sources === []) {
@@ -121,7 +123,7 @@ class TaxReturnService
                 $warnings[] = 'Review non-taxable compensation, benefit caps and minimum-wage-earner classifications separately; this summary uses actual saved payroll withholding.';
             }
             $info = $definition['category'] === 'Information return';
-            $original = DB::table('tax_return_preparations')->where('company_id', $company->id)->where('form', $input['form'])->where('period_from', $period['from'])->where('period_to', $period['to'])->where('original_slot', 1)->whereNull('deleted_at')->first(['id', 'revision']);
+            $original = DB::table('tax_return_preparations')->where('company_id', $company->id)->where('form', $input['form'])->where('period_from', $period['from'])->where('period_to', $period['to'])->where('original_slot', 1)->whereNull('deleted_at')->first(['id', 'revision', 'snapshot']);
             $hash = hash('sha256', json_encode([$input['form'], $period, $profile, $sources, $definition, $gross, $withheld, $details, $vatLedger, $withholdingRows, $payrollLedger, $annualSettings, 'preparation-2026-11-xml-v2'], JSON_THROW_ON_ERROR));
 
             return [
@@ -135,8 +137,10 @@ class TaxReturnService
                 'tax_before_credits' => $manual ? null : ($info ? 0 : $withheld),
                 'manual' => $manual, 'information_return' => $info, 'issues' => $issues, 'warnings' => $warnings,
                 'rules_version' => 'preparation-2026-11-xml-v2', 'xml_available' => false,
+                'corporate_inputs' => app(CorporateIncomeWorksheet::class)->inputs($input['form']),
+                'corporate_saved' => $original ? (json_decode($original->snapshot, true)['xml_corporate_review']['input'] ?? null) : null,
                 'xml_payroll_ledger' => $payrollLedger,
-                'xml_capable' => in_array($input['form'], ['2550Q', '1601-EQ', '0619-E', '1601-C'], true), 'xml_vat_ledger' => $vatLedger, 'withholding_rows' => $withholdingRows,
+                'xml_capable' => in_array($input['form'], ['2550Q', '1601-EQ', '0619-E', '1601-C', '1702Q', '1702-RT'], true), 'xml_vat_ledger' => $vatLedger, 'withholding_rows' => $withholdingRows,
             ];
         });
     }
@@ -225,9 +229,12 @@ class TaxReturnService
                         $options['payroll_reviewed'] = (bool) ($input['xml_payroll_reviewed'] ?? false);
                         $options['payroll_other_description'] = $input['xml_payroll_other_description'] ?? '';
                         $snapshot['xml_payroll_review'] = $input['form'] === '1601-C' ? ['values' => $payroll, 'other_description' => $options['payroll_other_description']] : null;
+                        $options['corporate_reviewed'] = (bool) ($input['xml_corporate_reviewed'] ?? false);
+                        $corporateInput = $input['xml_corporate'] ?? [];
+                        $snapshot['xml_corporate_review'] = in_array($input['form'], ['1702Q', '1702-RT'], true) ? app(CorporateIncomeWorksheet::class)->review($input['form'], [...$snapshot, 'corporate_input' => $corporateInput, 'options' => $options]) : null;
                         $snapshot['bir_xml'] = $this->exporters->make($input['form'])->prepare([
                             'taxpayer' => $snapshot['taxpayer'], 'period' => $snapshot['period'], 'vat' => $snapshot['xml_vat_ledger']['values'] ?? [],
-                            'payroll' => $payroll, 'withholding' => $snapshot['withholding_rows'], 'options' => $options, 'calculation' => $snapshot['calculation'], 'prepared_at' => now('Asia/Manila')->toDateString(),
+                            'corporate_input' => $corporateInput, 'annual_settings' => $snapshot['annual_settings'], 'payroll' => $payroll, 'withholding' => $snapshot['withholding_rows'], 'options' => $options, 'calculation' => $snapshot['calculation'], 'prepared_at' => now('Asia/Manila')->toDateString(),
                         ]);
                         $snapshot['xml_available'] = true;
                     }
