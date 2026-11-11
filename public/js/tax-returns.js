@@ -39,7 +39,7 @@
     }
     function renderCorporate(data){
         const root=q('corporate-inputs');root.replaceChildren();
-        const saved=data.corporate_saved||{},groups=new Map();
+        const saved=data.corporate_saved||data.suggested_corporate||{},groups=new Map();
         for(const field of q('return-xml-corporate').querySelectorAll('[data-corporate-input]')){
             if(field.type==='checkbox')field.checked=Boolean(saved[field.dataset.corporateInput]);else field.value=saved[field.dataset.corporateInput]||'';
         }

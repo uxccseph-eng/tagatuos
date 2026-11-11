@@ -32,7 +32,7 @@
         }
         function account(name, label, types, fallback, extra = false) {
             const choices = data.accounts.filter(a => types.includes(a.type) && (!extra || a.is_cash_bank)).map(a => [a.code, a.code + ' · ' + a.name]);
-            if (fallback && !data.accounts.some(a => a.code === fallback)) choices.push([fallback, fallback + ' · ' + (fallback === '2205' ? 'VAT Payable - Net of Input Tax' : 'Penalties & Surcharges') + ' (create on posting)']);
+            if (fallback && !data.accounts.some(a => a.code === fallback)) choices.push([fallback, fallback + ' · ' + ({'2205':'VAT Payable - Net of Input Tax','2160':'Income Tax Payable','1160':'Prepaid Income Tax','7290':'Penalties & Surcharges'}[fallback] || fallback) + ' (create on posting)']);
             return field(name, label, {choices: [['', 'Select account…'], ...choices], value: fallback || '', required: true});
         }
         function invalidate() {
@@ -41,17 +41,26 @@
         root.querySelectorAll('[data-vat-action]').forEach(button => button.addEventListener('click', () => {
             if (busy) return;
             action = button.dataset.vatAction; fields.replaceChildren(); output.replaceChildren(); submitted = false; invalidate();
-            root.querySelector('#vat-action-title').textContent = {credit: 'Record opening input VAT', reverse: 'Reverse opening credit', payment: 'Tag VAT payment', carryover: 'Carry excess input VAT forward', close: 'Close quarterly VAT'}[action];
-            root.querySelector('#vat-action-intro').textContent = action === 'credit' ? 'Opening credit for reporting year ' + data.year + '. Enter 0.00 to confirm there is no opening input VAT. No journal will be posted.' : action === 'carryover' ? 'Review the confirmed year-end excess input VAT before recording it as next year’s opening balance.' : 'Review the details below. Nothing is recorded until you confirm the preview.';
-            if (['payment', 'close'].includes(action)) {
-                field('quarter', 'Reporting quarter', {choices: [1,2,3,4].map(q => [q, 'Q' + q + ' ' + data.year]), value: button.dataset.quarter || '1', required: true});
-                field('date', action === 'close' ? 'Close date' : 'Payment date', {type: 'date', value: data.today, max: data.today, required: true});
+            root.querySelector('#vat-action-title').textContent = (data.income ? {settings:'Review income tax rate & MCIT',credit:'Record prior-year income tax credit',reverse:'Reverse income tax credit / allocation',payment:'Tag income tax payment',nolco:'Register a tax loss',apply_nolco:'Allocate NOLCO',adjustment:'Record book-to-tax adjustment'} : {credit: 'Record opening input VAT', reverse: 'Reverse opening credit', payment: 'Tag VAT payment', carryover: 'Carry excess input VAT forward', close: 'Close quarterly VAT'})[action];
+            root.querySelector('#vat-action-intro').textContent = !data.income && action === 'credit' ? 'Opening credit for reporting year ' + data.year + '. Enter 0.00 to confirm there is no opening input VAT. No journal will be posted.' : action === 'carryover' ? 'Review the confirmed year-end excess input VAT before recording it as next year’s opening balance.' : 'Review the details below. Nothing is recorded until you confirm the preview.';
+            if (['payment', 'close', 'apply_nolco', 'adjustment'].includes(action)) {
+                field('quarter', 'Reporting quarter', {choices: [1,2,3,4].map(q => [q, data.income && q === 4 ? 'Annual ' + data.year : 'Q' + q + ' ' + data.year]), value: button.dataset.quarter || '1', required: true});
+                if (['payment','close'].includes(action)) field('date', action === 'close' ? 'Close date' : 'Payment date', {type: 'date', value: data.today, max: data.today, required: true});
             }
-            if (action === 'reverse') {
-                field('credit_id', 'Credit to reverse', {choices: [['', 'Choose an opening credit…'], ...data.credits.filter(c => Number(c.year) === Number(data.year) && c.remaining > 0).map(c => [c.id, '#' + c.id + ' · ' + money(c.remaining) + ' remaining'])], required: true});
+            if (action === 'reverse' || action === 'apply_nolco') {
+                field('credit_id', 'Credit to reverse', {choices: [['', 'Choose an opening credit…'], ...data.credits.filter(c => c.remaining > 0 && (data.income ? (action === 'apply_nolco' ? c.action === 'nolco' && Number(c.origin_year) < Number(data.year) && Number(c.expires) >= Number(data.year) : c.action === 'nolco' || Number(c.year) === Number(data.year)) : Number(c.year) === Number(data.year))).map(c => [c.id, '#' + c.id + ' · ' + (c.action || 'credit') + ' · ' + money(c.remaining) + ' remaining'])], required: true});
             }
-            if (['credit', 'reverse', 'payment'].includes(action)) field('amount', action === 'reverse' ? 'Amount to reverse' : 'Amount', {money: true, required: true});
+            if (['credit', 'reverse', 'payment', 'nolco', 'apply_nolco', 'adjustment'].includes(action)) field('amount', action === 'reverse' ? 'Amount to reverse' : 'Amount', {money: true, required: true});
+            if (action === 'adjustment') {form.elements.amount.pattern = '-?[0-9,]+([.][0-9]{1,2})?'; field('adjustment_target','Affects',{choices:[['taxable','Taxable income only'],['mcit_gross','MCIT gross income only'],['both','Both taxable income and MCIT gross income']],required:true});}
+            if (data.income && ['credit','nolco'].includes(action)) field('origin_year', action === 'nolco' ? 'Taxable year loss incurred' : 'Year credit arose', {type:'number', value:String(data.year - 1), required:true});
+            if (data.income && action === 'credit') field('credit_type','Credit type',{choices:[['prior_excess','Prior-year excess'],['overpayment','Overpayment'],['excess_cwt','Excess CWT']],required:true});
+            if (data.income && action === 'settings') {
+                field('rate','Reviewed corporate rate',{choices:[['25','25%'],['20','20% · confirm small-corporation eligibility']],value:data.settings?.rate || '25',required:true});
+                field('mcit','MCIT applicability',{choices:[['','Choose after reviewing eligibility…'],['applicable','Applicable'],['not_applicable','Not applicable']],value:data.settings?.mcit || '',required:true});
+                field('small_eligible','20% rate eligibility, including taxable-income and asset limits, verified',{type:'checkbox'});
+            }
             if (action === 'payment') {
+                if(data.income) field('subtype','Tax subtype',{choices:[['regular','Regular income tax'],['mcit','MCIT']]});
                 field('penalty', 'Included penalties', {money: true, value: '0.00', hint: 'Part of the payment amount, not an extra amount or tax credit.'});
                 field('method', 'Payment method', {choices: [['', 'Not specified'], ...['Cash','Check','eFPS','GCash','Tax Debit Memo','Other'].map(v => [v,v])]});
                 field('reference', 'Payment reference', {hint: 'Bank / eFPS confirmation. Check the period to avoid tagging the same payment twice.'});
@@ -59,7 +68,8 @@
                 const bank = account('bank', 'Paid from', ['Asset'], null, true); bank.required = false; bank.closest('label').hidden = true;
                 const linked = field('linked_source', 'Existing journal (optional)', {choices: [['', 'Tag only · no linked entry'], ...data.journals.map(j => [j.source_key, j.number + ' · ' + j.transaction_date])]});
                 post.addEventListener('change', () => {bank.closest('label').hidden = !post.checked; bank.required = post.checked; linked.closest('label').hidden = post.checked; if(post.checked) linked.value = ''; else bank.value = '';});
-                account('net_account', 'Net VAT payable account', ['Liability'], '2205');
+                account('net_account', data.income ? 'Income tax payable account' : 'Net VAT payable account', ['Liability'], data.income ? '2160' : '2205');
+                if(data.income) account('prepaid_account','Prepaid income tax account',['Asset'],'1160');
                 account('penalty_account', 'Penalty expense account', ['Expense'], '7290');
             }
             if (action === 'close') {
@@ -74,7 +84,7 @@
         }));
         fields.addEventListener('input', invalidate);
         fields.addEventListener('change', invalidate);
-        fields.addEventListener('focusout', event => {if (event.target.inputMode === 'decimal' && event.target.value.trim()) {const raw = event.target.value.replaceAll(',', ''); if (/^\d+(?:\.\d{1,2})?$/.test(raw)) event.target.value = new Intl.NumberFormat('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2}).format(Number(raw));}});
+        fields.addEventListener('focusout', event => {if (event.target.inputMode === 'decimal' && event.target.value.trim()) {const raw = event.target.value.replaceAll(',', ''); if (/^-?\d+(?:\.\d{1,2})?$/.test(raw)) event.target.value = new Intl.NumberFormat('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2}).format(Number(raw));}});
         root.querySelectorAll('[data-vat-dismiss]').forEach(button => button.addEventListener('click', () => {if (!busy) dialog.close();}));
         dialog.addEventListener('cancel', event => {if (busy) event.preventDefault();});
         form.addEventListener('submit', async event => {
@@ -84,6 +94,7 @@
                 const input = {action, year: data.year, request_id: requestId};
                 for (const [key, value] of new FormData(form)) {if (String(value).trim()) input[key] = ['amount','penalty'].includes(key) ? String(value).replaceAll(',', '') : value;}
                 if (action === 'payment') input.post_now = form.elements.post_now.checked;
+                if (action === 'settings') input.small_eligible = form.elements.small_eligible.checked;
                 const previewRequestId = requestId;
                 const result = await json(data.previewUrl, {method: 'POST', body: JSON.stringify(input)});
                 if (requestId !== previewRequestId) return;
@@ -121,7 +132,7 @@
         const sourceDialog = root.querySelector('#vat-source-dialog'), sourceBody = root.querySelector('#vat-source-body');
         root.querySelector('[data-vat-source-dismiss]').addEventListener('click', () => sourceDialog.close());
         root.querySelectorAll('[data-vat-source]').forEach(link => link.addEventListener('click', async event => {
-            event.preventDefault(); root.querySelector('#vat-source-title').textContent = link.dataset.label + ' · Q' + link.dataset.quarter;
+            event.preventDefault(); root.querySelector('#vat-source-title').textContent = link.dataset.label + ' · ' + (data.income && link.dataset.quarter === '4' ? 'Annual' : 'Q' + link.dataset.quarter);
             sourceBody.replaceChildren(); node('p','Loading posted source transactions…',sourceBody); sourceDialog.showModal();
             try {
                 const url = new URL(data.sourcesUrl,location.href); url.searchParams.set('year',data.year); url.searchParams.set('quarter',link.dataset.quarter); url.searchParams.set('key',link.dataset.vatSource);

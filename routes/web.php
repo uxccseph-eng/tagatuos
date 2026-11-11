@@ -20,6 +20,7 @@ use App\Http\Controllers\FirmOwnershipController;
 use App\Http\Controllers\Form2307Controller;
 use App\Http\Controllers\Form2316Controller;
 use App\Http\Controllers\HomeController;
+use App\Http\Controllers\IncomeTaxSummaryController;
 use App\Http\Controllers\JournalController;
 use App\Http\Controllers\LapsingController;
 use App\Http\Controllers\LarkDocumentBackupController;
@@ -229,6 +230,9 @@ Route::get('/tax-summary', [TaxSummaryController::class, 'index'])->middleware([
 Route::get('/tax-summary/sources', [TaxSummaryController::class, 'sources'])->middleware(['auth', 'throttle:60,1'])->name('tax-summary.sources');
 Route::post('/tax-summary/preview', [TaxSummaryController::class, 'preview'])->middleware(['auth', 'throttle:60,1'])->name('tax-summary.preview');
 Route::post('/tax-summary/actions', [TaxSummaryController::class, 'store'])->middleware(['auth', 'throttle:60,1'])->name('tax-summary.store');
+Route::post('/tax-summary/income/preview', [IncomeTaxSummaryController::class, 'preview'])->middleware(['auth', 'throttle:60,1'])->name('tax-summary.income.preview');
+Route::post('/tax-summary/income/actions', [IncomeTaxSummaryController::class, 'store'])->middleware(['auth', 'throttle:60,1'])->name('tax-summary.income.store');
+Route::get('/tax-summary/income/sources', [IncomeTaxSummaryController::class, 'sources'])->middleware(['auth', 'throttle:60,1'])->name('tax-summary.income.sources');
 
 Route::middleware(['auth', 'throttle:60,1'])->prefix('tax-returns')->name('tax-returns.')->group(function (): void {
     Route::get('/', [TaxReturnController::class, 'index'])->name('index');

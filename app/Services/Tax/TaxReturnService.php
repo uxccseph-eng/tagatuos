@@ -129,10 +129,19 @@ class TaxReturnService
                 $vatSummary = app(VatSummaryService::class)->build($company, $profile, (int) $input['year']);
                 $suggestedVat = ['carryover' => $vatSummary['workspace']['quarters'][(int) $input['period']]['carryover'], 'credits' => $vatSummary['workspace']['quarters'][(int) $input['period']]['credits'], 'event_revision' => $vatSummary['workspace']['last_event']];
             }
-            $hash = hash('sha256', json_encode([$input['form'], $period, $profile, $sources, $definition, $gross, $withheld, $details, $vatLedger, $withholdingRows, $payrollLedger, $annualSettings, $suggestedVat, 'preparation-2026-11-xml-v2'], JSON_THROW_ON_ERROR));
+            $incomeHash = $incomeSuggestion = null;
+            if (in_array($input['form'], ['1701Q', '1701', '1702Q', '1702-RT', '1702-MX', '1702-EX'], true)) {
+                $incomeSummary = app(IncomeTaxSummaryService::class)->build($company, $profile, (int) $input['year']);
+                $incomeQuarter = str_ends_with($input['form'], 'Q') ? (int) $input['period'] : 4;
+                $incomeHash = $incomeSummary['columns'][$incomeQuarter]['source_hash'];
+                if ($input['form'] === '1702Q') {
+                    $incomeSuggestion = app(IncomeTaxSummaryService::class)->quarterlySuggestion($incomeSummary, $incomeQuarter);
+                }
+            }
+            $hash = hash('sha256', json_encode([$input['form'], $period, $profile, $sources, $definition, $gross, $withheld, $details, $vatLedger, $withholdingRows, $payrollLedger, $annualSettings, $suggestedVat, $incomeHash, $incomeSuggestion, 'preparation-2026-11-xml-v2'], JSON_THROW_ON_ERROR));
 
             return [
-                'suggested_vat' => $suggestedVat, 'original_id' => $original?->id, 'original_revision' => (int) ($original?->revision ?? 0),
+                'income_summary_hash' => $incomeHash, 'suggested_corporate' => $incomeSuggestion, 'suggested_vat' => $suggestedVat, 'original_id' => $original?->id, 'original_revision' => (int) ($original?->revision ?? 0),
                 'annual_settings' => $annualSettings,
                 'form' => $input['form'], 'definition' => $definition, 'period' => [...$period, 'year' => (int) $input['year'], 'quarter' => (int) $input['period'], 'month' => (int) $input['period']],
                 'taxpayer' => array_intersect_key($profile, array_flip(['company_name', 'registered_name', 'tin', 'branch_code', 'rdo', 'entity_type', 'building', 'street', 'barangay', 'city', 'province', 'zip_code', 'contact_number', 'contact_email', 'agent_category', 'taxpayer_size', 'accounting_period', 'fiscal_end_month', 'line_of_business'])), 'ledger_revision' => (int) ($ledger?->revision ?? 0),

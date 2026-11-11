@@ -519,6 +519,23 @@ class ClientProvisioningTest extends TestCase
         $this->assertSame(0, $first->run(fn (): int => DB::table('journal_entries')->count()));
     }
 
+    public function test_income_tax_summary_events_are_private_to_each_client_database(): void
+    {
+        $owner = User::factory()->firm()->create(['must_change_password' => false]);
+        $first = $this->readyClient($owner);
+        $second = $this->readyClient($owner);
+        $this->actingAs($owner);
+        $input = ['action' => 'credit', 'year' => 2026, 'origin_year' => 2025, 'credit_type' => 'prior_excess', 'amount' => '123.45', 'request_id' => (string) Str::uuid()];
+        $preview = $this->postJson(route('tax-summary.income.preview', ['company_id' => $first->id]), $input)->assertOk()->json();
+        $this->postJson(route('tax-summary.income.store', ['company_id' => $first->id]), [...$input, 'preview_hash' => $preview['preview_hash'], 'confirmed' => true])->assertOk();
+        $this->assertSame(1, $first->run(fn (): int => DB::table('income_tax_summary_events')->count()));
+        $this->assertSame(0, $second->run(fn (): int => DB::table('income_tax_summary_events')->count()));
+        $this->assertSame(0, DB::connection(config('tenancy.database.central_connection'))->table('income_tax_summary_events')->count());
+        $id = $first->run(fn (): int => DB::table('income_tax_summary_events')->value('id'));
+        $this->postJson(route('tax-summary.income.preview', ['company_id' => $second->id]), ['action' => 'reverse', 'year' => 2026, 'credit_id' => $id, 'amount' => '1', 'request_id' => (string) Str::uuid()])->assertNotFound();
+        $this->get(route('tax-summary.index', ['company_id' => $first->id, 'tax' => 'income', 'year' => 2026]))->assertOk()->assertSee('123.45');
+    }
+
     private function readyClient(?User $owner = null): Company
     {
         $company = $this->newClient($owner);
