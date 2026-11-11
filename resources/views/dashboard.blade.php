@@ -27,7 +27,7 @@
       <span class="material-symbols-outlined text-[20px]">menu</span>
     </button>
     <a href="{{ route('dashboard') }}" class="flex items-center gap-2 group cursor-pointer">
-      <div class="w-7 h-7 rounded-lg bg-gradient-to-tr from-[#00f5a0] to-[#00d8f6] text-[#030712] flex items-center justify-center font-black shadow-[0_0_12px_rgba(0,245,160,0.35)]">
+      <div class="w-7 h-7 rounded-lg bg-[#00f5a0] text-[#030712] flex items-center justify-center font-black shadow-[0_0_12px_rgba(0,245,160,0.35)]">
         <span class="material-symbols-outlined text-[17px] font-bold">hub</span>
       </div>
       <div class="hidden sm:flex items-baseline">
@@ -36,7 +36,7 @@
       </div>
     </a>
     <button type="button" data-workspace-topic="Create" aria-label="Create" title="Create" class="flex h-8 shrink-0 cursor-pointer items-center gap-2 rounded-full border border-slate-200 dark:border-[#2b3548] bg-slate-100 dark:bg-[#1d2433] pl-1.5 pr-1.5 text-xs font-medium text-slate-800 dark:text-slate-200 transition-colors hover:bg-slate-200/70 dark:hover:bg-[#252f42] sm:pr-3.5">
-      <span class="w-5 h-5 flex items-center justify-center rounded-full bg-orange-500 text-white font-bold">
+      <span class="w-5 h-5 flex items-center justify-center rounded-full bg-emerald-500 text-[#002111] font-bold">
         <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg>
       </span>
       <span class="hidden sm:inline font-headline font-semibold">Create</span>
@@ -74,7 +74,7 @@
     <!-- User Profile Avatar (JR) -->
     <button type="button" aria-label="{{ auth()->check() ? 'Profile for '.auth()->user()->name : 'Preview profile' }}" data-workspace-topic="Profile" class="profile-button flex items-center gap-2 cursor-pointer">
       @auth<span class="hidden lg:block max-w-[140px] truncate text-xs font-semibold text-slate-800 dark:text-slate-200">{{ auth()->user()->name }}</span>@endauth
-      <span class="relative w-8 h-8 rounded-full bg-slate-200 dark:bg-gradient-to-br dark:from-slate-700 dark:to-slate-800 border border-slate-300 dark:border-slate-600 flex items-center justify-center">
+      <span class="relative w-8 h-8 rounded-full bg-slate-200 dark:bg-[#242a36] border border-slate-300 dark:border-slate-600 flex items-center justify-center">
         <span class="font-mono text-[11px] text-slate-800 dark:text-white font-bold">{{ mb_strtoupper(mb_substr(auth()->user()?->name ?? $company['full_name'], 0, 1)) }}</span>
         <span class="absolute bottom-0 right-0 w-2 h-2 rounded-full bg-emerald-500 dark:bg-[#00f5a0] ring-2 ring-white dark:ring-[#161c28]"></span>
       </span>

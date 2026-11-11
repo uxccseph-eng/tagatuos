@@ -382,6 +382,16 @@ test('Books date ranges span months without including transactions after To',()=
 
 function dashboardReport(){const context={window:{}};vm.runInNewContext(fs.readFileSync(require('node:path').join(__dirname,'../../public/js/dashboard-report.js'),'utf8'),context);return context.window.DashboardReports;}
 
+test('dashboard attention uses actual CWT clearings, excludes future settlements and includes private payroll drafts',()=>{
+ const ledger=openLedger(),build=dashboardReport().build;
+ const before=build(ledger,'2027-02-01',12,[{id:'payroll-draft',status:'draft',date:'2027-01-31'},{id:'future-draft',status:'draft',date:'2027-03-01'}]);
+ assert.ok(before.attention.oldReceivables>=893);
+ assert.equal(before.attention.drafts,1);
+ ledger.saveCwtCertificates([{id:'clearing',number:'2307R-000001',date:'2027-02-02',customer:'VARIOUS CUSTOMERS',amount:893,invoice:'SI-000001',saleId:1,status:'posted'}]);
+ assert.equal(build(ledger,'2027-02-01').attention.oldReceivables,before.attention.oldReceivables);
+ assert.equal(build(ledger,'2027-02-02').attention.oldReceivables,before.attention.oldReceivables-893);
+});
+
 test('database account metadata drives journal choices, normal balances, cash and income totals',()=>{
     const baseline=openLedger(),catalog=baseline.journalAccounts().map(label=>{const [code,name]=label.split(' · ');return {...baseline.accountProfile(code),name};});
     catalog.push({code:'1300',name:'Special Cash',type:'Asset',normal_balance:'Debit',is_cash_bank:true,archived:false},{code:'8100',name:'Other Revenue',type:'Income',normal_balance:'Credit',is_cash_bank:false,archived:false});

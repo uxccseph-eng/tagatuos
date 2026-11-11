@@ -25,21 +25,11 @@
 
     .dark .workspace-bg {
       background-color: #0e131f;
-      background-image: 
-        radial-gradient(circle at 15% 10%, rgba(0, 245, 160, 0.04) 0%, transparent 45%),
-        radial-gradient(circle at 85% 20%, rgba(249, 115, 22, 0.035) 0%, transparent 45%),
-        linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
-        linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
-      background-size: 100% 100%, 100% 100%, 40px 40px, 40px 40px;
+      background-image: none;
     }
     .workspace-bg {
       background-color: #f8fafc;
-      background-image: 
-        radial-gradient(circle at 15% 10%, rgba(0, 245, 160, 0.05) 0%, transparent 45%),
-        radial-gradient(circle at 85% 20%, rgba(249, 115, 22, 0.04) 0%, transparent 45%),
-        linear-gradient(to right, rgba(15, 23, 42, 0.02) 1px, transparent 1px),
-        linear-gradient(to bottom, rgba(15, 23, 42, 0.02) 1px, transparent 1px);
-      background-size: 100% 100%, 100% 100%, 40px 40px, 40px 40px;
+      background-image: none;
     }
 
     .ui-panel {
@@ -106,3 +96,58 @@ body.sidebar-closed #workspaceContent { padding-left: 0; }
 @media(max-width:1100px) { .dash-metrics,.dash-pipeline { grid-template-columns:repeat(2,minmax(0,1fr)); }.dash-chart-layout { grid-template-columns:2fr 1fr; } }
 @media(max-width:700px) { .dash-columns,.dash-chart-layout { grid-template-columns:1fr; }.dash-panel { padding:16px; }.dash-card-heading { gap:10px; }.dash-company h1 { font-size:18px; }.dash-title-line { gap:6px; }.dash-pipeline { grid-template-columns:1fr; }.dash-bar-chart { gap:4px; } }
 @media(max-width:380px) { .dash-metrics { grid-template-columns:1fr; } }
+
+/* Dashboard surfaces follow the same palette as the transaction sheets. */
+.dashboard-overview,.dark .dashboard-overview { --dash-panel:var(--theme-panel); --dash-muted:var(--theme-muted); --dash-text:var(--theme-text); --dash-border:var(--theme-line); --dash-green:var(--theme-accent); gap:16px; }
+.dash-panel,.dark .dash-panel { border-radius:10px; padding:20px; box-shadow:none; backdrop-filter:none; }
+.dash-company-icon { background:color-mix(in srgb,var(--dash-green) 10%,transparent);border:0;border-radius:9px; }
+.dash-company h1 { font-size:20px;letter-spacing:-.025em; }
+.dash-company-name p { margin-top:5px; }
+.dash-primary { background:var(--dash-green);color:var(--theme-on-accent);font-weight:700; }
+.dash-primary .material-symbols-outlined { color:inherit; }
+.dash-quick { padding:10px 14px;gap:6px; }
+.dash-quick .dash-button { border-color:transparent;background:none; }
+.dash-quick .dash-button:hover { background:var(--theme-soft); }
+.dash-metrics { gap:12px; }
+.dash-metric { text-decoration:none;padding:18px;transition:border-color .15s; }
+.dash-metric:hover { border-color:var(--dash-green); }
+.dash-metric h2 { font:600 12px/1.5 'Plus Jakarta Sans',sans-serif;text-transform:none;letter-spacing:0; }
+.dash-metric strong { font:600 clamp(18px,1.8vw,28px)/1.4 'Plus Jakarta Sans',sans-serif;letter-spacing:-.035em;margin-top:12px; }
+.dash-metric p { border:0;padding:0;margin-top:8px;font-size:11px; }
+.dash-metric:nth-child(2) strong { color:var(--dash-text); }
+.dash-card-heading h2 { font:600 14px/1.5 'Plus Jakarta Sans',sans-serif; }
+.dash-columns { grid-template-columns:minmax(0,1.12fr) minmax(0,1fr);gap:16px;align-items:start; }
+.dash-stack { gap:16px; }
+.dash-calendar { margin:18px 0 12px;gap:4px; }
+.dash-calendar>span { min-height:39px;position:relative;border-radius:6px;display:grid;place-items:center; }
+.dash-calendar a { display:grid;place-items:center;width:100%;height:100%; }
+.dash-due-day::after,.dash-filed-day::after { content:'';position:absolute;bottom:3px;left:calc(50% - 2px);height:4px;width:4px;border-radius:50%;background:var(--dash-cyan);pointer-events:none; }
+.dash-filed-day::after { background:var(--dash-green); }
+.dash-calendar-key { display:flex;flex-wrap:wrap;gap:15px;font-size:10px;color:var(--dash-muted); }
+.dash-calendar-key span { display:inline-flex;align-items:center;gap:6px; }
+.dash-calendar-key i { width:5px;height:5px;border-radius:50%;background:var(--dash-cyan); }
+.dash-calendar-key i.dash-filed-dot { background:var(--dash-green); }
+.dash-deadline-list { margin-top:18px;border-top:1px solid var(--dash-border); }
+.dash-deadline { display:grid;gap:5px;padding:12px 0;border-bottom:1px solid var(--dash-border);text-decoration:none; }
+.dash-deadline strong { font-size:11px;font-weight:600; }
+.dash-deadline span { color:var(--dash-muted);font-size:10px; }
+.dash-deadline:hover strong { color:var(--dash-green); }
+.dashboard-overview .dash-calendar-note { font-size:10px;margin-top:12px; }
+.dash-attention-list { display:grid;gap:10px;margin-top:14px;font-size:12px; }
+.dash-attention-list a { display:flex;align-items:center;gap:9px;line-height:1.6; }
+.dash-attention-list a::before { content:'';height:5px;width:5px;flex-shrink:0;background:var(--dash-green);border-radius:50%; }
+.dash-attention-list a:hover { color:var(--dash-green); }
+.dash-period-table { font-size:11px;margin-top:12px; }
+.dash-period-table th { color:var(--dash-muted);font-size:10px;font-weight:500; }
+.dash-period-table th,.dash-period-table td { padding:11px 4px; }
+.dash-period-table tr:last-child td { border-bottom:0; }
+.dash-chart-layout { grid-template-columns:minmax(0,1fr) 205px;gap:22px; }
+.dash-pipeline { gap:0; }
+.dash-pipeline article { border:0;border-right:1px solid var(--dash-border);border-radius:0;background:none;padding:0 20px; }
+.dash-pipeline article:first-child { padding-left:0; }.dash-pipeline article:last-child { border:0;padding-right:0; }
+.dash-pipeline h3 { font:600 13px/1.5 'Plus Jakarta Sans',sans-serif; }
+.dash-pipeline a { font-size:11px; }.dash-pipeline a:last-child { border-bottom:0; }
+.dash-negative { color:var(--red,#dc4969)!important; }
+@media(max-width:1100px) { .dash-pipeline article { padding:12px 16px; }.dash-pipeline article:nth-child(2) { border-right:0; }.dash-pipeline article:nth-child(3) { padding-left:0; }.dash-pipeline article:nth-child(2n) { padding-right:0; } }
+@media(max-width:820px) { .dash-columns { grid-template-columns:1fr; }.dash-chart-layout { grid-template-columns:minmax(0,1fr) 160px; } }
+@media(max-width:600px) { .dash-panel { padding:16px; }.dash-quick { padding:8px; }.dash-chart-layout { grid-template-columns:1fr; }.dash-month-metrics { display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px; }.dash-month-metrics>div { padding:8px; }.dash-month-metrics strong { font-size:12px;overflow-wrap:anywhere; }.dash-pipeline article { border:0;border-bottom:1px solid var(--dash-border);padding:16px 0; }.dash-company-name { gap:10px; }.dash-company-icon { width:36px;height:36px; }.dash-company h1 { font-size:17px; }.dash-title-actions { width:100%;justify-content:space-between; }.dash-calendar>span { min-height:35px; } }

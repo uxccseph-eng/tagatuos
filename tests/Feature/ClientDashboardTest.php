@@ -5,7 +5,9 @@ namespace Tests\Feature;
 use App\Models\Company;
 use App\Models\CompanySetting;
 use App\Models\User;
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class ClientDashboardTest extends TestCase
@@ -89,6 +91,32 @@ class ClientDashboardTest extends TestCase
             $this->assertSame(1, substr_count($response->getContent(), 'js/company-switcher.js'));
             $this->assertSame(1, substr_count($response->getContent(), 'aria-label="Switch company book"'));
         }
+    }
+
+    public function test_dashboard_uses_current_company_standard_calendar_and_working_report_links(): void
+    {
+        $this->travelTo(CarbonImmutable::parse('2026-11-11 10:00:00', 'Asia/Manila'));
+        $owner = User::factory()->firm()->create();
+        $book = Company::factory()->create();
+        $owner->companies()->attach($book, ['role' => 'owner']);
+        $this->profile($book);
+        DB::table('tax_return_filing_records')->insert(['company_id' => $book->id, 'form' => '0619-E', 'period_from' => '2026-10-01', 'period_to' => '2026-10-31', 'filed_on' => '2026-11-10', 'created_at' => now(), 'updated_at' => now()]);
+        $response = $this->actingAs($owner)->get(route('dashboard', ['company_id' => $book->id]))->assertOk()
+            ->assertSee('Needs attention')->assertSee('Books flow')->assertSee('Income vs expenses')->assertSee('Standard dates from Tax Returns')->assertDontSee('Telemetry')->assertDontSee('Return generation and filing are not connected.');
+        $events = collect($response->viewData('dashboardDeadlines'));
+        $this->assertTrue($events->firstWhere('form', '0619-E')['filed']);
+        $this->assertFalse($events->firstWhere('form', '1601-C')['filed']);
+        $this->assertTrue($events->every(fn (array $event): bool => str_starts_with($event['due'], '2026-11') && str_contains($event['url'], 'company_id='.$book->id)));
+        $this->assertDatabaseCount('company_ledgers', 0);
+    }
+
+    public function test_dashboard_does_not_expose_tax_filing_status_without_tax_module_access(): void
+    {
+        $staff = User::factory()->accountant()->create(['must_change_password' => false]);
+        $book = Company::factory()->create();
+        $book->users()->attach($staff, ['role' => 'staff', 'allowed_tabs' => json_encode(['dashboard', 'sheets'])]);
+        $this->profile($book);
+        $this->actingAs($staff)->get(route('dashboard', ['company_id' => $book->id]))->assertOk()->assertViewHas('dashboardDeadlines', []);
     }
 
     private function profile(Company $book): void
