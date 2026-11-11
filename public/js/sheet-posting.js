@@ -38,5 +38,25 @@
         root?.addEventListener('company-ledger:saved',update);
         return update;
     }
-    const api={candidates,salesError,draftActions,watchPopup};if(typeof module!=='undefined'&&module.exports)module.exports=api;if(root)root.SheetPosting=api;
+    function horizontalNavigation(event) {
+        if(event.defaultPrevented||event.isComposing||event.ctrlKey||event.metaKey||event.shiftKey||!['ArrowLeft','ArrowRight'].includes(event.key))return false;
+        const field=event.target;
+        if(!field?.matches?.('input,select,textarea')||field.disabled||field.readOnly||field.matches('input[type="checkbox"],input[type="radio"],input[type="file"],input[type="hidden"],input[type="button"],input[type="submit"]'))return false;
+        const row=field.closest('tr');if(!row)return false;
+        if(!event.altKey&&field.tagName!=='SELECT'){
+            const start=field.selectionStart,end=field.selectionEnd,length=field.value.length;
+            if(start===null||end===null)return false;
+            const wholeValue=start===0&&end===length&&length>0;
+            if(!wholeValue&&(start!==end||(event.key==='ArrowLeft'?start!==0:end!==length)))return false;
+        }
+        const fields=Array.from(row.querySelectorAll('input,select,textarea')).filter(candidate=>candidate.closest('tr')===row&&!candidate.disabled&&!candidate.readOnly&&!candidate.matches('input[type="checkbox"],input[type="radio"],input[type="file"],input[type="hidden"],input[type="button"],input[type="submit"]')&&!candidate.closest('[hidden],[aria-hidden="true"]')&&candidate.getClientRects().length>0);
+        const index=fields.indexOf(field),next=fields[index+(event.key==='ArrowRight'?1:-1)];
+        if(index<0||!next){if(event.altKey)event.preventDefault();return false;}
+        event.preventDefault();event.stopPropagation();
+        next.focus({preventScroll:true});
+        if(['INPUT','TEXTAREA'].includes(next.tagName)&&next.selectionStart!==null)next.select();
+        next.scrollIntoView({block:'nearest',inline:'nearest'});
+        return true;
+    }
+    const api={candidates,salesError,draftActions,watchPopup,horizontalNavigation};if(typeof module!=='undefined'&&module.exports)module.exports=api;if(root){root.SheetPosting=api;root.document?.addEventListener('keydown',horizontalNavigation);}
 })(typeof window==='undefined'?null:window);
