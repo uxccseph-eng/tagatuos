@@ -146,6 +146,7 @@
     const linkedEntry=records.find(record=>record.number===requestedEntry&&record.status==='posted');
     if(linkedEntry){window.WorkingPeriod.revealDate(linkedEntry.date);period=window.WorkingPeriod.current().from.slice(0,7);render();open(linkedEntry);}else render();
     function entryOptions(record,event){event.stopPropagation();window.SheetEntryActions.open(event.currentTarget,record,{delete:()=>deleteDraft(record),edit:()=>{open(record);element('wtp-edit').click();},duplicate:()=>{const draft=add(record);if(draft)open(draft);},print:()=>{open(record);element('wtp-print').click();},void:()=>{open(record);element('wtp-void').click();},view:()=>open(record)});}
+    window.SheetPosting.watchPopup({dialog:drawer,current:()=>working,latest:id=>ledger.wtpCertificates().find(record=>String(record.id)===String(id)),isEditing:()=>editing,refresh:record=>{records=ledger.wtpCertificates();open(records.find(item=>String(item.id)===String(record.id)));}});
     window.SheetBulk={selected:()=>current().filter(record=>selected.has(record.id)),refresh:()=>{records=ledger.wtpCertificates();selected.clear();render();},announce};
 document.addEventListener('working-period:change',event=>{period=event.detail.period;render();});
 })();

@@ -24,5 +24,19 @@
         }
         container.replaceChildren(group);return group;
     }
-    const api={candidates,salesError,draftActions};if(typeof module!=='undefined'&&module.exports)module.exports=api;if(root)root.SheetPosting=api;
+    function watchPopup({dialog,current,latest,isEditing,refresh}) {
+        const update=()=>{
+            if(!dialog.open)return;
+            const previous=current();if(!previous)return;
+            const saved=latest(previous.id);if(!saved)return;
+            if(isEditing()&&!(previous.status==='draft'&&saved.status==='posted'))return;
+            const body=dialog.querySelector?.('.cwt-entry-body, .overflow-y-auto');
+            const scrollTop=body?.scrollTop;
+            refresh(saved);
+            if(body&&scrollTop!==undefined)body.scrollTop=scrollTop;
+        };
+        root?.addEventListener('company-ledger:saved',update);
+        return update;
+    }
+    const api={candidates,salesError,draftActions,watchPopup};if(typeof module!=='undefined'&&module.exports)module.exports=api;if(root)root.SheetPosting=api;
 })(typeof window==='undefined'?null:window);

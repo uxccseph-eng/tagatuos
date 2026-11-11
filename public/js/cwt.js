@@ -60,7 +60,7 @@
         const ids=new Set(candidates.map(record=>record.id)),postedAt=new Date().toISOString();
         const next=records.map(record=>ids.has(record.id)?{...record,status:'posted',postedAt}:record);
         try{ledger.saveCwtCertificates(next);}catch(error){announce(error.message);return false;}
-        records=next;selected.clear();render();announce(`${candidates.length} certificate(s) posted.`);return true;
+        records=next;if(activeRecord&&ids.has(activeRecord.id))activeRecord=records.find(record=>record.id===activeRecord.id);selected.clear();render();announce(`${candidates.length} certificate(s) posted.`);return true;
     }
     function inspect(record){
         activeRecord=record;memoEditing=false;element('cwt-entry-message').textContent='';
@@ -206,6 +206,7 @@
     const linkedEntry=records.find(record=>record.number===requestedEntry&&record.status==='posted');
     if(linkedEntry){window.WorkingPeriod.revealDate(linkedEntry.date);period=window.WorkingPeriod.current().from.slice(0,7);render();inspect(linkedEntry);}else {render();const source=new URLSearchParams(location.search).get('source');const sale=ledger.invoices().find(sale=>sale.number===source);if(sale){window.WorkingPeriod.revealDate(sale.date);period=window.WorkingPeriod.current().from.slice(0,7);add(sale.id);}}
     function entryOptions(record,event){event.stopPropagation();window.SheetEntryActions.open(event.currentTarget,record,{delete:()=>deleteDraft(record),editLabel:record.status==='draft'?'Edit entry':'Edit memo',edit:()=>{inspect(record);if(record.status!=='draft')element('cwt-entry-memo').click();},duplicate:()=>{if(records.some(record=>record.status==='draft')){add();return;}add();const draft=records.at(-1);Object.assign(draft,{date:record.date,customer:record.customer,tin:record.tin,notes:record.notes || ''});persist();render();inspect(draft);},void:()=>{inspect(record);element('cwt-entry-void').click();},view:()=>inspect(record)});}
+    window.SheetPosting.watchPopup({dialog:entryDialog,current:()=>activeRecord,latest:id=>ledger.cwtCertificates().find(record=>String(record.id)===String(id)),isEditing:()=>activeRecord?.status==='draft'||memoEditing,refresh:record=>{records=ledger.cwtCertificates();inspect(records.find(item=>String(item.id)===String(record.id)));}});
     window.SheetBulk={selected:()=>visible().filter(record=>selected.has(record.id)),refresh:()=>{records=ledger.cwtCertificates();selected.clear();render();},announce};
 document.addEventListener('working-period:change',event=>{period=event.detail.period;render();});
 })();

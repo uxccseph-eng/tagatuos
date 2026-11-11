@@ -480,6 +480,15 @@
             }
         },
     });
+    window.addEventListener('company-ledger:saved', () => {
+        if (!window.CompanyLedger || postedEdits.size) return;
+        const dialog=document.getElementById('payroll-entry');
+        if (!dialog?.open) return;
+        const active=document.activeElement;
+        if (active?.matches('input:not([readonly]),textarea:not([readonly]),select:not([disabled])')) return;
+        records=window.CompanyLedger.payroll();
+        details?.refresh();
+    });
     window.addEventListener('company-ledger:refreshed', () => { if (window.CompanyLedger) { const working=new Map(records.filter(run=>postedEdits.has(run.id)).map(run=>[run.id,run]));records=window.CompanyLedger.payroll().map(run=>working.get(run.id)||run);if(!postedEdits.size)render(); } });
     document.querySelector('#sales-header button')?.addEventListener('click', () => add());
     render();

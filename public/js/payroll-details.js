@@ -50,6 +50,7 @@
             find('#payroll-entry-title').textContent = run.number;
             find('[data-entry-status]').className = `payroll-badge ${run.status}`;
             find('[data-entry-status]').textContent = {draft: 'Drafting', posted: 'Posted', void: 'Void'}[run.status];
+            root.CompanyLedger?.decorateBadge?.(find('[data-entry-status]'), 'payroll', run);
             find('[data-entry-mode]').textContent = run.automation ? 'Automatic' : 'Manual';
             find('[data-entry-void]').textContent = run.status === 'void' ? `Void reason: ${run.voidReason || 'Not recorded'}` : '';
             for (const field of ['date', 'name', 'periodStart', 'periodEnd']) {

@@ -31,7 +31,7 @@ test('Sales row Post targets its own draft even when a different posted row is s
 function directPost(sheet,{invalid=false,failSave=false,certificate='CERT-001'}={}) {
     const record={id:'draft-1',number:'TXN-000001',date:'2026-10-20',status:'draft',customer:'Sample Customer',supplier:'Sample Supplier',gross:10000,amount:10000,tin:'000-000-000-00000',certificate,saleId:'sale-1'};
     const messages=[],saved=[],rendered=[];
-    const context={window:{SheetMasters:{withholdingError:()=>''}},records:sheet==='collections'?new Map([[record.id,record]]):[record],selected:new Set(),clone:value=>JSON.parse(JSON.stringify(value)),history:()=>{},invalid:()=>invalid,invalidDraft:()=>invalid,match:()=>true,validate:()=>!invalid,announce:message=>messages.push(message),render:()=>rendered.push(true),update:()=>{},open:()=>{throw Error('Posting must not open a popup');},inspect:()=>{throw Error('Posting must not inspect a popup');}};
+    const context={activeRecord:record,window:{SheetMasters:{withholdingError:()=>''}},records:sheet==='collections'?new Map([[record.id,record]]):[record],selected:new Set(),clone:value=>JSON.parse(JSON.stringify(value)),history:()=>{},invalid:()=>invalid,invalidDraft:()=>invalid,match:()=>true,validate:()=>!invalid,announce:message=>messages.push(message),render:()=>rendered.push(true),update:()=>{},open:()=>{throw Error('Posting must not open a popup');},inspect:()=>{throw Error('Posting must not inspect a popup');}};
     const save=next=>{if(failSave)throw Error('Storage full');if(sheet==='cwt')for(const item of next)if(item.status==='posted'&&!item.certificate)item.certificate=item.number;saved.push(JSON.parse(JSON.stringify(next)));};
     context.store=next=>{try{save(next);context.records=next;return true;}catch(error){context.announce(error.message);return false;}};
     context.ledger={wtpAtc:record=>record.ewtCode || '',wtpVatAtc:record=>record.wvatCode || '',certificateNumber:inlineSales().ledger.certificateNumber,saveCollections:save,saveCwtCertificates:save,paymentError:()=>invalid?'Complete payment fields.':'',wtpError:()=>invalid?'Complete certificate fields.':'',journalError:()=>invalid?'Unbalanced journal.':''};
@@ -39,7 +39,7 @@ function directPost(sheet,{invalid=false,failSave=false,certificate='CERT-001'}=
     const start=source.indexOf('    function post('),end=source.indexOf('\n    function ',start+5);
     assert.ok(start>=0&&end>start, sheet+' has a directly callable post handler');
     vm.createContext(context);vm.runInContext(source.slice(start,end),context);
-    return {record,messages,saved,rendered,post:()=>context.post(posting.candidates([record]))};
+    return {record,messages,saved,rendered,active:()=>context.activeRecord,post:()=>context.post(posting.candidates([record]))};
 }
 for(const sheet of ['collections','cwt','purchases','payments','wtp','journal']) {
     test(sheet+' actual post handler saves the inline draft without a popup',()=>{
@@ -57,4 +57,34 @@ for(const sheet of ['collections','cwt','purchases','payments','wtp','journal'])
 for(const sheet of ['cwt','wtp'])test(sheet+' direct Post generates a blank certificate number without opening a popup',()=>{
     const ui=directPost(sheet,{certificate:''});assert.equal(ui.post(),true);
     assert.equal(ui.saved[0][0].certificate,ui.record.number);
+});
+
+function popupWatcher(){
+ const listeners={},scope={window:{addEventListener:(name,callback)=>listeners[name]=callback}};
+ vm.createContext(scope);vm.runInContext(fs.readFileSync(path.join(__dirname,'../../public/js/sheet-posting.js'),'utf8'),scope);
+ let current={id:'entry',status:'draft',number:''},saved={...current},editing=true,refreshes=0;
+ const body={scrollTop:123},dialog={open:true,querySelector:()=>body};
+ scope.window.SheetPosting.watchPopup({dialog,current:()=>current,latest:()=>saved,isEditing:()=>editing,refresh:record=>{current={...record};refreshes++;body.scrollTop=0;}});
+ return {dialog,body,emit:()=>listeners['company-ledger:saved'](),saved:value=>saved=value,editing:value=>editing=value,current:()=>current,count:()=>refreshes};
+}
+test('open entry popup follows confirmed posting and its assigned transaction number',()=>{
+ const ui=popupWatcher();ui.saved({id:'entry',status:'posted',number:'2307R-000001'});ui.emit();
+ assert.equal(ui.current().status,'posted');assert.equal(ui.current().number,'2307R-000001');assert.equal(ui.count(),1);assert.equal(ui.body.scrollTop,123);
+});
+test('save notifications preserve active draft and posted correction inputs',()=>{
+ const ui=popupWatcher();ui.saved({id:'entry',status:'draft',number:'',notes:'remote'});ui.emit();assert.equal(ui.count(),0);
+ ui.saved({id:'entry',status:'posted',number:'SI-000001'});ui.emit();
+ ui.saved({id:'entry',status:'posted',number:'SI-000001',notes:'remote'});ui.emit();assert.equal(ui.count(),1);
+ ui.editing(false);ui.emit();assert.equal(ui.current().notes,'remote');assert.equal(ui.count(),2);
+});
+test('save notifications do not reopen closed popups or show missing records as posted',()=>{
+ const ui=popupWatcher();ui.dialog.open=false;ui.emit();assert.equal(ui.count(),0);ui.dialog.open=true;ui.saved(null);ui.emit();assert.equal(ui.count(),0);
+});
+
+test('CWT popup reference changes to the posted object instead of keeping its replaced draft',()=>{
+ const ui=directPost('cwt');const draft=ui.active();ui.post();assert.notEqual(ui.active(),draft);assert.equal(ui.active().status,'posted');
+});
+test('pending number assignment never replaces a posted correction being typed',()=>{
+ const ui=popupWatcher();ui.saved({id:'entry',status:'posted',number:'SI-000001'});ui.emit();
+ ui.saved({id:'entry',status:'posted',number:'SI-000002'});ui.emit();assert.equal(ui.current().number,'SI-000001');assert.equal(ui.count(),1);
 });

@@ -161,6 +161,7 @@
     const linkedBill=records.find(record=>String(record.id)===requestedBill||(record.number===requestedBill&&record.status==='posted'));
     if(linkedBill)open(linkedBill,true);
     function entryOptions(record,event){event.stopPropagation();window.SheetEntryActions.open(event.currentTarget,record,{delete:()=>deleteDraft(record),edit:()=>{open(record);element('purchase-edit').click();},duplicate:()=>{const draft=add(record);if(draft)open(draft);},print:()=>{open(record);element('purchase-print').click();},void:()=>{open(record);element('purchase-void').click();},view:()=>open(record)});}
+    window.SheetPosting.watchPopup({dialog:drawer,current:()=>working,latest:id=>ledger.purchases().find(record=>String(record.id)===String(id)),isEditing:()=>editing,refresh:record=>{records=ledger.purchases();open(records.find(item=>String(item.id)===String(record.id)));}});
     window.SheetBulk={selected:()=>current().filter(record=>selected.has(record.id)),refresh:()=>{records=ledger.purchases();selected.clear();render();},announce};
 document.addEventListener('working-period:change',event=>{period=event.detail.period;render();});
 })();

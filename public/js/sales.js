@@ -702,3 +702,5 @@ if(requestedSale){const sale=[...entries.values()].find(entry=>String(entry.id)=
 window.SheetBulk={selected:selectedEntries,refresh:()=>{const saved=window.KontaduryaLedger.sales();for(const entry of [...entries.values()])if(!saved.some(item=>item.id===entry.id)){entry.row.remove();entries.delete(entry.id);}for(const item of saved){if(autoSalesDraft?.id===item.id){Object.assign(autoSalesDraft,item);continue;}const previous=entries.get(item.id);renderEntry({...item,attachments:previous?.attachments || []},previous?.row);}nextNumber=autoSalesDraft?.id || (window.CompanyLedger?window.CompanyLedger.newId():Math.max(0,...saved.map(item=>Number(item.id) || 0))+1);if(!draft.hidden)draft.cells[3].textContent='Draft';updateSheet();},announce};
 
 document.addEventListener('working-period:change',event=>{workingPeriod=event.detail.period;updatePeriod();});
+
+window.SheetPosting.watchPopup({dialog:entryDrawer,current:()=>editingEntry,latest:id=>window.KontaduryaLedger.sales().find(record=>String(record.id)===String(id)),isEditing:()=>entryIsEditable,refresh:record=>{renderEntry(record,editingEntry?.row);openEntryDrawer(entries.get(record.id));}});

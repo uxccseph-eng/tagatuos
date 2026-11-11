@@ -7,6 +7,7 @@ window.CollectionEntryDrawer = class {
         this.money=value=>new Intl.NumberFormat('en-PH',{style:'currency',currency:'PHP'}).format((value || 0)/100);
         this.company=JSON.parse(document.getElementById('collection-company-data').textContent);
         this.printDialog=document.getElementById('collection-print-preview');
+        window.SheetPosting.watchPopup({dialog:this.dialog,current:()=>this.record,latest:id=>this.ledger.collections().find(record=>String(record.id)===String(id)),isEditing:()=>this.editing||this.memoEditing,refresh:record=>this.open(record)});
         this.element('close-collection-entry').addEventListener('click',()=>this.requestClose());
         this.element('discard-new-collection').addEventListener('click',()=>window.DraftLeaveGuard.confirmDelete(()=>{this.onDiscard(this.record);this.discardClose();},this.record.number));
         this.dialog.addEventListener('cancel',event=>{event.preventDefault();this.requestClose();});
@@ -124,7 +125,7 @@ window.CollectionEntryDrawer = class {
             if(field.tagName==='SELECT')field.disabled=!this.editing;else field.readOnly=!this.editing;
         });
         this.text('collection-entry-title',record.number);
-        const badge=this.element('collection-entry-badge');badge.className=record.status==='draft'?'draft-status-badge':record.status==='posted'?'posted-status-badge':'void-status-badge';badge.textContent=record.status==='draft'?'Drafting':record.status==='posted'?'Posted':'Voided';
+        const badge=this.element('collection-entry-badge');badge.className=record.status==='draft'?'draft-status-badge':record.status==='posted'?'posted-status-badge':'void-status-badge';badge.textContent=record.status==='draft'?'Drafting':record.status==='posted'?'Posted':'Voided';window.CompanyLedger?.decorateBadge?.(badge,'collections',record);
         this.dialog.classList.toggle('collection-is-void',record.status==='void');
         const draft=record.status==='draft';
         this.dialog.classList.toggle('collection-is-draft',draft);
