@@ -119,6 +119,10 @@
                     if(form.elements['xml_payroll_'+key])form.elements['xml_payroll_'+key].value=decimal(value);
                 }
             }
+            if(reset && data.suggested_vat && !data.original_id){
+                if(data.suggested_vat.carryover !== null) form.elements.xml_carryover_input.value=decimal(data.suggested_vat.carryover);
+                form.elements.credits.value=decimal(data.suggested_vat.credits);
+            }
             form.elements.xml_payroll_reviewed.checked=false;
             if(reset)form.elements.xml_line_of_business.value=data.taxpayer.line_of_business || '';
             if(data.xml_payroll_ledger)q('return-xml-payroll-summary').textContent='Posted compensation '+money(data.xml_payroll_ledger.values.total_compensation)+' · Actual withholding '+money(data.xml_payroll_ledger.values.tax_withheld)+'.';

@@ -226,6 +226,9 @@ Route::post('/reports/form-2316/{employeeId}', [Form2316Controller::class, 'prin
 Route::post('/reports/form-2307/{supplierId}', [Form2307Controller::class, 'print2307'])->whereNumber('supplierId')->name('reports.form2307');
 
 Route::get('/tax-summary', [TaxSummaryController::class, 'index'])->middleware(['auth', 'throttle:60,1'])->name('tax-summary.index');
+Route::get('/tax-summary/sources', [TaxSummaryController::class, 'sources'])->middleware(['auth', 'throttle:60,1'])->name('tax-summary.sources');
+Route::post('/tax-summary/preview', [TaxSummaryController::class, 'preview'])->middleware(['auth', 'throttle:60,1'])->name('tax-summary.preview');
+Route::post('/tax-summary/actions', [TaxSummaryController::class, 'store'])->middleware(['auth', 'throttle:60,1'])->name('tax-summary.store');
 
 Route::middleware(['auth', 'throttle:60,1'])->prefix('tax-returns')->name('tax-returns.')->group(function (): void {
     Route::get('/', [TaxReturnController::class, 'index'])->name('index');

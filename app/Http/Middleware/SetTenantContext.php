@@ -24,7 +24,7 @@ class SetTenantContext
         $previousCompany = $request->session()->get('active_company_id');
         $previousProfile = $request->session()->get('company_setup');
         try {
-            $bookRoute = $request->is('company/setup', 'dashboard', 'sheets', 'sheets/*', 'books', 'books/*', 'masters', 'masters/*', 'reports', 'reports/*', 'tax-reports', 'tax-reports/*', 'tax-returns', 'tax-returns/*', 'tax-summary', 'settings', 'settings/*', 'lapsing', 'lapsing/*');
+            $bookRoute = $request->is('company/setup', 'dashboard', 'sheets', 'sheets/*', 'books', 'books/*', 'masters', 'masters/*', 'reports', 'reports/*', 'tax-reports', 'tax-reports/*', 'tax-returns', 'tax-returns/*', 'tax-summary', 'tax-summary/*', 'settings', 'settings/*', 'lapsing', 'lapsing/*');
             if (! $request->user()) {
                 if (app()->environment(['local', 'testing']) && is_array($previousProfile)) {
                     $context->previewWorkspace = ChartAccount::workspaceKey($previousProfile);

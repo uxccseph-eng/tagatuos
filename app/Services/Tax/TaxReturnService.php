@@ -124,10 +124,15 @@ class TaxReturnService
             }
             $info = $definition['category'] === 'Information return';
             $original = DB::table('tax_return_preparations')->where('company_id', $company->id)->where('form', $input['form'])->where('period_from', $period['from'])->where('period_to', $period['to'])->where('original_slot', 1)->whereNull('deleted_at')->first(['id', 'revision', 'snapshot']);
-            $hash = hash('sha256', json_encode([$input['form'], $period, $profile, $sources, $definition, $gross, $withheld, $details, $vatLedger, $withholdingRows, $payrollLedger, $annualSettings, 'preparation-2026-11-xml-v2'], JSON_THROW_ON_ERROR));
+            $suggestedVat = null;
+            if ($input['form'] === '2550Q') {
+                $vatSummary = app(VatSummaryService::class)->build($company, $profile, (int) $input['year']);
+                $suggestedVat = ['carryover' => $vatSummary['workspace']['quarters'][(int) $input['period']]['carryover'], 'credits' => $vatSummary['workspace']['quarters'][(int) $input['period']]['credits'], 'event_revision' => $vatSummary['workspace']['last_event']];
+            }
+            $hash = hash('sha256', json_encode([$input['form'], $period, $profile, $sources, $definition, $gross, $withheld, $details, $vatLedger, $withholdingRows, $payrollLedger, $annualSettings, $suggestedVat, 'preparation-2026-11-xml-v2'], JSON_THROW_ON_ERROR));
 
             return [
-                'original_id' => $original?->id, 'original_revision' => (int) ($original?->revision ?? 0),
+                'suggested_vat' => $suggestedVat, 'original_id' => $original?->id, 'original_revision' => (int) ($original?->revision ?? 0),
                 'annual_settings' => $annualSettings,
                 'form' => $input['form'], 'definition' => $definition, 'period' => [...$period, 'year' => (int) $input['year'], 'quarter' => (int) $input['period'], 'month' => (int) $input['period']],
                 'taxpayer' => array_intersect_key($profile, array_flip(['company_name', 'registered_name', 'tin', 'branch_code', 'rdo', 'entity_type', 'building', 'street', 'barangay', 'city', 'province', 'zip_code', 'contact_number', 'contact_email', 'agent_category', 'taxpayer_size', 'accounting_period', 'fiscal_end_month', 'line_of_business'])), 'ledger_revision' => (int) ($ledger?->revision ?? 0),

@@ -37,7 +37,7 @@ class TaxSummaryTest extends TestCase
     public function test_posted_sources_only_and_unknown_credits_are_not_assumed_zero(): void
     {
         [$book, , $ledger] = $this->book();
-        $response = $this->get(route('tax-summary.index', ['company_id' => $book->id, 'year' => 2026]))->assertOk()->assertSee('Tax Summary')->assertSee('Not tracked here');
+        $response = $this->get(route('tax-summary.index', ['company_id' => $book->id, 'year' => 2026]))->assertOk()->assertSee('Tax Summary')->assertSee('Tagged payments');
         $summary = $response->viewData('summary');
         $this->assertSame(120000, $summary['annual']['output']);
         $this->assertSame(60000, $summary['annual']['input']);

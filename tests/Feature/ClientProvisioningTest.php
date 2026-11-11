@@ -456,7 +456,7 @@ class ClientProvisioningTest extends TestCase
         $this->assertSame(0, $second->run(fn (): int => DB::table('tax_return_preparations')->count()));
         $this->assertSame(0, DB::connection(config('tenancy.database.central_connection'))->table('tax_return_preparations')->count());
         $this->getJson(route('tax-returns.download', ['company_id' => $second->id, 'id' => $id]))->assertNotFound();
-        $this->get(route('tax-returns.show', ['company_id' => $first->id, 'id' => $id]))->assertOk()->assertSee('Preparation worksheet');
+        $this->get(route('tax-returns.show', ['company_id' => $first->id, 'id' => $id]))->assertOk()->assertSee('0619-E - Preparation '.$id);
         $first->run(function () use ($first): void {
             $settings = CompanySetting::query()->where('company_id', $first->id)->firstOrFail();
             $settings->update(['profile' => [...$settings->profile, 'street' => '12 Test Street', 'city' => 'Makati', 'zip_code' => '1209', 'contact_number' => '09171234567', 'contact_email' => 'demo@example.test', 'agent_category' => 'private']]);
@@ -498,6 +498,25 @@ class ClientProvisioningTest extends TestCase
         $this->assertSame(1, $first->run(fn (): int => DB::table('tax_return_year_settings')->count()));
         $this->assertSame(0, $second->run(fn (): int => DB::table('tax_return_year_settings')->count()));
         $this->assertSame(0, DB::connection(config('tenancy.database.central_connection'))->table('tax_return_year_settings')->count());
+    }
+
+    public function test_vat_credit_actions_stay_in_the_selected_client_database_and_do_not_post_books(): void
+    {
+        $owner = User::factory()->firm()->create(['must_change_password' => false]);
+        $first = $this->readyClient($owner);
+        $second = $this->readyClient($owner);
+        $this->actingAs($owner);
+        $input = ['action' => 'credit', 'year' => 2026, 'amount' => '125.50', 'request_id' => (string) Str::uuid()];
+        $preview = $this->postJson(route('tax-summary.preview', ['company_id' => $first->id]), $input)->assertOk()->json();
+        $this->postJson(route('tax-summary.store', ['company_id' => $first->id]), [...$input, 'preview_hash' => $preview['preview_hash'], 'confirmed' => true])->assertOk();
+        $this->assertSame(1, $first->run(fn (): int => DB::table('vat_summary_events')->count()));
+        $this->assertSame(0, $second->run(fn (): int => DB::table('vat_summary_events')->count()));
+        $this->assertSame(0, DB::connection(config('tenancy.database.central_connection'))->table('vat_summary_events')->count());
+        $id = $first->run(fn (): int => DB::table('vat_summary_events')->value('id'));
+        $this->postJson(route('tax-summary.preview', ['company_id' => $second->id]), ['action' => 'reverse', 'year' => 2026, 'credit_id' => $id, 'amount' => '1', 'request_id' => (string) Str::uuid()])->assertNotFound();
+        $this->get(route('tax-summary.index', ['company_id' => $first->id, 'year' => 2026]))->assertOk()->assertSee('125.50');
+        $this->get(route('tax-summary.index', ['company_id' => $second->id, 'year' => 2026]))->assertOk()->assertSee('Opening input VAT is unconfirmed');
+        $this->assertSame(0, $first->run(fn (): int => DB::table('journal_entries')->count()));
     }
 
     private function readyClient(?User $owner = null): Company

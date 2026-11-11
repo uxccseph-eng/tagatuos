@@ -18,7 +18,7 @@ class EnsureActiveCompany
      */
     public function handle(Request $request, Closure $next): Response
     {
-        if (! $request->is('company/setup', 'dashboard', 'sheets', 'sheets/*', 'books', 'books/*', 'masters', 'masters/*', 'reports', 'reports/*', 'tax-reports', 'tax-reports/*', 'tax-returns', 'tax-returns/*', 'tax-summary', 'settings', 'settings/*', 'lapsing', 'lapsing/*')) {
+        if (! $request->is('company/setup', 'dashboard', 'sheets', 'sheets/*', 'books', 'books/*', 'masters', 'masters/*', 'reports', 'reports/*', 'tax-reports', 'tax-reports/*', 'tax-returns', 'tax-returns/*', 'tax-summary', 'tax-summary/*', 'settings', 'settings/*', 'lapsing', 'lapsing/*')) {
             return $next($request);
         }
 
