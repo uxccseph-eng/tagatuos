@@ -14,7 +14,12 @@
     const selected=new Set();
     const announce=message=>{element('cwt-status').textContent=message;if(entryDialog.open)element('cwt-entry-message').textContent=message;};
     const sources=()=>ledger.sales().map(sale=>ledger.cwtSource(sale.id)).filter(sale=>sale&&sale.withheld>0);
-    const match=record=>{const sale=ledger.cwtSource(record.saleId);return sale&&sale.number===record.invoice&&sale.customer===record.customer&&sale.taxBase===record.taxBase&&sale.cwt===record.atc&&sale.withheld===record.amount;};
+    function referencesSale(record,sale){
+        if(!sale)return false;
+        if(record.saleId!==null&&record.saleId!==undefined&&record.saleId!=='')return String(record.saleId)===String(sale.id);
+        return Boolean(sale.number&&record.invoice===sale.number);
+    }
+    const match=record=>{const sale=ledger.cwtSource(record.saleId) || sources().find(sale=>referencesSale(record,sale));return sale&&sale.number===record.invoice&&sale.customer===record.customer&&sale.taxBase===record.taxBase&&sale.cwt===record.atc&&sale.withheld===record.amount;};
     function persist(){ledger.saveCwtCertificates(records);}
     function visible(){const query=`${element('cwt-search').value} ${element('sales-global-search').value}`.trim().toLowerCase();return records.filter(record=>record.status!=='archived'&&window.WorkingPeriod.matches(record.date)&&(status==='all'||record.status===status)&&`${record.number} ${record.customer} ${record.tin} ${record.invoice} ${record.atc} ${record.certificate}`.toLowerCase().includes(query));}
     function info(title,message,actions=[]){
@@ -33,10 +38,12 @@
     function deleteDraft(record){window.DraftLeaveGuard.confirmDelete(()=>{records=records.filter(item=>item.id!==record.id);persist();render();if(entryDialog.open&&activeRecord?.id===record.id)entryDialog.close();announce('Draft deleted.');},record.number);}
     const guard=new window.DraftLeaveGuard({hasChanges:()=>records.some(incomplete),discard:()=>{records=records.filter(record=>!incomplete(record));persist();render();}});
     function add(saleId){
-        const pending=window.DraftLeaveGuard.continueDraft(records,record=>{window.WorkingPeriod.revealDate(record.date);period=window.WorkingPeriod.current().from.slice(0,7);status='all';element('cwt-search').value='';element('sales-global-search').value='';render();element('cwt-row-'+record.id)?.scrollIntoView({block:'nearest'});announce('Continue '+record.number+'. Only one draft is allowed on this page.');});if(pending)return pending;
         const sale=ledger.cwtSource(saleId);
-        const existing=records.find(record=>record.saleId===saleId&&record.status!=='void');
-        if(sale&&existing){window.WorkingPeriod.revealDate(existing.date);period=window.WorkingPeriod.current().from.slice(0,7);status='all';element('cwt-search').value='';element('sales-global-search').value='';render();announce(`Continue ${existing.number}; a certificate already exists for this invoice.`);element(`cwt-row-${existing.id}`)?.scrollIntoView({block:'nearest'});return;}
+        if(saleId!==undefined&&saleId!==null&&saleId!==''&&!sale){announce('Select an active posted source invoice before preparing a certificate.');return;}
+        const reveal=record=>{window.WorkingPeriod.revealDate(record.date);period=window.WorkingPeriod.current().from.slice(0,7);status='all';element('cwt-search').value='';element('sales-global-search').value='';render();element('cwt-row-'+record.id)?.scrollIntoView({block:'nearest'});inspect(record);};
+        const existing=records.find(record=>['draft','posted'].includes(record.status)&&referencesSale(record,sale));
+        if(existing){reveal(existing);announce(existing.status==='posted'?`${existing.number} is already posted for ${sale.number}. Opened its saved certificate.`:`Continue the draft for ${sale.number}.`);return existing;}
+        const pending=window.DraftLeaveGuard.continueDraft(records,record=>{reveal(record);announce(`Finish or delete the draft for ${record.invoice || 'the other invoice'} before preparing ${sale?.number || 'another certificate'}.`);});if(pending)return pending;
         const record={id:crypto.randomUUID(),number:'',date:window.WorkingPeriod.entryDate(),saleId:sale?.id || null,invoice:sale?.number || '',customer:sale?.customer || '',tin:sale?.tin || '',taxBase:sale?.taxBase || 0,atc:sale?.cwt || '',amount:sale?.withheld || 0,offset:'1150 · CWT Asset',certificate:'',status:'draft'};
         records.push(record);status='all';element('cwt-search').value='';element('sales-global-search').value='';persist();render();
         element(`cwt-row-${record.id}`).scrollIntoView({block:'nearest'});announce(`${record.number} added as an editable draft. Enter the received certificate details.`);
@@ -49,13 +56,13 @@
     function post(candidates){
         if(!candidates.length){announce('Select one or more draft certificates to post.');return;}
         const numbers=new Set(records.filter(record=>record.status==='posted').map(record=>String(record.certificate || '').toLowerCase()));
-        const saleIds=new Set(records.filter(record=>record.status==='posted').map(record=>record.saleId));
+        const postedSources=records.filter(record=>record.status==='posted');
         for(const record of candidates){
             const atcError=window.SheetMasters.withholdingError({cwt:record.atc,vatCwt:'None'},true);if(atcError){announce(record.number+': '+atcError);return false;}
             if(invalidDraft(record)||!/^\d{3}-?\d{3}-?\d{3}(?:-?\d{3,5})?$/.test(record.tin)){announce(`${record.number}: enter a date, agent TIN and withholding amount.`);return;}
             if(!match(record)){announce(`${record.number}: the source sale is missing or changed. Select its invoice again to refresh the draft.`);return;}
-            if((record.certificate&&numbers.has(String(record.certificate).toLowerCase()))||saleIds.has(record.saleId)){announce(`${record.number}: this certificate number or invoice already has a posted certificate.`);return;}
-            if(record.certificate)numbers.add(String(record.certificate).toLowerCase());saleIds.add(record.saleId);
+            if((record.certificate&&numbers.has(String(record.certificate).toLowerCase()))||postedSources.some(existing=>referencesSale(existing,ledger.cwtSource(record.saleId)))){announce(`${record.number}: this certificate number or invoice already has a posted certificate.`);return;}
+            if(record.certificate)numbers.add(String(record.certificate).toLowerCase());postedSources.push(record);
         }
         const ids=new Set(candidates.map(record=>record.id)),postedAt=new Date().toISOString();
         const next=records.map(record=>ids.has(record.id)?{...record,status:'posted',postedAt}:record);
@@ -169,13 +176,13 @@
         window.WorkingPeriod.render();
         element('cwt-base-total').textContent=money(posted.reduce((sum,record)=>sum+record.taxBase,0));element('cwt-it-total').textContent=money(total);element('cwt-footer-total').textContent=money(total);
         element('cwt-expected').textContent=money(periodSales.reduce((sum,sale)=>sum+sale.withheld,0));element('cwt-atc-count').textContent=`${new Set(posted.map(record=>record.atc)).size} ATC code(s)`;
-        element('cwt-reconciled').textContent=`${periodSales.filter(sale=>records.some(record=>record.status==='posted'&&record.saleId===sale.id&&match(record))).length} of ${periodSales.length}`;
+        element('cwt-reconciled').textContent=`${periodSales.filter(sale=>records.some(record=>record.status==='posted'&&referencesSale(record,sale)&&match(record))).length} of ${periodSales.length}`;
         element('cwt-count').textContent=`${shown.length} certificate(s) · ${shown.filter(record=>record.status==='draft').length} drafting · ${posted.length} posted · ${selected.size} selected`;
         element('cwt-filter-label').textContent=status==='all'?'All statuses':status==='draft'?'Drafts':status==='posted'?'Posted':'Voided';element('cwt-filter').setAttribute('aria-pressed',String(status!=='all'));
         element('cwt-post-count').textContent=`(${window.SheetPosting.candidates(shown,selected).length})`;
         const pending=element('cwt-pending-list');pending.replaceChildren();
-        periodSales.filter(sale=>!records.some(record=>record.saleId===sale.id&&record.status==='posted')).forEach(sale=>{
-            const card=document.createElement('div');card.className='cwt-source';const details=document.createElement('div');details.textContent=`${sale.number} · ${money(sale.withheld)}`;const customer=document.createElement('small');customer.textContent=sale.customer;details.append(customer);const prepare=button(records.some(record=>record.saleId===sale.id&&record.status==='draft')?'Continue draft':'Prepare',()=>add(sale.id));prepare.classList.add('cwt-primary','cwt-source-action');card.append(details,prepare);pending.append(card);
+        periodSales.filter(sale=>!records.some(record=>referencesSale(record,sale)&&record.status==='posted')).forEach(sale=>{
+            const card=document.createElement('div');card.className='cwt-source';const details=document.createElement('div');details.textContent=`${sale.number} · ${money(sale.withheld)}`;const customer=document.createElement('small');customer.textContent=sale.customer;details.append(customer);const prepare=button(records.some(record=>referencesSale(record,sale)&&record.status==='draft')?'Continue draft':'Prepare',()=>add(sale.id));prepare.classList.add('cwt-primary','cwt-source-action');card.append(details,prepare);pending.append(card);
         });if(!pending.children.length)pending.textContent='No outstanding certificates for this period.';
         const visibleIds=new Set(shown.map(record=>record.id));for(const id of selected)if(!visibleIds.has(id))selected.delete(id);
         element('cwt-select-all').checked=shown.length>0&&shown.every(record=>selected.has(record.id));element('cwt-select-all').indeterminate=shown.some(record=>selected.has(record.id))&&!element('cwt-select-all').checked;
