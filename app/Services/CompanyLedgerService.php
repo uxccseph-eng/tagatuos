@@ -189,6 +189,7 @@ class CompanyLedgerService
             }
             $state = $this->validateState($incomingState, $payroll, false);
             app(CashPurchaseWithholding::class)->synchronize($locked, $state, $previousState);
+            app(CashSaleWithholding::class)->synchronize($locked, $state, $previousState);
             $baseline = app(TransactionNumbering::class)->normalize($state, $payroll, $previousState, $previousPayroll);
             $state = $this->validateState($state, $payroll);
             $existing = DB::table('journal_entries')->where('company_id', $locked->id)->get()->keyBy('source_key')->all();

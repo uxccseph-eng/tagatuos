@@ -29,6 +29,17 @@ class LedgerPostingService
         return $this->taxNet($this->amount($bill['gross'] ?? null), (string) ($bill['tax'] ?? ''));
     }
 
+    /** @return array{taxBase: int, rate: string, amount: int} */
+    public function saleWithholding(Company $company, array $sale): array
+    {
+        $this->workspace = $company->workspaceKey();
+        $this->atcs = collect(TaxCode::atcCatalog($this->workspace))->keyBy('code')->all();
+        $base = $this->taxNet($this->amount($sale['gross'] ?? null), (string) ($sale['tax'] ?? ''));
+        $rate = $this->withholding($sale['cwt'] ?? '', null, false);
+
+        return ['taxBase' => $base, 'rate' => number_format($rate / 10000, 4, '.', ''), 'amount' => $this->percent($base, $rate)];
+    }
+
     /** @return list<array<string, mixed>> */
     public function prepare(Company $company, array $state, array $payroll, array $existing): array
     {

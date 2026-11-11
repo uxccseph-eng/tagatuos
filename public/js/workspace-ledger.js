@@ -224,6 +224,26 @@
         assignPostedNumbers('wtpCertificates',state.wtpCertificates);
         for(const certificate of state.wtpCertificates.filter(record=>record.status==='posted'&&!record.certificate))certificate.certificate=certificateNumber(certificate,state.wtpCertificates);
     }
+    function syncCashSaleWithholding(previousSales=[]) {
+        for(const sale of state.sales){
+            const id='cash-cwt:'+sale.id;
+            let certificate=state.cwtCertificates.find(record=>String(record.id)===id&&record.origin==='cash-sale-withholding');
+            const manual=state.cwtCertificates.some(record=>record!==certificate&&record.status==='posted'&&(String(record.saleId)===String(sale.id)||sale.number&&record.invoice===sale.number));
+            const source=window.KontaduryaLedger.cwtSource(sale.id);
+            const eligible=sale.status==='posted'&&sale.terms==='Cash'&&/^W[IC]\d{3}/i.test(sale.cwt||'')&&source?.withheld>0;
+            if(!eligible||manual){
+                if(certificate?.status==='posted')Object.assign(certificate,{status:'void',sourceVoided:true,voidReason:'Source sale is no longer a posted cash sale with CWT, or a manual certificate replaces it.'});
+                continue;
+            }
+            const before=previousSales.find(record=>String(record.id)===String(sale.id));
+            if(!certificate&&before&&JSON.stringify(before)===JSON.stringify(sale))continue;
+            if(certificate&&certificate.status!=='posted'&&!certificate.sourceVoided)continue;
+            if(!certificate){certificate={id,number:'',certificate:'',origin:'cash-sale-withholding'};state.cwtCertificates.push(certificate);}
+            Object.assign(certificate,{saleId:sale.id,invoice:sale.number,date:sale.date,customer:sale.customer,tin:source.tin,taxBase:source.taxBase,rate:Number(source.rate).toFixed(4),amount:source.withheld,atc:sale.cwt,offset:'1150 · Prepaid CWT',status:'posted',sourceVoided:false});
+        }
+        assignPostedNumbers('cwtCertificates',state.cwtCertificates);
+        for(const certificate of state.cwtCertificates.filter(record=>record.status==='posted'&&!record.certificate))certificate.certificate=certificateNumber(certificate,state.cwtCertificates);
+    }
     function compactTransactions(key){
         const prefix={sales:'SI',purchases:'BILL',collections:'CR',payments:'PV',cwtCertificates:'2307R',wtpCertificates:'2307I',journalEntries:'GJ'}[key];
         const oldSales=new Map(state.sales.filter(record=>record.status!=='archived'&&record.number).map(record=>[record.number,record.id]));
@@ -378,7 +398,7 @@
                     state[key].push(record);seen.add(signature);imported.push(record);
                 }catch(problem){errors.push({row:input._row || 0,message:problem.message});}
             }
-            if(commit&&!errors.length){if(sheet==='purchases')syncCashWithholding(previous.purchases);state.nextCollectionNumber=nextCollectionNumber();syncCashCollections();syncCashPayments();persist();return {count:imported.length,records:clone(imported),errors:[]};}
+            if(commit&&!errors.length){if(sheet==='purchases')syncCashWithholding(previous.purchases);if(sheet==='sales')syncCashSaleWithholding(previous.sales);state.nextCollectionNumber=nextCollectionNumber();syncCashCollections();syncCashPayments();persist();return {count:imported.length,records:clone(imported),errors:[]};}
             state=previous;
             if(commit)throw new Error(errors.map(error=>'Row '+error.row+': '+error.message).join('\n'));
             return {count:imported.length,records:clone(imported),errors};
@@ -413,7 +433,7 @@
                     }
                     record.history=[...(record.history || []),{label:action==='void'?'Voided':action==='delete-voids'?'Archived':'Unarchived',user,time}];
                 }
-                if(sheet==='purchases')syncCashWithholding(previous.purchases);
+                if(sheet==='purchases')syncCashWithholding(previous.purchases);if(sheet==='sales')syncCashSaleWithholding(previous.sales);
                 state.nextCollectionNumber=nextCollectionNumber();syncCashCollections();syncCashPayments();persist();
             }catch(error){state=previous;throw error;}
             return {count:targets.length,ids:targets.map(record=>record.id)};
@@ -523,7 +543,8 @@
         },
         saveSales(sales) {
             const previous=state;
-            state={...state,sales:normalizeTerms(assignPostedNumbers('sales',clone(sales))).map(record=>window.SheetMasters?window.SheetMasters.partySnapshot(record,previous.sales.find(item=>item.id===record.id)):record),collections:clone(state.collections)};
+            state={...state,sales:normalizeTerms(assignPostedNumbers('sales',clone(sales))).map(record=>window.SheetMasters?window.SheetMasters.partySnapshot(record,previous.sales.find(item=>item.id===record.id)):record),collections:clone(state.collections),cwtCertificates:clone(state.cwtCertificates)};
+            syncCashSaleWithholding(previous.sales);
             syncCashCollections();
             try {persist();synchronizeNumbers('sales',sales);} catch(error){state=previous;throw error;}
         },

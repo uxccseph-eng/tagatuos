@@ -655,6 +655,7 @@
 </div>
 </div>
 <!-- CWT IT & CWT VT Dropdowns -->
+<p class="text-label-sm text-on-surface-variant">Posting a Cash sale with income CWT automatically posts its linked CWT entry. Keep the customer’s actual 2307 as supporting documentation. VAT withholding stays separate.</p>
 <div class="grid grid-cols-2 gap-space-sm">
 <div class="flex flex-col gap-1">
 <label for="drawer-cwt-it-select" class="font-label-sm text-label-sm text-on-surface">CWT IT (Creditable)</label>

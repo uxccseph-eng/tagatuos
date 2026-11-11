@@ -790,3 +790,23 @@ test('single-entry archive renumbers journals and allows another save with dupli
  const next=[...ledger.journalEntries(),journalVoucher(ledger,{id:3,number:'',status:'posted'})];
  ledger.saveJournalEntries(next);assert.equal(next[2].number,'GJ-000002');
 });
+
+test('cash sales post CWT once, synchronize corrections and preserve an intentional void',()=>{
+    const ledger=openLedger(new Map(),'company-'+'d'.repeat(64));
+    const sale={id:'cash-test',number:'',date:'2026-10-01',status:'posted',customer:'Customer',customerTin:'12345678900000',gross:112000,tax:'12% VAT',account:'4020 · Sales - Services',terms:'Cash',cwt:'WC160 · 2%',vatCwt:'None',bank:'1010 · Cash on Hand'};
+    ledger.saveSales([sale]);
+    let certificate=ledger.cwtCertificates()[0];
+    assert.equal(certificate.amount,2000);assert.equal(certificate.taxBase,100000);assert.equal(certificate.status,'posted');assert.equal(certificate.rate,'2.0000');
+    assert.equal(ledger.collections()[0].amount,110000);
+    ledger.saveSales(ledger.sales());assert.equal(ledger.cwtCertificates().length,1);
+    const changed=ledger.sales();changed[0].gross=224000;ledger.saveSales(changed);
+    assert.equal(ledger.cwtCertificates()[0].amount,4000);
+    const certificates=ledger.cwtCertificates();certificates[0].status='void';certificates[0].voidReason='Cancelled certificate';ledger.saveCwtCertificates(certificates);
+    ledger.saveSales(ledger.sales());assert.equal(ledger.cwtCertificates()[0].status,'void');
+});
+test('cash sale without income withholding and draft or on-account sales do not auto post CWT',()=>{
+    const ledger=openLedger(new Map(),'company-'+'e'.repeat(64));
+    const common={date:'2026-10-01',customer:'Customer',gross:112000,tax:'12% VAT',account:'4020 · Sales - Services',vatCwt:'None',bank:'1010 · Cash on Hand'};
+    ledger.saveSales([{...common,id:1,status:'posted',terms:'Cash',cwt:'None'},{...common,id:2,status:'draft',terms:'Cash',cwt:'WC160 · 2%'},{...common,id:3,status:'posted',terms:'On Account',cwt:'WC160 · 2%'}]);
+    assert.equal(ledger.cwtCertificates().length,0);
+});

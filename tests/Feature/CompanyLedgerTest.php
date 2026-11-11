@@ -11,6 +11,7 @@ use App\Models\MonthlyClosing;
 use App\Models\Party;
 use App\Models\TaxCode;
 use App\Models\User;
+use App\Services\CashSaleWithholding;
 use App\Services\CompanyLedgerService;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -545,6 +546,64 @@ class CompanyLedgerTest extends TestCase
         $state['journalEntries'] = [];
         $this->save($state, 1, [$run])->assertOk();
         $this->assertDatabaseCount('journal_entries', 1);
+    }
+
+    public function test_cash_sale_posts_one_linked_cwt_and_updates_and_voids_it_with_the_source(): void
+    {
+        [$company, $owner] = $this->book();
+        $this->asMember($owner, $company);
+        Party::factory()->create(['workspace_key' => $company->workspaceKey(), 'name' => 'Customer', 'classification' => 'Customer']);
+        $state = CompanyLedgerService::emptyState();
+        $state['sales'] = [['id' => 1, 'number' => 'SI-000001', 'date' => '2026-10-01', 'status' => 'posted', 'customer' => 'Customer', 'customerTin' => '12345678900000', 'gross' => 112000, 'tax' => 'VAT (12%)', 'account' => '4020 · Sales - Services', 'terms' => 'Cash', 'cwt' => 'WC160 · 2%', 'vatCwt' => 'None']];
+        $state['collections'] = [['id' => 1, 'number' => 'CR-000001', 'date' => '2026-10-01', 'status' => 'posted', 'customer' => 'Customer', 'saleId' => 1, 'invoice' => 'SI-000001', 'amount' => 110000, 'bank' => '1010 · Cash on Hand', 'type' => 'Settlement', 'origin' => 'cash-sale']];
+        $response = $this->save($state)->assertOk()->assertJsonPath('state.cwtCertificates.0.amount', 2000)->assertJsonPath('state.cwtCertificates.0.taxBase', 100000)->assertJsonPath('state.cwtCertificates.0.status', 'posted');
+        $state = $response->json('state');
+        $replayed = $this->save($state, 1)->assertOk();
+        $state = $replayed->json('state');
+        $revision = $replayed->json('revision');
+        $this->assertDatabaseCount('journal_entries', 3);
+        $state['sales'][0]['gross'] = 224000;
+        $state['collections'][0]['amount'] = 220000;
+        $corrected = $this->save($state, $revision)->assertOk()->assertJsonPath('state.cwtCertificates.0.amount', 4000);
+        $state = $corrected->json('state');
+        $this->assertCount(1, $state['cwtCertificates']);
+        $this->assertDatabaseCount('journal_entries', 3);
+        $state['sales'][0]['status'] = 'void';
+        $state['sales'][0]['voidReason'] = 'Cancelled sale';
+        $state['collections'][0]['status'] = 'void';
+        $state['collections'][0]['voidReason'] = 'Cancelled sale';
+        $this->save($state, $corrected->json('revision'))->assertOk()->assertJsonPath('state.cwtCertificates.0.status', 'void')->assertJsonPath('state.cwtCertificates.0.sourceVoided', true);
+        $this->assertSame(0, DB::table('journal_entries')->where('status', 'posted')->count());
+    }
+
+    public function test_automatic_cwt_skips_unchanged_history_manual_certificates_and_non_cash_sales(): void
+    {
+        [$company] = $this->book();
+        $sale = ['id' => 1, 'number' => 'SI-000001', 'date' => '2026-10-01', 'status' => 'posted', 'customer' => 'Customer', 'gross' => 112000, 'tax' => 'VAT (12%)', 'terms' => 'Cash', 'cwt' => 'WC160 · 2%'];
+        $service = app(CashSaleWithholding::class);
+        foreach ([['terms' => 'On Account'], ['status' => 'draft'], ['cwt' => 'None'], ['cwt' => 'WV010 · 5%']] as $overrides) {
+            $state = CompanyLedgerService::emptyState();
+            $state['sales'] = [array_replace($sale, $overrides)];
+            $service->synchronize($company, $state, CompanyLedgerService::emptyState());
+            $this->assertSame([], $state['cwtCertificates']);
+        }
+        $state = CompanyLedgerService::emptyState();
+        $state['sales'] = [$sale];
+        $service->synchronize($company, $state, $state);
+        $this->assertSame([], $state['cwtCertificates']);
+        $state['cwtCertificates'] = [['id' => 'manual', 'status' => 'posted', 'saleId' => 1]];
+        $service->synchronize($company, $state, CompanyLedgerService::emptyState());
+        $this->assertCount(1, $state['cwtCertificates']);
+        $this->assertSame('manual', $state['cwtCertificates'][0]['id']);
+        $state['cwtCertificates'] = [];
+        $service->synchronize($company, $state, CompanyLedgerService::emptyState());
+        $state['cwtCertificates'][0]['status'] = 'void';
+        $state['cwtCertificates'][0]['sourceVoided'] = false;
+        $service->synchronize($company, $state, CompanyLedgerService::emptyState());
+        $this->assertSame('void', $state['cwtCertificates'][0]['status']);
+        $state['cwtCertificates'][0]['sourceVoided'] = true;
+        $service->synchronize($company, $state, CompanyLedgerService::emptyState());
+        $this->assertSame('posted', $state['cwtCertificates'][0]['status']);
     }
 
     private function journal(string $id = 'first', string $number = 'GJ-000001', string $status = 'posted'): array

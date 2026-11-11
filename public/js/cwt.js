@@ -91,7 +91,7 @@
         element('cwt-entry-base').textContent=money(record.taxBase);
         element('cwt-entry-net').value=((record.taxBase || 0)/100).toFixed(2);element('cwt-entry-it').value=((record.amount || 0)/100).toFixed(2);
         const date=new Date(`${record.date}T12:00:00`);element('cwt-entry-quarter').value=Number.isNaN(date.getTime())?'':`${date.getFullYear()} - Q${Math.floor(date.getMonth()/3)+1}`;
-        element('cwt-entry-source-note').textContent=record.invoice?`${record.invoice} · ${record.atc || 'No ATC'} · ${match(record)?'Source matched':'Source needs review'}`:'Select a source sales invoice to fill customer and tax details.';
+        element('cwt-entry-source-note').textContent=record.invoice?`${record.invoice} · ${record.atc || 'No ATC'} · ${record.origin==='cash-sale-withholding'?'Automatically posted from cash sale. Attach the customer’s actual 2307 when received.':match(record)?'Source matched':'Source needs review'}`:'Select a source sales invoice to fill customer and tax details.';
         element('cwt-journal-title').textContent=voided?'GL Reversal Preview':'Journal Voucher Preview';
         element('cwt-journal-debit').textContent=voided?'Dr 1105 · AR - Trade':'Dr 1150 · Prepaid CWT (2307)';
         element('cwt-journal-credit').textContent=voided?'Cr 1150 · Prepaid CWT (2307)':'Cr 1105 · AR - Trade';
@@ -157,7 +157,7 @@
             }else{
                 cells[2].textContent=record.date;cells[4].textContent=record.customer;const tin=document.createElement('small');tin.textContent=`TIN: ${record.tin}`;cells[4].append(tin);cells[5].textContent=record.invoice;cells[13].textContent=record.certificate;cells[15].append(rowAction('View','visibility',record,()=>inspect(record)));if(record.status==='posted')cells[15].append(rowAction('More options','more_vert',record,event=>entryOptions(record,event)));
             }
-            cells[6].textContent=money(record.taxBase);cells[7].textContent=record.atc || 'From source sale';cells[8].textContent=money(record.amount);cells[9].textContent='Separate 2306';cells[10].textContent='—';cells[11].textContent=money(record.amount);cells[12].textContent=record.offset;cells[14].textContent=record.status==='void'?'Excluded':match(record)?'Source matched':'Needs review';
+            cells[6].textContent=money(record.taxBase);cells[7].textContent=record.atc || 'From source sale';cells[8].textContent=money(record.amount);cells[9].textContent='Separate 2306';cells[10].textContent='—';cells[11].textContent=money(record.amount);cells[12].textContent=record.offset;cells[14].textContent=record.status==='void'?'Excluded':record.origin==='cash-sale-withholding'?'From cash sale':match(record)?'Source matched':'Needs review';
             row.addEventListener('click',event=>{if(event.target.matches('input[readonly]')||!event.target.closest('button,input,select,textarea,a,label'))inspect(record);});rows.append(row);
         });
         if(!sorted.length){const row=document.createElement('tr');const cell=document.createElement('td');cell.colSpan=16;cell.textContent='No certificates in this view. Prepare a draft from a posted sale or add a certificate.';row.append(cell);rows.append(row);}
