@@ -108,6 +108,10 @@ class CompanyLedgerService
                 }
             }
 
+            foreach ($data['private_drafts'] ?? [] as $draft) {
+                $central->table('company_ledger_drafts')->where('company_id', $company->id)->where('user_id', $actor->id)->where('draft_id', $draft['id'])->where('version', $draft['version'])->delete();
+            }
+
             return $result;
         });
     }

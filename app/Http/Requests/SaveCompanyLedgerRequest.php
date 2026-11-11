@@ -28,6 +28,10 @@ class SaveCompanyLedgerRequest extends FormRequest
             'operations.*.id' => ['required', 'regex:/^[A-Za-z0-9_.:-]{1,120}$/D'],
             'operations.*.expected_version' => ['required', 'integer', 'min:0'],
             'operations.*.record' => ['present', 'nullable', 'array'],
+            'private_drafts' => ['sometimes', 'array', 'list', 'max:26'],
+            'private_drafts.*' => ['array:id,version'],
+            'private_drafts.*.id' => ['required', 'uuid'],
+            'private_drafts.*.version' => ['required', 'integer', 'min:0'],
         ];
     }
 }

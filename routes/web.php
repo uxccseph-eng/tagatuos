@@ -7,6 +7,7 @@ use App\Http\Controllers\BooksController;
 use App\Http\Controllers\ClientFollowUpController;
 use App\Http\Controllers\CollectionsController;
 use App\Http\Controllers\CompanyBookController;
+use App\Http\Controllers\CompanyDraftController;
 use App\Http\Controllers\CompanyLedgerController;
 use App\Http\Controllers\CompanySetupController;
 use App\Http\Controllers\CwtController;
@@ -151,6 +152,10 @@ Route::put('/settings/{section}', [SettingsController::class, 'update'])->where(
 Route::redirect('/sheets', '/sheets/sales');
 Route::get('/sheets/database', [CompanyLedgerController::class, 'show'])->middleware('auth')->name('sheets.database.show');
 Route::post('/sheets/database', [CompanyLedgerController::class, 'save'])->middleware(['auth', 'throttle:120,1'])->name('sheets.database.save');
+Route::get('/sheets/private-drafts', [CompanyDraftController::class, 'index'])->middleware('auth')->name('sheets.drafts.index');
+Route::get('/sheets/private-drafts/{draftId}', [CompanyDraftController::class, 'show'])->whereUuid('draftId')->middleware('auth')->name('sheets.drafts.show');
+Route::put('/sheets/private-drafts/{draftId}', [CompanyDraftController::class, 'store'])->whereUuid('draftId')->middleware(['auth', 'throttle:120,1'])->name('sheets.drafts.store');
+Route::delete('/sheets/private-drafts/{draftId}', [CompanyDraftController::class, 'destroy'])->whereUuid('draftId')->middleware(['auth', 'throttle:120,1'])->name('sheets.drafts.destroy');
 Route::get('/lapsing', [LapsingController::class, 'index'])->name('lapsing');
 Route::get('/lapsing/attention', [LapsingController::class, 'index'])->defaults('page', 'attention')->name('lapsing.attention');
 Route::get('/lapsing/runs', fn (Request $request): RedirectResponse => to_route('lapsing', $request->only('period')));

@@ -20,6 +20,9 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        $privateDraftRequest = fn (Request $request): bool => $request->isMethod('PUT') && $request->is('sheets/private-drafts/*');
+        $middleware->trimStrings(except: [$privateDraftRequest]);
+        $middleware->convertEmptyStringsToNull(except: [$privateDraftRequest]);
         foreach ([EnsureApprovedAccount::class, ForcePasswordChange::class, SetTenantContext::class, EnsureActiveCompany::class] as $companyMiddleware) {
             $middleware->prependToPriorityList(SubstituteBindings::class, $companyMiddleware);
         }

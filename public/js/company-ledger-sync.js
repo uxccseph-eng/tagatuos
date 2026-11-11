@@ -38,6 +38,9 @@
     const validState = value => value && typeof value === 'object' && sheets.every(key => Array.isArray(value[key]));
     const records = window.LedgerRecordChanges;
     const collaborative = Boolean(records && database.record_versions);
+    const privateDrafts = collaborative && database.canWrite && database.draftUrl && window.CompanyDraftStore
+        ? window.CompanyDraftStore.create({companyId:database.company_id,userId:database.userId,url:database.draftUrl,csrf:database.csrf,changed:()=>render()}) : null;
+    let privateRecoveries = [];
     const same = records?.same || ((first, second) => JSON.stringify(first) === JSON.stringify(second));
     const operations = () => records.changes(database.state, database.payroll, state, payroll, database.record_versions);
     const editing = () => document.querySelector('dialog[open]') || document.activeElement?.matches('input,textarea,select,[contenteditable=true]');
@@ -102,9 +105,9 @@
     const recovery = (() => { try { return sessionStorage.getItem(recoveryKey); } catch { return null; } })();
     let preserved = null, restoreRequested = false;
     try { preserved = recovery ? decodeRecovery(JSON.parse(recovery)) : null; restoreRequested = sessionStorage.getItem(restoreKey) === '1'; sessionStorage.removeItem(restoreKey); } catch {}
-    const validRecovery = preserved && String(preserved.company_id) === String(database.company_id) && Number.isInteger(preserved.revision) && validState(preserved.state) && Array.isArray(preserved.payroll);
-    const recoverableOperations = collaborative && validState(preserved?.base_state) && Array.isArray(preserved?.base_payroll) && preserved?.base_versions;
-    const canRestore = validRecovery && (preserved.revision === revision || recoverableOperations) && database.canWrite;
+    let validRecovery = preserved && String(preserved.company_id) === String(database.company_id) && Number.isInteger(preserved.revision) && validState(preserved.state) && Array.isArray(preserved.payroll);
+    let recoverableOperations = collaborative && validState(preserved?.base_state) && Array.isArray(preserved?.base_payroll) && preserved?.base_versions;
+    let canRestore = validRecovery && (preserved.revision === revision || recoverableOperations) && database.canWrite;
     if (recovery) {
         migration = false; state = clone(database.state); payroll = clone(database.payroll);
         if (validRecovery && same(preserved.state, state) && same(preserved.payroll, payroll)) {
@@ -162,11 +165,28 @@
         for (const open of document.querySelectorAll?.('dialog[open]') || []) open.close();
         notify(); render();
     }
+    async function resumePrivateDraft(item) {
+        if (pending || running || resolutionRunning) return;
+        try {
+            preserved = decodeRecovery(await privateDrafts.read(item));
+            if (!preserved || !validState(preserved.state) || !Array.isArray(preserved.payroll)) throw Error('This private draft could not be restored.');
+            validRecovery = true; recoverableOperations = true; canRestore = true;
+            privateRecoveries = privateRecoveries.filter(row=>row.id!==item.id);
+            restoreRecovery();
+        } catch (error) { label.textContent = error.message; }
+    }
+    async function discardPrivateDraft(item) {
+        try { await privateDrafts.discard(item); privateRecoveries = privateRecoveries.filter(row=>row.id!==item.id); render(); }
+        catch (error) { label.textContent = error.message; }
+    }
     function render() {
         actions.replaceChildren();
         document.documentElement.classList.toggle('company-save-pending', pending || Boolean(running) || Boolean(failure) || migration);
         if (failure) {
             label.textContent = failure.record_conflict ? 'Changes need review: another accountant updated this entry. Your changes are kept in this tab. Choose how to resolve the unsaved changes.' : 'Not saved to the database: ' + failure.message;
+            const backup = privateDrafts?.status();
+            if (backup?.serverSaved) label.textContent += ' A private recovery draft is saved to the server.';
+            else if (backup?.deviceSaved) label.textContent += ' A recovery draft is saved on this device.';
             banner.dataset.state = failure.record_conflict ? 'warning' : 'error';
             if (restoreAvailable) button('Restore unsaved work', restoreRecovery);
             button('Resolve save conflict', showConflictDialog);
@@ -182,8 +202,17 @@
             banner.dataset.state = 'pending';
             if (database.canWrite) button('Transfer reviewed records', () => { migration = false; pending = true; flush().catch(() => {}); });
         } else if (pending || running) {
-            label.textContent = recoveryUnavailable ? 'Saving to the company database… Browser backup is unavailable. Keep this tab open until the save is confirmed.' : 'Saving to the company database… Entries are awaiting server confirmation.';
+            const backup = privateDrafts?.status();
+            label.textContent = backup?.serverSaved ? 'Private draft saved to the server · Waiting for the book save.' : backup?.deviceSaved ? 'Changes saved on this device · Waiting for the server.' : recoveryUnavailable ? 'Saving to the company database… Browser backup is unavailable. Keep this tab open until the save is confirmed.' : 'Saving to the company database… Entries are awaiting server confirmation.';
             banner.dataset.state = 'pending';
+        } else if (privateRecoveries.length) {
+            label.textContent = 'Your private saved drafts are available. They have not been posted to the books.';
+            banner.dataset.state = 'pending';
+            for (const item of privateRecoveries) {
+                const date = new Date(item.updated_at).toLocaleString();
+                button('Resume draft · '+date,()=>resumePrivateDraft(item));
+                button('Discard draft · '+date,()=>discardPrivateDraft(item));
+            }
         } else {
             label.textContent = 'Company database · Saved · Version ' + revision;
             banner.dataset.state = 'saved';
@@ -199,6 +228,11 @@
             }
             value = {format: 2, company_id: database.company_id, revision, changes, before: [...before.values()], request: retry ? {revision: retry.revision, request_id: retry.request_id, operations: retry.operations} : null, error: failure};
         } else value = {company_id: database.company_id, revision, state, payroll, base_state: database.state, base_payroll: database.payroll, base_versions: database.record_versions, request: retry, error: failure};
+        if (privateDrafts && value.format === 2) {
+            if (value.changes.length || value.request?.operations?.length) privateDrafts.stage(value);
+            recoveryUnavailable = !privateDrafts.status().deviceSaved && !privateDrafts.status().serverSaved;
+            return;
+        }
         try { sessionStorage.setItem(recoveryKey, JSON.stringify(value)); recoveryUnavailable = false; }
         catch {
             if (database.initialized) removeCachedSnapshots();
@@ -230,11 +264,17 @@
         if (recoveryReview) throw Error('Review the restored entries, then click Save recovered work.');
         if (migration || !pending) return;
         const payload = retry || {revision, request_id: crypto.randomUUID(), state: clone(state), payroll: clone(payroll), ...(collaborative ? {operations: operations()} : {})};
-        if (collaborative && payload.operations?.length === 0) { pending = false; retry = null; state = clone(database.state); payroll = clone(database.payroll); try {sessionStorage.removeItem(recoveryKey);} catch {} render(); return; }
+        if (collaborative && payload.operations?.length === 0) {
+            if (privateDrafts) { await privateDrafts.flush(); await privateDrafts.confirm(privateDrafts.checkpoint(), true); }
+            pending = false; retry = null; state = clone(database.state); payroll = clone(database.payroll); clearRecovery(); render(); return;
+        }
         retry = payload; pending = !same(payload.state, state) || !same(payload.payroll, payroll);
         stash();
         running = (async () => {
-            const response = await fetch(database.url, {method: 'POST', headers: {'Accept': 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': database.csrf, 'X-Company-ID': String(database.company_id)}, body: JSON.stringify(collaborative ? {revision:payload.revision,request_id:payload.request_id,operations:payload.operations} : payload)});
+            if (privateDrafts) await privateDrafts.flush();
+            const draftCheckpoint = privateDrafts?.checkpoint();
+            const completedDrafts = privateDrafts && same(payload.state,state) && same(payload.payroll,payroll) ? privateDrafts.references(draftCheckpoint) : [];
+            const response = await fetch(database.url, {method: 'POST', headers: {'Accept': 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': database.csrf, 'X-Company-ID': String(database.company_id)}, body: JSON.stringify(collaborative ? {revision:payload.revision,request_id:payload.request_id,operations:payload.operations,...(completedDrafts.length?{private_drafts:completedDrafts}:{})} : payload)});
             const result = await response.json().catch(() => ({}));
             if (!response.ok) {
                 const message = result.errors ? Object.values(result.errors).flat().join(' ') : result.message || 'The server could not save this company book.';
@@ -251,6 +291,7 @@
             state = clone(later?.state || (pending && !collaborative ? state : result.state)); payroll = clone(later?.payroll || (pending && !collaborative ? payroll : result.payroll));
             retry = null;
             pending = collaborative ? operations().length > 0 : pending;
+            if (!pending && privateDrafts) { await privateDrafts.confirm(draftCheckpoint); pending = operations().length > 0; }
             if (!pending) { clearRecovery(); recoveryUnavailable = false; } else stash();
             notify();
         })().catch(error => {
@@ -317,6 +358,7 @@
             try {
                 if (running) await running.catch(() => {});
                 const latest = await loadLatest();
+                if (privateDrafts) { await privateDrafts.flush(); await privateDrafts.confirm(privateDrafts.checkpoint(), true); }
                 clearRecovery(); clearTimeout(timer);
                 revision = latest.revision; Object.assign(database, latest); state = clone(latest.state); payroll = clone(latest.payroll);
                 editorState = clone(state); editorPayroll = clone(payroll);
@@ -380,6 +422,11 @@
     }
     setInterval(refreshRemote,5000);
     window.addEventListener('focus',refreshRemote);
+    window.addEventListener('online',()=>{
+        if (privateDrafts && failure?.status === 0 && !resolutionRunning) { failure=null;pending=true;flush().catch(()=>{}); }
+        else if (privateDrafts && !pending && !running && !failure) privateDrafts.list().then(items=>{privateRecoveries=items;render();});
+    });
     document.addEventListener('visibilitychange',()=>{if(!document.hidden)refreshRemote();});
+    if (privateDrafts) privateDrafts.list().then(items=>{privateRecoveries=items;}).finally(()=>render());
     render();
 })();

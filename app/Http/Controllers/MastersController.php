@@ -110,7 +110,7 @@ class MastersController extends Controller
 
         $company = $request->attributes->get('active_company');
         $database = $company && array_intersect($request->attributes->get('company_allowed_tabs', []), ['sheets', 'books', 'reports', 'tax-reports', 'lapsing']) !== []
-            ? [...app(CompanyLedgerService::class)->snapshotFor($company, $request->attributes->get('company_allowed_tabs', [])), 'url' => route('sheets.database.save'), 'csrf' => csrf_token(), 'canWrite' => in_array('sheets', $request->attributes->get('company_allowed_tabs', []), true)]
+            ? [...app(CompanyLedgerService::class)->snapshotFor($company, $request->attributes->get('company_allowed_tabs', [])), 'url' => route('sheets.database.save'), 'csrf' => csrf_token(), 'draftUrl' => route('sheets.drafts.index'), 'userId' => $request->user()->id, 'canWrite' => in_array('sheets', $request->attributes->get('company_allowed_tabs', []), true)]
             : null;
 
         return response('window.CompanyLedgerDatabase = '.Js::encode($database).';window.WorkspaceAccounts = '.Js::encode($accounts).';window.WorkspaceMasters = '.Js::encode($masters).';window.WorkspaceDepreciationJournals = '.Js::encode($depreciation).';', 200, ['Content-Type' => 'application/javascript', 'Cache-Control' => 'no-store, private']);
