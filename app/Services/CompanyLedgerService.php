@@ -7,6 +7,7 @@ use App\Models\Company;
 use App\Models\CompanyLedger;
 use App\Models\User;
 use App\TeamPermissions;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
@@ -53,7 +54,15 @@ class CompanyLedgerService
         }
         $payroll = array_values(array_filter(array_map($withoutDraftNumbers, $ledger?->payroll ?? []), fn (array $row): bool => $visibility->visible($row, auth()->id())));
 
-        return ['record_versions' => $visibility->versions($company->id, $state, $payroll), 'company_id' => $company->id, 'revision' => $ledger?->revision ?? 0, 'initialized' => $ledger !== null, 'state' => $state, 'payroll' => $payroll, 'journals' => $journals];
+        $lastSave = $ledger ? DB::table('company_ledger_changes')->where('company_id', $company->id)->where('revision', $ledger->revision)->first(['user_id', 'created_at']) : null;
+        $saveInfo = [
+            'revision' => (int) ($ledger?->revision ?? 0),
+            'company_name' => $company->name,
+            'saved_at' => $lastSave ? CarbonImmutable::parse($lastSave->created_at, config('app.timezone'))->toIso8601String() : $ledger?->updated_at?->toIso8601String(),
+            'saved_by' => $lastSave ? User::query()->whereKey($lastSave->user_id)->value('name') : null,
+        ];
+
+        return ['save_info' => $saveInfo, 'record_versions' => $visibility->versions($company->id, $state, $payroll), 'company_id' => $company->id, 'revision' => $ledger?->revision ?? 0, 'initialized' => $ledger !== null, 'state' => $state, 'payroll' => $payroll, 'journals' => $journals];
     }
 
     public function snapshotFor(Company $company, array $tabs): array

@@ -49,13 +49,16 @@
         window.dispatchEvent(new CustomEvent('company-ledger:saved', {detail: database}));
         if (!editing()) { window.SheetBulk?.refresh(); window.dispatchEvent(new CustomEvent('company-ledger:refreshed')); }
     }
-    const banner = document.createElement('aside');
-    banner.className = 'company-database-status';
-    banner.setAttribute('aria-live', 'polite');
-    const label = document.createElement('span');
-    const actions = document.createElement('span');
-    banner.append(label, actions);
-    document.body.append(banner);
+    const statusView = window.CompanySaveStatus?.create(database);
+    const banner = statusView?.banner || document.createElement('aside');
+    const label = statusView?.label || document.createElement('span');
+    const actions = statusView?.actions || document.createElement('span');
+    if (!statusView) {
+        banner.className = 'company-database-status';
+        banner.setAttribute('aria-live', 'polite');
+        banner.append(label, actions);
+        document.body.append(banner);
+    }
     const button = (text, callback) => { const el = document.createElement('button'); el.type = 'button'; el.textContent = text; el.addEventListener('click', callback); actions.append(el); };
     const hasRecords = value => value && Object.values(value).some(rows => Array.isArray(rows) && rows.length);
     const rowsFor = (value, runs, sheet) => sheet === 'payroll' ? runs : value[sheet];
@@ -217,6 +220,7 @@
             label.textContent = 'Company database · Saved · Version ' + revision;
             banner.dataset.state = 'saved';
         }
+        statusView?.update({state: banner.dataset.state, message: label.textContent, revision: database.revision, initialized: database.initialized, saving: Boolean(pending || running) && !failure && !recoveryReview && !migration, recoveryUnavailable});
         for (const node of document.querySelectorAll?.('[data-company-posted-sheet]') || []) updateBadge(node);
     }
     function stash() {
