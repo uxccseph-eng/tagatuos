@@ -17,7 +17,10 @@
                 <button type="button" aria-label="Previous month" title="Previous month" @if($sheet === 'sales') data-period-step="-1" @elseif($sheet === 'collections') data-collection-action="previous" @else id="{{ $sheet }}-prev" @endif><span class="material-symbols-outlined" aria-hidden="true">chevron_left</span></button>
                 <span class="sheet-period-range" @if($sheet === 'sales') data-period-range @elseif($sheet === 'collections') data-collection-range @else id="{{ $sheet }}-period-range" @endif></span>
                 <button type="button" aria-label="Next month" title="Next month" @if($sheet === 'sales') data-period-step="1" @elseif($sheet === 'collections') data-collection-action="next" @else id="{{ $sheet }}-next" @endif><span class="material-symbols-outlined" aria-hidden="true">chevron_right</span></button>
-                @include('working-period-range')
+                <details class="sheet-date-picker">
+                    <summary>Custom dates</summary>
+                    @include('working-period-range')
+                </details>
             </div>
         </div>
     </div>

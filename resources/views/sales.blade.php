@@ -521,6 +521,8 @@
 </section>
 <section id="void-reversal-card" hidden class="void-reversal-card"><h3 class="font-label-sm uppercase">Reversal preview</h3><p class="text-body-sm text-on-surface-variant">{{ auth()->check() && isset($company['company_id']) ? 'Review this reversal before posting.' : 'Illustrative only · No reversal has been posted.' }}</p><div id="void-reversal-lines" class="font-label-sm space-y-1"></div></section>
 <!-- Section 1: Real-time Derived Telemetry Card -->
+<details class="entry-calculation-preview">
+<summary>Tax and journal preview</summary>
 <div class="bg-surface-container p-space-sm rounded-xl flex flex-col gap-space-xs shadow-inner">
 <div class="flex items-center justify-between pb-1">
 <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider font-semibold">{{ auth()->check() && isset($company['company_id']) ? 'Derived from this entry' : 'Derived · Demo preview' }}</span>
@@ -570,7 +572,8 @@
 <span class="font-mono text-on-surface" id="je-cr-vat">₱ 0.00</span>
 </div>
 </div>
-</section><p class="text-body-sm text-on-surface-variant">{{ auth()->check() && isset($company['company_id']) ? 'Journal entry preview. Changes are saved when you post this entry.' : 'Illustrative arithmetic only. No real ledger entry or payment is recorded.' }}</p><p id="entry-validation" role="alert" class="text-body-sm text-error"></p>
+</section><p class="text-body-sm text-on-surface-variant">{{ auth()->check() && isset($company['company_id']) ? 'Journal entry preview. Changes are saved when you post this entry.' : 'Illustrative arithmetic only. No real ledger entry or payment is recorded.' }}</p>
+</details><p id="entry-validation" role="alert" class="text-body-sm text-error"></p>
 <!-- Section 3: Inputs Form -->
 <form class="flex flex-col gap-space-md" id="new-entry-form">
 <div class="flex items-center justify-between pb-1">
@@ -581,7 +584,7 @@
 <div class="flex flex-col gap-1">
 <label for="entry-date" class="font-label-sm text-label-sm text-on-surface flex items-center justify-between">
 <span>Date <span class="text-error">*</span></span>
-<span class="font-label-sm text-[10px] text-on-surface-variant">YYYY-MM-DD</span>
+<span class="font-label-sm text-[10px] text-on-surface-variant">Use date picker</span>
 </label>
 <div class="relative">
 <input data-entry-field="Date" aria-label="Entry Date" id="entry-date" class="w-full bg-surface-container text-on-surface font-label-md text-label-md px-space-sm py-2 rounded-lg focus:outline-none focus:ring-1 focus:ring-secondary transition-all" type="date" value="2026-10-16"/>

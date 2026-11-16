@@ -1,0 +1,230 @@
+/* Hallmark · v2.0.0 · theme: retained brand · shape: app screen · scope: app · redesign: full
+ * Critique: the ledger leads; shared controls replace decorative chrome and oversized period panels.
+ * Palette: existing teal, navy and slate tokens. Wiring and financial calculations remain in their owners. */
+:root {
+    --desk-font: "Segoe UI", Arial, sans-serif;
+    --desk-space-xs: 4px;
+    --desk-space-sm: 8px;
+    --desk-space-md: 16px;
+    --desk-space-lg: 24px;
+    --desk-radius: 8px;
+    --desk-control: 36px;
+    --desk-rail: 248px;
+    --desk-accent-soft: color-mix(in srgb, var(--theme-accent) 12%, var(--theme-panel));
+}
+@media screen {
+    html, body { overflow-x: clip; }
+    body:has(:is(#sales-sidebar, #sidebarNav, .workspace-app-sidebar)) {
+        font-family: var(--desk-font);
+        background: var(--theme-bg) !important;
+        color: var(--theme-text);
+        caret-color: var(--theme-accent);
+        scrollbar-color: var(--theme-muted) var(--theme-bg);
+    }
+    body :is(button, a, input, select, textarea, summary):focus-visible {
+        outline: 2px solid var(--theme-accent) !important;
+        outline-offset: 2px;
+        transition: none !important;
+    }
+    body :is(button, input, select, textarea):disabled { cursor: not-allowed; }
+    body :is(h1, h2, h3) { min-width: 0; overflow-wrap: break-word; text-wrap: balance; }
+    body :is(.sheet-toolbar button, .sheet-utility-actions button, .returns-button):active { transform: translateY(1px); }
+    body #sales-shell .pointer-events-none.blur-3xl { display: none; }
+    body :is(#sales-sidebar, #sidebarNav, .workspace-app-sidebar) {
+        background: var(--theme-panel) !important;
+        border-color: var(--theme-line) !important;
+        box-shadow: none !important;
+        backdrop-filter: none !important;
+    }
+    body :is(#sales-sidebar, #sidebarNav, .workspace-app-sidebar) :is(a, summary, button) {
+        box-shadow: none !important;
+        transition: none !important;
+        font-family: var(--desk-font) !important;
+    }
+    body :is(#sales-sidebar, #sidebarNav, .workspace-app-sidebar) nav a,
+    body #sidebarNav a {
+        min-height: var(--desk-control);
+        border-radius: var(--desk-radius) !important;
+        color: var(--theme-muted) !important;
+        font-size: 13px !important;
+        font-weight: 500 !important;
+    }
+    body :is(#sales-sidebar, #sidebarNav, .workspace-app-sidebar) a[aria-current="page"],
+    body #sidebarNav a.bg-emerald-500 {
+        color: var(--theme-accent) !important;
+        background: var(--desk-accent-soft) !important;
+        border-left-color: var(--theme-accent) !important;
+    }
+    body :is(#sales-sidebar, #sidebarNav, .workspace-app-sidebar) nav a:hover,
+    body #sidebarNav a:hover { background: var(--theme-soft) !important; color: var(--theme-text) !important; }
+    body :is(#sales-sidebar, #sidebarNav) :is(.font-label-sm, .font-label, .font-mono),
+    body .workspace-nav-group h2,
+    body .workspace-brand small {
+        font-family: var(--desk-font) !important;
+        font-size: 12px !important;
+        letter-spacing: normal !important;
+        text-transform: none !important;
+    }
+    body :is(#sales-header, .workspace-app-header, body > header.fixed) {
+        background: var(--theme-panel) !important;
+        border-color: var(--theme-line) !important;
+        box-shadow: none !important;
+        backdrop-filter: none !important;
+    }
+    body #sales-header :is(button, input), body .workspace-app-header :is(button, input) {
+        font-family: var(--desk-font) !important;
+        letter-spacing: normal !important;
+        text-transform: none !important;
+        box-shadow: none !important;
+    }
+    body :is(.sheet-demo-badge, .sheet-heading-icon, .masters-eyebrow, .vat-eyebrow, .work-overline, .dash-eyebrow) {
+        font-family: var(--desk-font) !important;
+        letter-spacing: normal !important;
+        text-transform: none !important;
+    }
+    body .sheet-heading { gap: var(--desk-space-sm); padding-bottom: var(--desk-space-sm); }
+    body .sheet-heading-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--desk-space-md); }
+    body .sheet-heading-context { min-height: 48px; }
+    body .sheet-heading-title h1 { font-size: 26px !important; line-height: 34px !important; }
+    body .sheet-heading-icon { background: none; border: 0; box-shadow: none; width: 28px; height: 32px; border-radius: 0; }
+    body .sheet-demo-badge { background: none; padding: 0; font-size: 12px; color: var(--theme-muted); }
+    body .sheet-company-line { height: auto; flex-wrap: wrap; white-space: normal; }
+    body .sheet-period {
+        width: auto; min-height: var(--desk-control); padding: var(--desk-space-sm);
+        background: var(--theme-panel); border-color: var(--theme-line); border-radius: var(--desk-radius); box-shadow: none;
+        display: flex; flex-wrap: wrap; gap: var(--desk-space-sm); overflow: visible;
+    }
+    body .sheet-period-label { padding: 0 var(--desk-space-sm); border: 0; }
+    body .sheet-period-label > span { display: none; }
+    body .sheet-period-label strong { font: 600 13px/20px var(--desk-font); }
+    body .sheet-period-controls { flex-wrap: nowrap; padding: 0; gap: var(--desk-space-xs); }
+    body .sheet-period-range { font: 12px/20px var(--desk-font); padding: 0; color: var(--theme-muted); }
+    body .sheet-date-picker { position: relative; }
+    body .sheet-date-picker > summary {
+        cursor: pointer; padding: var(--desk-space-sm); color: var(--theme-text);
+        border-radius: var(--desk-radius); font: 500 12px/20px var(--desk-font); white-space: nowrap;
+    }
+    body .sheet-date-picker[open] > summary { background: var(--theme-soft); }
+    body .sheet-date-picker .working-date-range {
+        position: absolute; right: 0; top: calc(100% + var(--desk-space-sm)); z-index: 80;
+        width: 340px; max-width: 80vi; padding: var(--desk-space-md);
+        border: 1px solid var(--theme-line); border-radius: var(--desk-radius); background: var(--theme-panel);
+    }
+    body .working-date-range label { font: 12px/20px var(--desk-font); color: var(--theme-muted); }
+    body .working-date-range input { background: var(--theme-field); color: var(--theme-text); border-color: var(--theme-line); height: var(--desk-control); }
+    body .working-date-range button[data-period-apply] { background: var(--theme-accent); color: var(--theme-on-accent); border-color: var(--theme-accent); }
+    body .sheet-utility-actions :is(button, .sheet-document-inbox) {
+        height: var(--desk-control); width: auto !important; padding: var(--desk-space-sm) var(--desk-space-md);
+        background: none; border-color: var(--theme-line); border-radius: var(--desk-radius); box-shadow: none;
+        font: 500 12px/20px var(--desk-font); color: var(--theme-text);
+    }
+    body .sheet-tabs { height: 44px; padding-block: 0; }
+    body .sheet-tabs a { height: 44px; padding-inline: var(--desk-space-md); border-radius: 0; }
+    body .sheet-tabs a[aria-current="page"]::after { box-shadow: none; }
+    body .sheet-toolbar { margin-top: var(--desk-space-sm); padding: var(--desk-space-sm); border-radius: var(--desk-radius); background: var(--theme-panel); border-color: var(--theme-line); box-shadow: none; }
+    body .sheet-toolbar :is(button, input, select) { font: 500 12px/20px var(--desk-font); letter-spacing: normal; }
+    body .sheet-toolbar .sheet-tool { height: var(--desk-control); border-radius: var(--desk-radius); background: var(--theme-soft); color: var(--theme-text); }
+    body .sheet-toolbar-add { background: var(--theme-accent); color: var(--theme-on-accent); box-shadow: none; border-radius: var(--desk-radius); }
+    body .sheet-toolbar-status { height: var(--desk-control); background: var(--theme-soft); }
+    body .sheet-toolbar-status button { height: 30px; font-size: 12px; }
+    body .sheet-toolbar-search { height: var(--desk-control); background: var(--theme-field); border-color: var(--theme-line); border-radius: var(--desk-radius); }
+    body .sheet-toolbar-row + .sheet-toolbar-row .sheet-toolbar-search { flex: 1; width: auto; }
+    body .sheet-toolbar .sheet-tool-icon { width: var(--desk-control); }
+    body :is(.masters-tabs, .account-tabs, .books-tabs-wrap) { box-shadow: none; background: none; }
+    body :is(.masters-main, #sales-main, #payroll-main, #purchases-main, #collections-main) { background-image: none !important; }
+    body :is(.masters-title, .masters-title-row) { letter-spacing: normal; }
+    body :is(#sales-table, #payroll-table, #masters-table, .masters-table, .vat-summary table) :is(th, td) {
+        font-family: var(--desk-font); font-variant-numeric: tabular-nums; border-right: 0;
+    }
+    body :is(#sales-table, #payroll-table, #masters-table, .masters-table) th {
+        font-size: 12px; font-weight: 600; text-transform: none; letter-spacing: normal;
+    }
+    body #sales-main :is(.font-label-sm, .font-label-md) {
+        font-family: var(--desk-font); font-size: 12px; letter-spacing: normal; text-transform: none;
+    }
+    body #sales-main .font-mono { font-family: var(--desk-font); font-variant-numeric: tabular-nums; }
+    body #sales-main .animate-pulse { animation: none; box-shadow: none; }
+    body #payroll-main .sheet-heading-row { grid-template-columns: none; }
+    body #payroll-main .sheet-period { width: auto; }
+    body #payroll-main :is(.payroll-employee-table, .payroll-grid) { scrollbar-width: auto; }
+    body .payroll-employee-scroll > table > :is(thead, tbody) > tr > :is(th, td):first-child {
+        position: sticky; left: 0; z-index: 2; background: var(--theme-panel); border-right: 1px solid var(--theme-line);
+    }
+    body .company-database-status {
+        left: auto; right: var(--desk-space-md); bottom: var(--desk-space-md); width: auto; max-width: calc(100% - 32px);
+        background: var(--theme-panel); color: var(--theme-muted); border-color: var(--theme-line);
+        border-radius: var(--desk-radius); box-shadow: none; font: 12px/20px var(--desk-font);
+    }
+    body .company-database-status:is([data-state="error"], [data-state="warning"], [data-state="pending"]) {
+        left: 300px; color: var(--theme-text); background: var(--theme-panel);
+    }
+    body .company-database-status[data-state="saved"] {
+        position: relative; inset: auto; width: fit-content; margin: var(--desk-space-md) var(--desk-space-md) var(--desk-space-md) auto;
+    }
+    body .vat-toolbar { margin-top: var(--desk-space-md); }
+    body :is(.vat-cards, .work-metrics, .dash-metrics) { gap: 0; border-block: 1px solid var(--theme-line); padding-block: var(--desk-space-md); }
+    body :is(.vat-cards article, .work-metric, .dash-metric) {
+        background: none; border: 0; border-right: 1px solid var(--theme-line); border-radius: 0; box-shadow: none;
+        padding: var(--desk-space-sm) var(--desk-space-lg);
+    }
+    body :is(.vat-cards article, .work-metric, .dash-metric):first-child { padding-left: 0; }
+    body :is(.vat-cards article, .work-metric, .dash-metric):last-child { border-right: 0; }
+    body .dashboard-overview .dash-metric { border-radius: 0; border-block: 0; background: none; }
+    body :is(.work-metric-heading, .dash-card-heading) > .material-symbols-outlined { display: none; }
+    body :is(.vat-panel, .dash-panel, .account-card, .return-card) { border-radius: var(--desk-radius); box-shadow: none; }
+    body .return-cards { max-width: 820px; }
+    body .return-card { padding: var(--desk-space-lg); }
+    body .return-card :is(label, summary, .return-period, .return-generated-filename, .return-version, .return-version small, .return-generated-totals, .return-period-filing > p) { font-size: 12px; }
+    body .return-card h2 { font-size: 16px; }
+    body .return-category { text-transform: none; letter-spacing: normal; font-size: 12px; color: var(--theme-muted); }
+    body .return-card-archive { border-inline: 0; border-bottom: 0; border-radius: 0; }
+    body .return-generated { border: 0; border-left: 2px solid var(--theme-accent); border-radius: 0; }
+    body .return-card :is(.returns-primary, .returns-button) { font: 600 12px/20px var(--desk-font); min-height: var(--desk-control); }
+    body .return-card :is(input:not([type="checkbox"]), select) { min-height: var(--desk-control); }
+    body .dashboard-overview { max-width: 1440px; margin-inline: auto; }
+    body .dash-company { border: 0; padding-inline: 0; background: none; }
+    body .dash-company-icon { background: none; }
+    body .dash-quick { border: 0; padding-inline: 0; border-bottom: 1px solid var(--theme-line); border-radius: 0; }
+    body :is(.dash-panel p, .dash-deadline strong, .dash-period-table, .dash-period-table th) { font-size: 12px; }
+    body.workspace-shell { --workspace-sidebar-width: var(--desk-rail); }
+    body.workspace-shell .account-main { padding-top: 88px; }
+    body .vat-eyebrow { display: none; }
+    body .vat-heading h1 { margin-top: 0; }
+    body .work-overline { color: var(--theme-muted); font-size: 12px; }
+    body :is(.sheet-heading-title, .vat-heading, .page-heading) h1 { letter-spacing: -.025em; }
+    body .entry-drawer-content { background: var(--theme-panel); }
+    body #new-entry-form .uppercase { text-transform: none; letter-spacing: normal; font: 600 13px/20px var(--desk-font); }
+    body .entry-calculation-preview { border-bottom: 1px solid var(--theme-line); padding-bottom: var(--desk-space-md); }
+    body .entry-calculation-preview > summary { cursor: pointer; color: var(--theme-muted); font: 600 13px/24px var(--desk-font); }
+    body .entry-calculation-preview > :not(summary) { margin-top: var(--desk-space-md); }
+    body .entry-calculation-preview :is(.font-label-sm, .font-label-md) { font-family: var(--desk-font); text-transform: none; letter-spacing: normal; }
+    body .entry-calculation-preview .shadow-inner { box-shadow: none; background: none; }
+    body :is(#sales-detail-drawer, .payroll-entry-dialog) :is(input, select, textarea) { border-radius: var(--desk-radius); }
+    @media (min-width: 1024px) {
+        body #sales-sidebar { width: var(--desk-rail); }
+        body #sales-shell { padding-left: var(--desk-rail); }
+        body #sales-header { left: var(--desk-rail); }
+    }
+    @media (max-width: 900px) {
+        body .company-database-status:is([data-state="error"], [data-state="warning"], [data-state="pending"]) { left: var(--desk-space-md); }
+        body .sheet-heading-row { align-items: flex-start; }
+        body :is(.vat-cards, .work-metrics, .dash-metrics) { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--desk-space-md); }
+        body :is(.vat-cards article, .work-metric, .dash-metric) { padding: var(--desk-space-sm); border-right: 0; }
+    }
+    @media (max-width: 600px) {
+        body .sheet-period { width: 100%; align-items: center; }
+        body .sheet-period-controls { flex-wrap: wrap; }
+        body .sheet-period-range { display: none; }
+        body .sheet-heading-context { height: auto; }
+        body .sheet-heading-title { height: auto; }
+        body .sheet-date-picker .working-date-range { position: static; width: 100%; border: 0; padding-inline: 0; }
+        body .sheet-date-picker[open] { flex-basis: 100%; }
+        body .sheet-date-picker .working-date-range input { font-size: 16px; }
+        body .sheet-toolbar .sheet-tool { min-height: 40px; }
+        body .sheet-toolbar-search { width: 100%; }
+        body .sheet-toolbar-row + .sheet-toolbar-row .sheet-toolbar-search { flex-basis: 100%; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+        body :is(#sales-sidebar, #sidebarNav, .workspace-app-sidebar, .sheet-toolbar, .sheet-tabs) * { animation: none !important; transition: none !important; }
+    }
+}
