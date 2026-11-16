@@ -81,7 +81,7 @@
     body .settings-card { border-radius: var(--page-radius); padding: var(--page-pad); box-shadow: none; }
     body .settings-card-title h2 { font: 600 18px/26px var(--page-font); }
     body :is(.settings-field small, .settings-toggle-row small, .settings-form-footer > span, .settings-payroll-column) { font: 400 12px/20px var(--page-font); }
-    body :is(.cwt-entry, .collection-entry-drawer, .journal-entry, .payroll-entry-dialog, .sheet-import-dialog, .masters-dialog, .tax-dat-dialog) {
+    body :is(.cwt-entry, .collection-entry-drawer, .journal-entry, #payroll-entry, .sheet-import-dialog, .masters-dialog, .tax-dat-dialog) {
         background: var(--theme-panel); color: var(--theme-text); border-color: var(--theme-line); box-shadow: none; font-family: var(--page-font);
     }
     body :is(.cwt-entry-header, .collection-entry-header, .payroll-entry-header, .sheet-import-dialog > header) {

@@ -199,7 +199,7 @@
     body .entry-calculation-preview > :not(summary) { margin-top: var(--desk-space-md); }
     body .entry-calculation-preview :is(.font-label-sm, .font-label-md) { font-family: var(--desk-font); text-transform: none; letter-spacing: normal; }
     body .entry-calculation-preview .shadow-inner { box-shadow: none; background: none; }
-    body :is(#sales-detail-drawer, .payroll-entry-dialog) :is(input, select, textarea) { border-radius: var(--desk-radius); }
+    body :is(#sales-detail-drawer, #payroll-entry) :is(input, select, textarea) { border-radius: var(--desk-radius); }
     @media (min-width: 1024px) {
         body #sales-sidebar { width: var(--desk-rail); }
         body #sales-shell { padding-left: var(--desk-rail); }

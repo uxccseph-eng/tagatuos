@@ -1,0 +1,87 @@
+/* Hallmark v2.0.0 | component: workspace popups | genre: modern-minimal | theme: retained teal/navy | redesign: polish */
+/* Critique: one control scale and neutral surface across existing dialogs; drawers, import tables and statutory previews retain their own content and actions. */
+:root {
+    --popup-font: var(--desk-font, var(--page-font, system-ui));
+    --popup-heading-font: "Manrope", var(--popup-font);
+    --popup-gap: 16px;
+    --popup-pad: 24px;
+    --popup-control: 42px;
+    --popup-radius: 8px;
+    --popup-backdrop: rgb(2 6 23 / .58);
+    --popup-danger: var(--ui-error, #b42335);
+    --popup-danger-dark: #ff9aa5;
+    --popup-focus: var(--ui-focus, var(--theme-accent));
+}
+.dark { --popup-danger: var(--ui-error, var(--popup-danger-dark)); }
+@media screen {
+    body dialog.workspace-popup[id], body dialog.workspace-popup[class] {
+        box-sizing: border-box; color: var(--theme-text); background: var(--theme-panel);
+        border: 1px solid var(--theme-line); border-radius: var(--popup-radius);
+        box-shadow: none; font: 400 14px/22px var(--popup-font);
+        max-width: calc(100% - 32px); max-height: calc(100dvh - 32px); overflow: auto;
+        overscroll-behavior: contain;
+    }
+    body dialog.workspace-popup::backdrop { background: var(--popup-backdrop); backdrop-filter: none; }
+    body dialog.workspace-popup[data-popup-layout=form] { padding: var(--popup-pad); }
+    body dialog.workspace-popup[data-popup-layout=form] > :is(header, footer),
+    body dialog.workspace-popup[data-popup-layout=form] > form > :is(header, footer) { padding-inline: 0; }
+    body dialog.workspace-popup[data-popup-layout=form]:is(:has(> .return-dialog-body), :has(> form > .return-dialog-body), :has(> .masters-editor-body), :has(> form > .masters-editor-body)) { padding: 0; }
+    body dialog.workspace-popup[data-popup-layout=form]:is(:has(> .return-dialog-body), :has(> form > .return-dialog-body), :has(> .masters-editor-body), :has(> form > .masters-editor-body)) > :is(header, footer),
+    body dialog.workspace-popup[data-popup-layout=form]:is(:has(> .return-dialog-body), :has(> form > .return-dialog-body), :has(> .masters-editor-body), :has(> form > .masters-editor-body)) > form > :is(header, footer) { padding-inline: var(--popup-pad); }
+    body dialog.workspace-popup :is(h2, h3) { font-family: var(--popup-heading-font); letter-spacing: normal; text-transform: none; overflow-wrap: break-word; min-width: 0; }
+    body dialog.workspace-popup h2 { font-size: 20px; line-height: 28px; font-weight: 650; text-wrap: balance; }
+    body dialog.workspace-popup :is(.sheet-import-eyebrow, .returns-eyebrow, .eyebrow) { font: 500 12px/20px var(--popup-font); letter-spacing: normal; text-transform: none; color: var(--theme-muted); }
+    body dialog.workspace-popup > :is(header, footer),
+    body dialog.workspace-popup > form > :is(header, footer) { gap: var(--popup-gap); padding: 16px var(--popup-pad); background: var(--theme-panel); color: var(--theme-text); }
+    body dialog.workspace-popup :is(footer, .dialog-actions, .draft-leave-actions) { flex-wrap: wrap; gap: 8px; }
+    body dialog.workspace-popup :is(footer, .dialog-actions, .draft-leave-actions) > div { flex-wrap: wrap; }
+    body dialog.workspace-popup :is(.return-dialog-body, .sheet-import-body, .cwt-entry-body, .collection-entry-body, .payroll-entry-body, .masters-editor-body) { padding: var(--popup-pad); }
+    body dialog.workspace-popup :is(.masters-fields, .cwt-entry-fields, .collection-entry-fields, .ewt-fields, .vat-fields, .return-review-grid, .payroll-entry-inputs) { gap: var(--popup-gap); align-items: start; }
+    body dialog.workspace-popup label { min-width: 0; font-family: var(--popup-font); letter-spacing: normal; text-transform: none; }
+    body dialog.workspace-popup label:has(> :is(input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=hidden]), select, textarea)) { display: flex; flex-direction: column; gap: 8px; font-size: 13px; line-height: 20px; }
+    body dialog.workspace-popup :is(input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=hidden]), select, textarea),
+    body :is(#payroll-entry.workspace-popup, #journal-entry.workspace-popup, #new-entry-form) :is(input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=hidden]), select, textarea) {
+        box-sizing: border-box; width: 100%; min-width: 0; min-height: var(--popup-control);
+        padding: 10px 12px; border: 1px solid var(--theme-line); border-radius: 6px;
+        background: var(--theme-field); color: var(--theme-text); font: 400 14px/20px var(--popup-font);
+    }
+    body dialog.workspace-popup :is(input[type=checkbox], input[type=radio]) { flex-shrink: 0; accent-color: var(--theme-accent); }
+    body dialog.workspace-popup textarea { min-height: 88px; resize: vertical; }
+    body dialog.workspace-popup :is(input, textarea)::placeholder { color: var(--theme-muted); opacity: 1; }
+    body dialog.workspace-popup button,
+    body :is(#payroll-entry, #journal-entry).workspace-popup button {
+        box-sizing: border-box; min-height: var(--popup-control); padding: 9px 14px; border-radius: 6px;
+        border: 1px solid var(--theme-line); background: var(--theme-soft); color: var(--theme-text);
+        font: 600 13px/20px var(--popup-font); box-shadow: none; cursor: pointer;
+    }
+    body dialog.workspace-popup :is(header > button, .dialog-close, [aria-label^="Close"]) { min-width: var(--popup-control); }
+    body dialog.workspace-popup :is(.button.primary, .masters-primary, .returns-primary, .payroll-entry-primary, .cwt-entry-primary, .bg-primary, [data-import-post]),
+    body #payroll-entry.workspace-popup .payroll-entry-primary {
+        background: var(--theme-accent); border-color: var(--theme-accent); color: var(--theme-on-accent);
+    }
+    body dialog.workspace-popup :is(.danger, .danger-fill, .return-delete, .payroll-entry-danger, .cwt-danger) { background: var(--theme-panel); color: var(--popup-danger); border-color: var(--popup-danger); }
+    body dialog.workspace-popup :is(button, input, select, textarea):disabled { opacity: .6; cursor: not-allowed; background: var(--theme-soft); color: var(--theme-muted); }
+    body dialog.workspace-popup :focus-visible { outline: 2px solid var(--popup-focus); outline-offset: 2px; transition: none; }
+    body dialog.workspace-popup button:active:not(:disabled) { transform: translateY(1px); }
+    @media (hover: hover) { body dialog.workspace-popup button:hover:not(:disabled) { border-color: var(--theme-accent); } }
+    body :is(#new-entry-form, #payroll-entry, #journal-entry) :focus-visible { outline: 2px solid var(--popup-focus); outline-offset: 2px; transition: none; }
+    body dialog.workspace-popup [aria-invalid=true] { border-color: var(--popup-danger); }
+    body dialog.workspace-popup[data-popup-layout=drawer] { max-width: 100%; max-height: 100dvh; border-radius: 0; }
+    body :is(#payroll-entry, #journal-entry).workspace-popup { max-width: 100%; max-height: 100dvh; border-radius: 0; box-shadow: none; background: var(--theme-panel); color: var(--theme-text); }
+    body dialog.workspace-popup[data-popup-layout=import] { padding: 0; width: min(1100px, calc(100% - 32px)); }
+    body dialog.workspace-popup[data-popup-layout=import][open] { display: flex; flex-direction: column; }
+    body dialog.workspace-popup[data-popup-layout=import] > :is(header, footer) { flex: 0 0 auto; }
+    body dialog.workspace-popup[data-popup-layout=import] > .sheet-import-body { flex: 1 1 auto; min-height: 0; overflow: auto; max-height: none; }
+    body dialog.workspace-popup[data-popup-layout=form] > header,
+    body dialog.workspace-popup[data-popup-layout=form] > form > header { position: sticky; top: 0; z-index: 2; border-bottom: 1px solid var(--theme-line); }
+    body dialog.workspace-popup[data-popup-layout=form] > footer,
+    body dialog.workspace-popup[data-popup-layout=form] > form > footer { position: sticky; bottom: 0; z-index: 2; border-top: 1px solid var(--theme-line); }
+    body dialog.workspace-popup[data-popup-layout=preview] { padding: 0; }
+    body dialog.workspace-popup[data-popup-layout=preview] :is(.print-preview-toolbar, header, footer) { background: var(--theme-panel); }
+    body dialog.workspace-popup [hidden] { display: none !important; }
+    @media (max-width: 600px) {
+        :root { --popup-pad: 16px; --popup-control: 44px; }
+        body dialog.workspace-popup :is(.ewt-fields, .vat-fields, .return-review-grid, .payroll-entry-inputs) { grid-template-columns: minmax(0, 1fr); }
+        body dialog.workspace-popup h2 { font-size: 18px; line-height: 26px; }
+    }
+}
