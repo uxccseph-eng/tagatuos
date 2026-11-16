@@ -7,7 +7,7 @@ function page(config = {}) {
     const forms = [], calls = [], listeners = {};
     const makeForm = (action, method = 'post') => {
         const form = new Form();
-        Object.assign(form, {action, method, field: null, controls: [{}], handlers: {}, querySelector: () => form.field, querySelectorAll: () => form.controls, addEventListener: (event, handler) => { form.handlers[event] = handler; }, appendChild: field => { form.field = field; }});
+        Object.assign(form, {action, method, getAttribute: name => ({action, method})[name] ?? null, field: null, controls: [{}], handlers: {}, querySelector: () => form.field, querySelectorAll: () => form.controls, addEventListener: (event, handler) => { form.handlers[event] = handler; }, appendChild: field => { form.field = field; }});
         forms.push(form);
         return form;
     };
@@ -67,4 +67,13 @@ test('staff settings edits are blocked with role feedback instead of a forbidden
     assert.equal(prevented, true);
     assert.equal(p.feedback[0].role, 'staff');
     assert.match(p.feedback[0].message, /Settings access/);
+});
+
+test('payment controls named method or action cannot break workspace form binding', () => {
+    const p = page();
+    const dynamic = p.makeForm('http://localhost/tax-summary/ewt/actions', 'post');
+    dynamic.method = {value: 'Cash'};
+    dynamic.action = {value: 'payment'};
+    assert.doesNotThrow(() => p.listeners.submit({target: dynamic}));
+    assert.equal(dynamic.field.value, '17');
 });

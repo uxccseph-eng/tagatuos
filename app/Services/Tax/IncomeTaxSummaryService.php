@@ -189,7 +189,7 @@ class IncomeTaxSummaryService
     {
         $rows = DB::table('journal_entry_lines as l')->join('journal_entries as j', 'j.id', '=', 'l.journal_entry_id')->join('chart_accounts as c', 'c.id', '=', 'l.chart_account_id')->where('j.company_id', $company->id)->where('l.company_id', $company->id)->where('c.company_id', $company->id)->where('j.status', 'posted')->whereBetween('j.transaction_date', [$period['from'], $period['to']])->whereIn('c.type', ['Income', 'Expense'])->orderBy('l.id')->get(['j.source_key', 'j.number', 'j.sheet', 'j.transaction_date', 'c.code', 'c.name', 'c.type', 'c.statement_section', 'l.debit', 'l.credit']);
         $penaltySources = [];
-        foreach (['income_tax_summary_events', 'vat_summary_events'] as $table) {
+        foreach (['income_tax_summary_events', 'vat_summary_events', 'ewt_summary_events'] as $table) {
             foreach (DB::table($table)->where('company_id', $company->id)->where('action', 'payment')->get() as $event) {
                 $data = json_decode($event->data, true, 512, JSON_THROW_ON_ERROR);
                 if (($data['penalty_cents'] ?? 0) > 0 && ! empty($data['linked_source'])) {

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\VatSummaryActionRequest;
 use App\Models\CompanySetting;
+use App\Services\Tax\EwtSummaryService;
 use App\Services\Tax\IncomeTaxSummaryService;
 use App\Services\Tax\VatSummaryActions;
 use App\Services\Tax\VatSummaryService;
@@ -15,9 +16,14 @@ class TaxSummaryController extends Controller
 {
     public function index(Request $request, VatSummaryService $service): Response
     {
-        $input = $request->validate(['year' => ['nullable', 'integer', 'between:2023,2199'], 'tax' => ['nullable', 'in:vat,income']]);
+        $input = $request->validate(['year' => ['nullable', 'integer', 'between:2023,2199'], 'tax' => ['nullable', 'in:vat,income,ewt']]);
         $company = $request->attributes->get('active_company');
         $profile = CompanySetting::query()->where('company_id', $company->id)->firstOrFail()->profile;
+        if (($input['tax'] ?? 'vat') === 'ewt') {
+            $summary = app(EwtSummaryService::class)->build($company, $profile, (int) ($input['year'] ?? now('Asia/Manila')->year));
+
+            return response()->view('ewt-tax-summary', ['company' => $request->session()->get('company_setup'), 'summary' => $summary])->header('Cache-Control', 'no-store, private');
+        }
         if (($input['tax'] ?? 'vat') === 'income') {
             $summary = app(IncomeTaxSummaryService::class)->build($company, $profile, (int) ($input['year'] ?? now('Asia/Manila')->year));
 

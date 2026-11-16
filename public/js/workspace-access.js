@@ -8,7 +8,7 @@
         return url.origin === location.origin && (modules.includes(url.pathname.split('/').filter(Boolean)[0]) || url.pathname === '/company/setup');
     };
     const bindForm = form => {
-        if (!isWorkspaceUrl(form.action) || form.method.toLowerCase() === 'get') return;
+        if (!isWorkspaceUrl(form.getAttribute('action') || location.href) || (form.getAttribute('method') || 'get').toLowerCase() === 'get') return;
         let field = form.querySelector('input[name="_company_id"]');
         if (!field) {
             field = document.createElement('input');
@@ -47,7 +47,7 @@
     });
     if (!(access.canEditSettings ?? (['owner', 'manager', 'accountant'].includes(access.role) && access.tabs.includes('settings')))) {
         document.querySelectorAll('form[action]').forEach(form => {
-            const url = new URL(form.action, location.href);
+            const url = new URL(form.getAttribute('action') || location.href, location.href);
             if (url.origin === location.origin && url.pathname.startsWith('/settings/')) {
                 form.querySelectorAll('input,select,textarea').forEach(control => { control.disabled = true; });
                 form.addEventListener('submit', event => {

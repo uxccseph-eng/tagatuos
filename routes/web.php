@@ -15,6 +15,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DeleteClientController;
 use App\Http\Controllers\DocumentInboxController;
 use App\Http\Controllers\DocumentPurgeController;
+use App\Http\Controllers\EwtSummaryController;
 use App\Http\Controllers\FinancialReportsController;
 use App\Http\Controllers\FirmOwnershipController;
 use App\Http\Controllers\Form2307Controller;
@@ -232,6 +233,8 @@ Route::post('/tax-summary/preview', [TaxSummaryController::class, 'preview'])->m
 Route::post('/tax-summary/actions', [TaxSummaryController::class, 'store'])->middleware(['auth', 'throttle:60,1'])->name('tax-summary.store');
 Route::post('/tax-summary/income/preview', [IncomeTaxSummaryController::class, 'preview'])->middleware(['auth', 'throttle:60,1'])->name('tax-summary.income.preview');
 Route::post('/tax-summary/income/actions', [IncomeTaxSummaryController::class, 'store'])->middleware(['auth', 'throttle:60,1'])->name('tax-summary.income.store');
+Route::post('/tax-summary/ewt/preview', [EwtSummaryController::class, 'preview'])->middleware(['auth', 'throttle:60,1'])->name('tax-summary.ewt.preview');
+Route::post('/tax-summary/ewt/actions', [EwtSummaryController::class, 'store'])->middleware(['auth', 'throttle:60,1'])->name('tax-summary.ewt.store');
 Route::get('/tax-summary/income/sources', [IncomeTaxSummaryController::class, 'sources'])->middleware(['auth', 'throttle:60,1'])->name('tax-summary.income.sources');
 
 Route::middleware(['auth', 'throttle:60,1'])->prefix('tax-returns')->name('tax-returns.')->group(function (): void {

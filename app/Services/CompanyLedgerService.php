@@ -178,6 +178,7 @@ class CompanyLedgerService
             }
             $protectedVatSources = DB::table('vat_summary_events')->where('company_id', $locked->id)->whereIn('action', ['payment', 'close'])->get()->map(fn (object $event): string => json_decode($event->data, true)['linked_source'] ?? '')->filter()->all();
             $protectedVatSources = [...$protectedVatSources, ...DB::table('income_tax_summary_events')->where('company_id', $locked->id)->where('action', 'payment')->get()->map(fn (object $event): string => json_decode($event->data, true)['linked_source'] ?? '')->filter()->all()];
+            $protectedVatSources = [...$protectedVatSources, ...DB::table('ewt_summary_events')->where('company_id', $locked->id)->where('action', 'payment')->get()->map(fn (object $event): string => json_decode($event->data, true)['linked_source'] ?? '')->filter()->all()];
             $newJournals = collect($incomingState['journalEntries'] ?? [])->keyBy(fn (array $row): string => (string) $row['id']);
             foreach ($previousState['journalEntries'] as $journal) {
                 if (in_array('journalEntries:'.$journal['id'], $protectedVatSources, true)) {

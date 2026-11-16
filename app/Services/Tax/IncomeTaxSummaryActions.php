@@ -106,7 +106,7 @@ class IncomeTaxSummaryActions
                 $lines[] = $this->line($bank, 0, $amount);
                 $warnings[] = 'Debits accrued Income Tax Payable up to its posted balance; the unaccrued part goes to Prepaid Income Tax. Penalties remain separate.';
             } elseif (! empty($input['linked_source'])) {
-                foreach (['income_tax_summary_events', 'vat_summary_events'] as $table) {
+                foreach (['income_tax_summary_events', 'vat_summary_events', 'ewt_summary_events'] as $table) {
                     abort_if(DB::table($table)->where('company_id', $company->id)->get()->contains(fn (object $event): bool => (json_decode($event->data, true)['linked_source'] ?? null) === $input['linked_source']), 409, 'This journal is already linked to a tax action.');
                 }
                 $entry = DB::table('journal_entries')->where('company_id', $company->id)->where('source_key', $input['linked_source'])->where('sheet', 'journalEntries')->where('status', 'posted')->firstOrFail();
