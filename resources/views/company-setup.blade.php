@@ -83,22 +83,11 @@
 
       @auth
       <a href="{{ route('account.dashboard') }}" class="rounded-lg border border-slate-700 px-3 py-2 text-xs text-slate-300">Company books</a>
-      <form action="{{ route('logout') }}" method="POST">@csrf<button type="submit" class="rounded-lg border border-slate-700 px-3 py-2 text-xs text-slate-300">Sign out</button></form>
+      <x-account-profile />
       @else
       <form action="{{ route('preview.exit') }}" method="POST">@csrf<button type="submit" class="rounded-lg border border-slate-700 px-3 py-2 text-xs text-slate-300">Exit demo</button></form>
+      <span aria-label="Demo preview" class="rounded-full border border-slate-600 px-3 py-2 text-xs text-white">DM</span>
       @endauth
-
-      <div class="flex items-center gap-2 pl-1">
-
-        <span class="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-slate-700 to-slate-800 border border-slate-600 text-xs font-bold text-white shadow-inner">
-
-          DM
-
-          <span class="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-emerald-400 border-2 border-slate-950"></span>
-
-        </span>
-
-      </div>
 
     </div>
 
@@ -150,7 +139,7 @@
 
           <span class="flex h-2 w-2 rounded-full bg-emerald-400 animate-ping"></span>
 
-          <span class="text-xs font-mono text-slate-300">{{ auth()->check() ? 'Company registration' : 'Company setup preview' }}</span>
+          <span class="text-xs font-mono text-slate-300">@auth Company registration: {{ request()->attributes->get('active_company')?->name }} @else Company setup preview @endauth</span>
 
         </div>
 
@@ -1117,6 +1106,7 @@
 
 
 
+@guest
 <dialog id="preview-info" aria-labelledby="preview-title" class="rounded-2xl border border-slate-700 bg-slate-900 p-7 text-slate-200 shadow-2xl">
 
     <h2 id="preview-title" class="text-xl font-bold text-white">Company setup preview</h2>
@@ -1126,6 +1116,7 @@
     <form method="dialog"><button type="submit" class="mt-5 rounded-lg bg-emerald-400 px-5 py-2 text-sm font-bold text-slate-950">Got it</button></form>
 
 </dialog>
+@endguest
 
 </body></html>
 
