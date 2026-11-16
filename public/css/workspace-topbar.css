@@ -19,6 +19,7 @@
     body #workspace-app-header .workspace-header-location { display: block; max-width: 160px; overflow: clip; white-space: nowrap; text-overflow: ellipsis; font-size: 13px; color: var(--theme-muted); }
     body #workspace-app-header .workspace-header-search { box-sizing: border-box; width: 100%; max-width: 480px; min-width: 0; height: var(--bar-control); margin: 0; }
     body #workspace-app-header .workspace-header-search input { font: 400 13px/20px var(--bar-font); }
+    body #workspace-app-header .workspace-header-company-context { min-width: 0; max-width: 480px; color: var(--theme-muted); font: 500 13px/20px var(--bar-font); overflow: clip; white-space: nowrap; text-overflow: ellipsis; }
     body #workspace-app-header .workspace-header-actions { display: flex; align-items: center; gap: var(--bar-gap); margin-left: auto; min-width: 0; }
     body :is(#sales-header, #workspace-app-header) :is(.workspace-book-chooser, .workspace-theme-toggle, .company-switcher > summary) {
         display: inline-flex; box-sizing: border-box; align-items: center; justify-content: center; height: var(--bar-control); min-height: var(--bar-control);
@@ -67,6 +68,7 @@
     @media (max-width: 650px) {
         body #workspace-app-header { grid-template-columns: auto minmax(0, 1fr); }
         body #workspace-app-header .workspace-header-search { display: none; }
+        body #workspace-app-header .workspace-header-company-context { display: none; }
         body #workspace-app-header .workspace-header-actions { justify-content: flex-end; }
         body :is(#sales-header, #workspace-app-header) .account-profile { padding-left: 0; border-left: 0; }
         body :is(#sales-header, #workspace-app-header) .company-switcher-name { max-width: 120px; }

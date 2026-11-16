@@ -88,4 +88,21 @@ class TaxSummaryTest extends TestCase
         $book->users()->updateExistingPivot($user->id, ['role' => 'staff', 'allowed_tabs' => json_encode(['sheets'])]);
         $this->get(route('tax-summary.index', ['company_id' => $book->id]))->assertForbidden();
     }
+
+    public function test_vat_and_income_summary_use_the_selected_company_workspace(): void
+    {
+        [$book] = $this->book();
+
+        foreach (['vat', 'income'] as $tax) {
+            $this->get(route('tax-summary.index', ['company_id' => $book->id, 'year' => 2026, 'tax' => $tax]))
+                ->assertOk()
+                ->assertSee('data-company-workspace="'.$book->id.'"', false)
+                ->assertSee('VAT Summary Book')
+                ->assertSee('aria-label="Switch company book"', false)
+                ->assertSee(route('sheets.sales', ['company_id' => $book->id]))
+                ->assertSee('Company book')
+                ->assertDontSee('Search client books')
+                ->assertDontSee('Firm workspace');
+        }
+    }
 }

@@ -1,4 +1,4 @@
-<x-account-layout title="Tax Summary">
+<x-account-layout title="Tax Summary" :company-scope="true" :company="$company">
 <link rel="stylesheet" href="{{ asset('css/tax-summary.css') }}?v={{ filemtime(public_path('css/tax-summary.css')) }}">
 @php
     $money = fn ($value) => $value === null ? '—' : ($value < 0 ? '('.number_format(abs($value) / 100, 2).')' : number_format($value / 100, 2));
@@ -17,7 +17,7 @@
     ];
 @endphp
 <section class="vat-summary">
-<header class="vat-heading"><div><span class="vat-eyebrow">TAX WORKSPACE</span><h1>Tax Summary</h1><p>VAT from posted books, compared with your saved returns.</p></div>@include('company-switcher')</header>
+<header class="vat-heading"><div><h1>Tax Summary</h1><p class="vat-company-name">{{ $company['company_name'] }}</p><p>VAT from posted books, compared with your saved returns.</p></div></header>
 <div class="vat-toolbar"><nav aria-label="Tax type"><span class="vat-tab" aria-current="page">VAT · 2550Q</span> <a class="button secondary compact" href="{{ route('tax-summary.index', ['company_id' => $company['company_id'], 'year' => $year, 'tax' => 'income']) }}">Income Tax</a></nav><form method="GET" action="{{ route('tax-summary.index') }}"><input type="hidden" name="company_id" value="{{ $company['company_id'] }}"><label for="vat-year">Reporting year ending</label><input id="vat-year" type="number" name="year" min="2023" max="2199" value="{{ $year }}" required><button class="button secondary compact">Apply</button></form><a class="button compact" href="{{ route('tax-returns.index', ['company_id' => $company['company_id'], 'frequency' => 'quarterly', 'year' => $year, 'period' => 1]) }}">Prepare 2550Q →</a></div>
 <p class="vat-period">{{ $quarters[1]['period']['from'] }} – {{ $quarters[4]['period']['to'] }} · PHP · Ledger revision {{ $summary['revision'] }}</p>
 @if(!$summary['applicable'])<div class="vat-warning" role="alert">This company is not set as VAT-registered. Confirm its registration in Settings before using 2550Q.</div>@endif

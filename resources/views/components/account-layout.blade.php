@@ -1,4 +1,4 @@
-@props(['title', 'previewMode' => false])
+@props(['title', 'previewMode' => false, 'companyScope' => false, 'company' => []])
 @php($workspaceNavigation = $previewMode || (auth()->user()?->hasApprovedAccess() && ! auth()->user()?->must_change_password))
 <!DOCTYPE html>
 <html lang="en" class="dark">
@@ -50,7 +50,7 @@
         </nav>
     </header>
     @endif
-    <main class="account-main" id="account-workspace-main">
+    <main class="account-main" id="account-workspace-main" @if($companyScope) data-company-workspace="{{ $company['company_id'] }}" @endif>
         @if($previewMode)<div class="notice" role="status"><strong>Presentation preview · Sample data · Read-only</strong><br>These are the actual workspace layouts with fictional examples. Controls are disabled; no company records are created or changed.</div>@endif
         @if(session('status'))<div class="notice" role="status">{{ session('status') }}</div>@endif
         @if($errors->any())

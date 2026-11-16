@@ -37,11 +37,14 @@
             ['Clients', 'business_center', route('account.dashboard'), request()->routeIs('account.dashboard', 'closing.*')],
         ],
     ];
+    if ($companyScope) {
+        unset($navigationGroups['Workspace']);
+    }
 @endphp
 <a class="workspace-skip-link" href="#account-workspace-main">Skip to content</a>
 <aside class="workspace-app-sidebar" id="workspace-app-sidebar" aria-label="Workspace sidebar">
     <div class="workspace-sidebar-brand">
-        <a href="{{ $previewMode ? route('home') : route('my-work') }}" class="workspace-brand">
+        <a href="{{ $previewMode ? route('home') : ($companyScope ? $bookUrl('dashboard') : route('my-work')) }}" class="workspace-brand">
             <span class="workspace-brand-symbol material-symbols-outlined" aria-hidden="true">account_balance</span>
             <span><strong>kontadurya<span>.io</span></strong><small>LEDGER CORE</small></span>
         </a>
@@ -62,17 +65,25 @@
             </div>
         @endforeach
     </nav>
-    <div class="workspace-sidebar-foot"><span class="workspace-status-dot" aria-hidden="true"></span><div><strong>{{ $previewMode ? 'Read-only preview' : 'Firm workspace' }}</strong><small>{{ $previewMode ? 'Fictional sample records' : 'Client books stay separate' }}</small></div></div>
+    <div class="workspace-sidebar-foot"><span class="workspace-status-dot" aria-hidden="true"></span><div><strong>{{ $previewMode ? 'Read-only preview' : ($companyScope ? 'Company book' : 'Firm workspace') }}</strong><small>{{ $previewMode ? 'Fictional sample records' : ($companyScope ? 'Private client data' : 'Client books stay separate') }}</small></div></div>
 </aside>
 <button type="button" class="workspace-nav-backdrop" data-workspace-close hidden aria-label="Close navigation"></button>
 <header class="workspace-app-header" id="workspace-app-header">
     <button type="button" class="workspace-icon-button workspace-nav-toggle" id="workspace-nav-toggle" aria-label="Open navigation" aria-controls="workspace-app-sidebar" aria-expanded="false"><span class="material-symbols-outlined" aria-hidden="true">menu</span></button>
     <span class="workspace-header-location">{{ $title }}</span>
+    @if($companyScope)
+    <a class="workspace-header-company-context" href="{{ $bookUrl('dashboard') }}" aria-label="Open {{ $company['company_name'] }} dashboard">{{ $company['company_name'] }}</a>
+    @else
     <form method="GET" action="{{ $previewMode ? route('workspace.preview', ['page' => 'my-work']) : route('my-work') }}" class="workspace-header-search" role="search" aria-label="Find a client book">
         <span class="material-symbols-outlined" aria-hidden="true">search</span><input type="search" name="q" aria-label="Search client books" placeholder="Search client books…" maxlength="100"><kbd aria-hidden="true">Ctrl K</kbd>
     </form>
+    @endif
     <div class="workspace-header-actions">
+        @if($companyScope)
+            @include('company-switcher')
+        @else
         <a href="{{ $previewMode ? route('team.preview') : route('account.dashboard') }}" class="workspace-book-chooser" aria-label="Company books" title="Company books"><span class="material-symbols-outlined" aria-hidden="true">business</span><span>Company books</span><span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></a>
+        @endif
         @include('theme-toggle')
         @include('components.account-profile', ['variant' => 'workspace', 'previewMode' => $previewMode])
     </div>
