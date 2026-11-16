@@ -127,7 +127,7 @@ class CompanySetupTest extends TestCase
             ->assertDontSee('Get started')->assertDontSee('Free Core')
             ->assertSee('data-dashboard-overview', false)
             ->assertSee('dashboard-report.js')
-            ->assertSee('Books Flow Pipeline')
+            ->assertSee('Books flow')
             ->assertDontSee('TRIAL BALANCE')
             ->assertDontSee('BIR SCHEDULE STATUS')
             ->assertDontSee('TRANSACTION QUOTA')

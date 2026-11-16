@@ -22,7 +22,7 @@
 
   <link rel="stylesheet" href="{{ asset('css/company-setup.css') }}?v={{ filemtime(public_path('css/company-setup.css')) }}"><script src="{{ asset('js/company-setup.js') }}?v={{ filemtime(public_path('js/company-setup.js')) }}" defer></script>
 
-@include('working-period-assets')
+<link rel="stylesheet" href="{{ asset('css/workspace-typography.css') }}?v={{ filemtime(public_path('css/workspace-typography.css')) }}">
 <script src="{{ asset('js/draft-leave-guard.js') }}?v={{ filemtime(public_path('js/draft-leave-guard.js')) }}" defer></script></head>
 
 <body class="company-setup-page min-h-screen cosmic-mesh grid-lines relative selection:bg-emerald-500/30 selection:text-emerald-200">
@@ -158,7 +158,7 @@
 
 
 
-      <div class="rounded-xl border border-cyan-400/25 bg-cyan-400/5 p-4 text-xs leading-relaxed text-cyan-100">Demo mode · No identity has been verified. Use sample details. Settings are saved only in your local session.</div>
+      <div class="rounded-xl border border-cyan-400/25 bg-cyan-400/5 p-4 text-xs leading-relaxed text-cyan-100">{{ auth()->check() ? 'Registration details are saved to the selected company book. Saving does not submit a BIR filing.' : 'Demo mode · No identity has been verified. Use sample details. Settings are saved only in your local session.' }}</div>
 
 @if (session('status'))<div role="status" class="rounded-xl border border-emerald-400/30 bg-emerald-400/10 p-4 text-sm text-emerald-200">{{ session('status') }}</div>@endif
 
