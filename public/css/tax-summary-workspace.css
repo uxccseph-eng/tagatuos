@@ -1,0 +1,85 @@
+/* Hallmark v2.0.0 | redesign: full | scope: app | genre: modern-minimal | theme: existing teal/navy | shape: shared tax workbench | signature: consistent quarterly ledger */
+/* Critique: replace competing navigation and panel treatments with one header, one control rhythm and one table language. Preserve tax calculations, routes, figures and script hooks. */
+:root{--tax-summary-overlay:rgb(0 0 0 / .65)}
+body.account-layout .tax-summary-workspace{max-width:1440px;min-width:0;margin:0 auto;color:var(--theme-text);font-family:inherit}
+.tax-summary-workspace .tax-summary-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:24px;min-width:0;margin:0 0 24px}
+.tax-summary-workspace .tax-summary-heading h1{font-size:28px;line-height:36px;font-weight:700;letter-spacing:normal;margin:0 0 8px;text-wrap:balance;overflow-wrap:break-word;min-width:0}
+.tax-summary-workspace .tax-summary-heading p{font-size:13px;line-height:20px;margin:0;color:var(--theme-muted)}
+.tax-summary-workspace .tax-summary-heading .tax-summary-company{font-size:14px;color:var(--theme-text)}
+.tax-summary-workspace .tax-summary-heading .tax-summary-description{margin-top:8px}
+.tax-summary-workspace .tax-summary-heading>.button{flex-shrink:0}
+.tax-summary-controls{display:flex;align-items:center;justify-content:space-between;gap:24px;border-bottom:1px solid var(--theme-line)}
+.tax-summary-controls nav{display:flex;align-items:stretch;gap:24px;min-width:0}
+.tax-summary-controls nav a{display:inline-flex;align-items:center;min-height:48px;padding:0 0 12px;border-bottom:2px solid transparent;color:var(--theme-muted);font-size:13px;font-weight:500;text-decoration:none;white-space:nowrap}
+.tax-summary-controls nav a[aria-current="page"]{color:var(--theme-accent);border-bottom-color:var(--theme-accent)}
+.tax-summary-controls nav a:hover{color:var(--theme-text)}
+.tax-summary-controls form{display:flex;align-items:center;gap:12px;padding-bottom:12px;flex-shrink:0}
+.tax-summary-controls form label{font-size:12px;color:var(--theme-muted)}
+body.account-layout .tax-summary-controls input[type=number]{width:96px;min-height:36px;height:36px;padding:8px 12px;border:1px solid var(--theme-line);border-radius:6px;background:var(--theme-field);color:var(--theme-text);font-size:13px}
+body.account-layout .tax-summary-workspace .button{display:inline-flex;align-items:center;justify-content:center;min-height:36px;border:1px solid var(--theme-line);border-radius:6px;padding:8px 12px;gap:8px;font-size:13px;line-height:18px;text-decoration:none;box-shadow:none;white-space:nowrap}
+body.account-layout .tax-summary-workspace .button.secondary{background:var(--theme-panel);color:var(--theme-text)}
+body.account-layout .tax-summary-workspace .button.primary{background:var(--theme-accent);color:var(--theme-on-accent);border-color:var(--theme-accent)}
+body.account-layout .tax-summary-workspace .button.secondary:hover{background:var(--theme-soft)}
+body.account-layout .tax-summary-workspace .button.primary:hover{background:color-mix(in srgb,var(--theme-accent) 88%,var(--theme-text))}
+.tax-summary-workspace button:active{transform:translateY(1px)}
+.tax-summary-workspace button:disabled{cursor:not-allowed;opacity:.5}
+.tax-summary-workspace :focus-visible{outline:2px solid var(--theme-accent);outline-offset:3px}
+body.account-layout .tax-summary-workspace :is(.vat-period,.ewt-caption){font-size:12px;line-height:20px;color:var(--theme-muted);margin:16px 0}
+body.account-layout .tax-summary-workspace :is(.vat-cards,.ewt-metrics){display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0;padding:20px 0;margin:20px 0 24px;border-top:1px solid var(--theme-line);border-bottom:1px solid var(--theme-line);background:transparent;box-shadow:none}
+body.account-layout .tax-summary-workspace :is(.vat-cards>article,.ewt-metrics>div){display:flex;flex-direction:column;align-items:flex-start;gap:12px;min-width:0;padding:4px 20px;border:0;border-right:1px solid var(--theme-line);border-radius:0;background:transparent;box-shadow:none}
+body.account-layout .tax-summary-workspace :is(.vat-cards>article,.ewt-metrics>div):first-child{padding-left:0}
+body.account-layout .tax-summary-workspace :is(.vat-cards>article,.ewt-metrics>div):last-child{border-right:0}
+.tax-summary-workspace :is(.vat-cards,.ewt-metrics) strong{font-size:26px;line-height:36px;font-weight:700;overflow-wrap:anywhere;font-variant-numeric:tabular-nums;color:var(--theme-text)}
+.tax-summary-workspace :is(.vat-cards,.ewt-metrics) :is(span,small){font-size:12px;line-height:20px;color:var(--theme-muted)}
+body.account-layout .tax-summary-workspace :is(.vat-panel,.ewt-section){border:1px solid var(--theme-line);border-radius:8px;background:var(--theme-panel);box-shadow:none;margin:24px 0;overflow:clip}
+body.account-layout .tax-summary-workspace :is(.vat-panel,.ewt-section)>header{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:20px}
+.tax-summary-workspace :is(.vat-panel,.ewt-section) h2{font-size:16px;line-height:24px;font-weight:600;text-wrap:balance;margin:0}
+.tax-summary-workspace :is(.vat-panel,.ewt-section)>header p{font-size:13px;line-height:20px;margin:4px 0 0;color:var(--theme-muted)}
+body.account-layout .tax-summary-workspace :is(.vat-panel,.ewt-section)>summary{padding:20px;font-size:15px;line-height:20px;font-weight:600;cursor:pointer}
+.tax-summary-workspace :is(.vat-panel,.ewt-section)>summary:hover{background:var(--theme-soft)}
+.tax-summary-workspace :is(.vat-panel,.ewt-section)>p,.tax-summary-workspace .vat-note{font-size:12px;line-height:20px;padding:0 20px 16px;margin:8px 0 0;color:var(--theme-muted)}
+body.account-layout .tax-summary-workspace :is(.vat-scroll,.ewt-table-wrap){overflow:auto;max-width:100%;background:var(--theme-panel)}
+.tax-summary-workspace>.ewt-table-wrap{border:1px solid var(--theme-line);border-radius:8px}
+body.account-layout .tax-summary-workspace table{width:100%;border-collapse:collapse;border-spacing:0;white-space:nowrap;font-size:13px;line-height:20px;font-variant-numeric:tabular-nums}
+body.account-layout .tax-summary-workspace :is(th,td){padding:12px 20px;border-bottom:1px solid var(--theme-line);text-align:right;background:var(--theme-panel)}
+body.account-layout .tax-summary-workspace th:first-child{min-width:240px;position:sticky;left:0;z-index:1;text-align:left;background:var(--theme-panel);font-weight:400}
+body.account-layout .tax-summary-workspace thead th{color:var(--theme-muted);background:var(--theme-soft);font-size:12px;font-weight:500}
+body.account-layout .tax-summary-workspace thead th:first-child{background:var(--theme-soft)}
+.tax-summary-workspace thead small{display:block;margin-top:4px;font-size:11px;line-height:16px;font-weight:400;color:var(--theme-muted)}
+body.account-layout .tax-summary-workspace :is(.vat-total,.ewt-total)>*{font-weight:600;background:var(--theme-soft)}
+body.account-layout .tax-summary-workspace :is(.vat-total,.ewt-total)>th:first-child{background:var(--theme-soft)}
+.tax-summary-workspace table a{color:var(--theme-accent);text-decoration:underline;text-underline-offset:4px}
+.tax-summary-workspace caption{padding:20px;font-size:16px;line-height:24px;font-weight:600;text-align:left;background:var(--theme-panel);color:var(--theme-text)}
+.tax-summary-workspace :is(.vat-badge,.ewt-badge){display:inline-flex;align-items:center;border:1px solid var(--theme-line);border-radius:4px;padding:4px 8px;background:var(--theme-soft);color:var(--theme-muted);font-size:12px;line-height:16px;font-weight:400}
+body.account-layout .tax-summary-workspace .vat-reconciliation{grid-template-columns:repeat(2,minmax(0,1fr))}
+body.account-layout .tax-summary-workspace .vat-reconciliation>article{padding:20px;border-top:1px solid var(--theme-line);background:var(--theme-panel)}
+.tax-summary-workspace .vat-reconciliation h3{font-size:14px;line-height:20px;margin:0}
+.tax-summary-workspace .vat-reconciliation dl{font-size:13px;line-height:20px}
+.tax-summary-workspace .vat-action-bar{padding:16px 20px;gap:8px;border:0;background:transparent}
+.tax-summary-workspace>.vat-action-bar{padding:16px 0;margin:0}
+.tax-summary-workspace :is(.vat-warning,.ewt-warning){border-color:var(--theme-line);background:var(--theme-soft);color:var(--theme-text);font-size:13px;line-height:20px}
+.tax-summary-workspace .vat-history>summary{font-size:13px;padding:16px 20px;cursor:pointer}
+body.account-layout .tax-summary-workspace :is(.vat-dialog,#ewt-payment-dialog){width:min(680px,calc(100% - 32px));max-height:90dvh;padding:24px;border:1px solid var(--theme-line);border-radius:8px;background:var(--theme-panel);color:var(--theme-text);overflow:auto}
+.tax-summary-workspace :is(.vat-dialog,#ewt-payment-dialog) h2{font-size:20px;line-height:28px;margin:0;text-wrap:balance}
+.tax-summary-workspace :is(.vat-dialog,#ewt-payment-dialog) :is(header,footer){display:flex;align-items:center;justify-content:space-between;gap:12px}
+.tax-summary-workspace :is(.vat-dialog,#ewt-payment-dialog) footer{justify-content:flex-end;flex-wrap:wrap;padding-top:20px;border-top:1px solid var(--theme-line)}
+.tax-summary-workspace :is(.vat-dialog,#ewt-payment-dialog) p{font-size:13px;line-height:20px;color:var(--theme-muted)}
+.tax-summary-workspace :is(.vat-fields,.ewt-fields){display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin:20px 0}
+.tax-summary-workspace :is(.vat-fields,.ewt-fields) label{display:flex;flex-direction:column;gap:8px;font-size:13px;line-height:20px;min-width:0}
+body.account-layout .tax-summary-workspace :is(.vat-fields,.ewt-fields) :is(input,select,textarea){width:100%;min-width:0;min-height:40px;padding:8px 12px;border:1px solid var(--theme-line);border-radius:6px;background:var(--theme-field);color:var(--theme-text);font:inherit}
+body.account-layout .tax-summary-workspace :is(.vat-fields,.ewt-fields) input[type=checkbox]{width:20px;min-height:20px;height:20px;accent-color:var(--theme-accent)}
+.tax-summary-workspace .ewt-fields .ewt-check{flex-direction:row;align-items:center}
+.tax-summary-workspace :is(#vat-action-preview,#ewt-preview){padding:16px;border:1px solid var(--theme-line);border-radius:6px;background:var(--theme-soft);margin:20px 0}
+@media(max-width:800px){.tax-summary-controls{align-items:stretch;flex-direction:column;gap:12px}.tax-summary-controls form{justify-content:flex-end}.tax-summary-controls nav{gap:20px}.tax-summary-workspace .tax-summary-heading{gap:16px}body.account-layout .tax-summary-workspace :is(.vat-cards,.ewt-metrics){grid-template-columns:repeat(2,minmax(0,1fr));row-gap:20px}body.account-layout .tax-summary-workspace :is(.vat-cards>article,.ewt-metrics>div):nth-child(3){padding-left:0}body.account-layout .tax-summary-workspace :is(.vat-cards>article,.ewt-metrics>div):nth-child(2){border-right:0}}
+@media(max-width:600px){.tax-summary-workspace .tax-summary-heading{flex-wrap:wrap}body.account-layout .tax-summary-workspace .vat-reconciliation{grid-template-columns:1fr}body.account-layout .tax-summary-workspace .vat-reconciliation>article{border-right:0}.tax-summary-workspace :is(.vat-fields,.ewt-fields){grid-template-columns:1fr}body.account-layout .tax-summary-workspace :is(.vat-dialog,#ewt-payment-dialog){padding:20px}body.account-layout .tax-summary-workspace th:first-child{min-width:200px;max-width:220px;white-space:normal}.tax-summary-workspace :is(.vat-cards,.ewt-metrics) strong{font-size:23px}.tax-summary-controls nav{gap:16px}}
+
+body.account-layout .tax-summary-workspace :is(.vat-cards>article,.ewt-metrics>div){min-height:108px}
+body.account-layout .tax-summary-workspace .vat-panel>header:has(>h2){flex-direction:column;align-items:flex-start;gap:4px}
+
+body.account-layout .tax-summary-workspace :is(.vat-help,.vat-history){padding:0}
+.tax-summary-workspace .vat-history>summary{margin:0;padding:20px;color:var(--theme-text)}
+.tax-summary-workspace :is(.vat-dialog,#ewt-payment-dialog) header>button{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;min-height:36px;border:1px solid var(--theme-line);border-radius:6px;background:var(--theme-soft);color:var(--theme-text);font-size:22px}
+
+.tax-summary-workspace :is(.vat-dialog,#ewt-payment-dialog)::backdrop{background:var(--tax-summary-overlay)}
+.tax-summary-workspace :is(.vat-fields,.ewt-fields) label:has(input[type=checkbox]){flex-direction:row;align-items:center;grid-column:1/-1}
+.tax-summary-workspace :is(.vat-fields,.ewt-fields) input[type=checkbox]{order:-1;flex:0 0 20px}
