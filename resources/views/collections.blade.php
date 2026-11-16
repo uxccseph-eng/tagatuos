@@ -8,7 +8,7 @@
 <div class="fixed bottom-10 left-1/3 w-[560px] h-[560px] rounded-full bg-secondary-container/5 blur-[140px] pointer-events-none -z-10"></div>
 <header class="sheet-page-header">@include('sheet-heading', ['sheet' => 'collections'])
 </header>
-@include('sheet-tabs', ['sheet' => 'collections'])
+<div class="sheet-tab-gutter">@include('sheet-tabs', ['sheet' => 'collections'])</div>
 <!-- SECTION 3: SPREADSHEET ACTION TOOLBAR -->
 <div class="w-full px-gutter pt-space-md pb-space-sm">
 @include('sheet-toolbar', ['sheet' => 'collections'])

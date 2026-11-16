@@ -22,13 +22,6 @@
     if(!toolbar)return;
     const sheet=toolbar.dataset.sheetToolbar;
     const main=toolbar.closest('main');
-    const navigation=main.querySelector('.sheet-tabs');
-    const activeTab=navigation?.querySelector('[aria-current="page"]');
-    if(activeTab){
-        const bounds=navigation.getBoundingClientRect(),activeBounds=activeTab.getBoundingClientRect();
-        if(activeBounds.right>bounds.right)navigation.scrollLeft+=activeBounds.right-bounds.right+8;
-        else if(activeBounds.left<bounds.left)navigation.scrollLeft-=bounds.left-activeBounds.left+8;
-    }
     const select=document.getElementById(sheet==='collections'?'collection-status-filter':'sales-status-filter');
     const statusControl=document.getElementById(sheet+'-filter');
     const statusLabel=document.getElementById(sheet+'-filter-label');

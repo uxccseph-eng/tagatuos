@@ -1,0 +1,50 @@
+/* Hallmark v2.0.0 | component: sheet navigation | genre: modern-minimal | theme: existing teal/navy | redesign: polish */
+/* Critique: one tab rhythm across transaction sheets and Lapsing; keep labels, routes, counts and native page navigation. */
+/* Navigation states: default, hover, focus, pressed and current. No synthetic loading, error or success states are added to native links. */
+:root {
+    --sheet-tabs-font: var(--workspace-ui-font, var(--desk-font, system-ui));
+    --sheet-tabs-height: 44px;
+    --sheet-tabs-gutter: 32px;
+    --sheet-tabs-wash: color-mix(in srgb, var(--theme-accent) 8%, var(--theme-bg));
+}
+@media screen {
+    body nav.sheet-tabs {
+        display: flex; align-items: stretch; gap: 4px; box-sizing: border-box;
+        width: 100%; min-width: 0; max-width: 100%; min-height: 48px; height: auto;
+        margin: 0; padding: 0; overflow-x: auto; overflow-y: hidden;
+        background: transparent; border: 0; border-bottom: 1px solid var(--theme-line);
+        scrollbar-width: thin; scrollbar-color: var(--theme-line) transparent;
+        scroll-padding-inline: 8px; box-shadow: none;
+    }
+    body nav.sheet-tabs > a {
+        position: relative; display: inline-flex; align-items: center; justify-content: flex-start;
+        flex: 0 0 auto; gap: 8px; box-sizing: border-box; min-height: var(--sheet-tabs-height); height: auto;
+        margin: 0; padding: 12px; border: 0; border-radius: 4px 4px 0 0;
+        background: transparent; color: var(--theme-muted); white-space: nowrap; text-decoration: none;
+        font-family: var(--sheet-tabs-font) !important; font-size: 13px !important;
+        line-height: 20px !important; font-weight: 500 !important; letter-spacing: normal; text-transform: none;
+        box-shadow: none; transition: none;
+    }
+    body nav.sheet-tabs > a::after { content: none; box-shadow: none; }
+    body nav.sheet-tabs > a:hover { color: var(--theme-text); background: var(--theme-soft); }
+    body nav.sheet-tabs > a:active { color: var(--theme-accent); background: var(--sheet-tabs-wash); }
+    body nav.sheet-tabs > a[aria-current="page"] { color: var(--theme-accent); background: var(--sheet-tabs-wash); }
+    body nav.sheet-tabs > a[aria-current="page"]::after {
+        content: ''; position: absolute; inset-inline: 12px; bottom: 0; height: 2px;
+        background: var(--theme-accent); border-radius: 0; box-shadow: none;
+    }
+    body nav.sheet-tabs > a:focus-visible {
+        outline: 2px solid var(--theme-accent); outline-offset: -4px; background: var(--theme-soft);
+    }
+    body nav.sheet-tabs .material-symbols-outlined {
+        display: inline-flex; align-items: center; justify-content: center; flex: 0 0 18px;
+        width: 18px; height: 20px; font-size: 18px; line-height: 20px; color: inherit;
+    }
+    body nav.sheet-tabs .sheet-tab-count { display: none !important; }
+    body .sheet-tab-gutter { min-width: 0; padding-inline: var(--sheet-tabs-gutter); }
+    body nav.sheet-tabs-local { margin-block: 16px; }
+    @media (max-width: 600px) {
+        :root { --sheet-tabs-gutter: 16px; }
+        body nav.sheet-tabs > a { padding-inline: 12px; }
+    }
+}

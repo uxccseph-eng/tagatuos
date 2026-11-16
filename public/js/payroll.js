@@ -492,5 +492,4 @@
     window.addEventListener('company-ledger:refreshed', () => { if (window.CompanyLedger) { const working=new Map(records.filter(run=>postedEdits.has(run.id)).map(run=>[run.id,run]));records=window.CompanyLedger.payroll().map(run=>working.get(run.id)||run);if(!postedEdits.size)render(); } });
     document.querySelector('#sales-header button')?.addEventListener('click', () => add());
     render();
-    document.querySelector('.sheet-tabs [aria-current="page"]')?.scrollIntoView({block: 'nearest', inline: 'nearest'});
 })();
