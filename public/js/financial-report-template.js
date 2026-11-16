@@ -77,7 +77,7 @@
         };
         return zip(files);
     }
-    const api = {metadata, csv, xlsx};
+    const api = {metadata, csv, xlsx, zip};
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     if (root) root.FinancialReportTemplate = api;
 })(typeof window === 'undefined' ? null : window);

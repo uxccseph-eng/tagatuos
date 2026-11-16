@@ -46,7 +46,7 @@ class FinancialReportsController extends Controller
         if (! $company) {
             return to_route('company.setup');
         }
-        $reportTitles = ['trial-balance' => 'Trial Balance', 'balance-sheet' => 'Balance Sheet', 'income-statement' => 'Income Statement', 'cash-flow' => 'Cash Flow', 'changes-in-equity' => 'Changes in Equity'];
+        $reportTitles = ['trial-balance' => 'Trial Balance', 'balance-sheet' => 'Balance Sheet', 'income-statement' => 'Income Statement', 'cash-flow' => 'Cash Flow', 'changes-in-equity' => 'Changes in Equity', 'notes-to-fs' => 'Notes to FS'];
         abort_unless(isset($reportTitles[$report]), 404);
 
         return view('financial-reports', ['company' => $company, 'report' => $report, 'reportTitle' => $reportTitles[$report], 'reportTitles' => $reportTitles]);

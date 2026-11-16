@@ -41,3 +41,20 @@ test('direct PDF generation repeats headings across pages and renders totals, ne
 test('invalid report data fails before rendering instead of downloading an incomplete PDF', async () => {
     await assert.rejects(create(meta,columns,[{cells:['missing columns']}]),/incomplete/);
 });
+
+
+test('portrait notes PDF repeats the draft heading and keeps narrative cells left aligned', async () => {
+    global.document = mockDocument();
+    try {
+        const noteMeta = {...meta, title:'Notes to FS — DEMO DRAFT'};
+        const rows = Array.from({length:70}, () => ({kind:'account', cells:['', 'Supporting disclosure for accountant review']}));
+        const bytes = await create(noteMeta, ['Note','Disclosure'], rows, {portrait:true,textOnly:true,widths:[.08,.92]});
+        const text = Buffer.from(bytes).toString('latin1'), pages = Number(text.match(/\/Count (\d+)/)[1]);
+        assert.match(text, /MediaBox \[0 0 595.28 841.89\]/);
+        assert.ok(pages > 1);
+        assert.equal(document.calls.filter(call=>call.text === noteMeta.title).length, pages);
+        const narrative = document.calls.filter(call=>call.text.startsWith('Supporting disclosure'));
+        assert.equal(narrative.length,70);
+        assert.ok(narrative.every(call=>call.x < 100));
+    } finally { delete global.document; }
+});

@@ -1,0 +1,61 @@
+/* Hallmark v2.0.0 | scope: app | component: notes to financial statements | theme: retained teal/navy | redesign: polish */
+/* Critique: settings stay separate from the document; an index leads into a readable draft with explicit source and review status. */
+:root {
+    --notes-font: var(--desk-font, "Segoe UI", sans-serif);
+    --notes-heading: "Manrope", var(--notes-font);
+    --notes-width: 860px;
+    --notes-print-paper: #fff;
+    --notes-print-ink: #111;
+}
+.notes-workspace { color: var(--theme-text); font: 400 14px/24px var(--notes-font); }
+.notes-notice { border: 1px solid var(--theme-line); padding: 16px 24px; background: var(--theme-soft); margin-bottom: 16px; }
+.notes-notice p { margin: 4px 0 0; color: var(--theme-muted); }
+.notes-controls { display: flex; align-items: end; justify-content: space-between; flex-wrap: wrap; gap: 16px; }
+.notes-controls > div { display: flex; flex-wrap: wrap; gap: 8px; }
+.notes-controls label, .notes-fields label { display: flex; flex-direction: column; gap: 8px; font-size: 13px; }
+.notes-workspace :is(button, input, select, textarea) { font: inherit; }
+.notes-workspace button { min-height: 44px; padding: 8px 16px; border: 1px solid var(--theme-line); border-radius: 6px; color: var(--theme-text); background: var(--theme-soft); cursor: pointer; }
+.notes-workspace :is(input, select, textarea) { box-sizing: border-box; min-height: 44px; min-width: 0; padding: 8px 12px; border: 1px solid var(--theme-line); border-radius: 6px; background: var(--theme-field); color: var(--theme-text); }
+.notes-workspace button:disabled { background: var(--theme-soft); color: var(--theme-muted); opacity: .55; cursor: not-allowed; }
+.notes-workspace button:active:not(:disabled) { transform: translateY(1px); }
+.notes-workspace :focus-visible { outline: 2px solid var(--theme-accent); outline-offset: 2px; transition: none; }
+#notes-year { width: 132px; }
+#notes-status { color: var(--theme-muted); margin: 16px 0; }
+#notes-empty { padding: 48px 24px; border-top: 1px solid var(--theme-line); }
+#notes-empty p { max-width: 62ch; margin: 16px 0; }
+#notes-empty h2 { font: 650 24px/32px var(--notes-heading); text-wrap: balance; }
+.notes-layout { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 32px; align-items: start; }
+#notes-index { display: flex; flex-direction: column; gap: 4px; position: sticky; top: 88px; }
+#notes-index a { padding: 8px 12px; color: var(--theme-muted); font-size: 13px; border-left: 2px solid var(--theme-line); }
+#notes-index a:hover { color: var(--theme-accent); border-color: var(--theme-accent); }
+.notes-paper { box-sizing: border-box; max-width: var(--notes-width); width: 100%; padding: 40px; background: var(--theme-panel); border: 1px solid var(--theme-line); }
+.notes-paper header { border-bottom: 1px solid var(--theme-line); padding-bottom: 24px; }
+.notes-paper header h2 { font: 650 24px/32px var(--notes-heading); text-wrap: balance; overflow-wrap: break-word; min-width: 0; }
+.notes-paper header p { margin: 8px 0; }
+.notes-paper section { padding-top: 32px; scroll-margin-top: 88px; }
+.notes-paper section h3 { font: 650 18px/28px var(--notes-heading); margin: 0 0 16px; }
+.notes-paper p { margin: 0 0 16px; overflow-wrap: anywhere; }
+.notes-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; padding: 24px 0; }
+.notes-wide { grid-column: 1/-1; }
+.notes-fields label.notes-check { display: flex; flex-direction: row; align-items: start; }
+.notes-fields input[type=checkbox] { width: 20px; min-height: 20px; flex-shrink: 0; }
+#notes-settings { width: min(760px, calc(100% - 32px)); }
+#notes-settings-error { color: var(--popup-danger); }
+.notes-workspace [hidden] { display: none !important; }
+@media (max-width: 900px) { .notes-layout { grid-template-columns: minmax(0, 1fr); gap: 24px; } #notes-index { position: static; } .notes-paper { padding: 24px; } }
+@media (max-width: 600px) { .notes-fields { grid-template-columns: minmax(0, 1fr); } .notes-paper { padding: 16px; } }
+
+body #notes-settings > form > :is(header, footer) { display: flex; align-items: start; justify-content: space-between; gap: 16px; }
+body #notes-settings > form > header h2 { margin: 0; }
+body #notes-settings > form > header p { margin: 8px 0 0; }
+body #notes-settings > form > header > button { flex: 0 0 auto; }
+body #notes-settings > form > footer { justify-content: flex-end; align-items: center; flex-wrap: wrap; }
+
+@media print {
+    @page { size: A4 portrait; margin: 15mm; }
+    .notes-controls, .notes-notice, #notes-status, #notes-index, #notes-settings, #notes-empty, #books-main > .books-heading { display: none !important; }
+    .notes-layout { display: block; }
+    .notes-paper { max-width: none; padding: 0; border: 0; color: var(--notes-print-ink); background: var(--notes-print-paper); }
+    .notes-paper section { scroll-margin-top: 0; }
+    .notes-paper h3 { break-after: avoid; }
+}

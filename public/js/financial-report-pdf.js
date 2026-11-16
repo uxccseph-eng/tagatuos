@@ -38,12 +38,12 @@
         lines.push(line);
         return lines;
     }
-    async function create(meta, columns, rows) {
+    async function create(meta, columns, rows, layout = {}) {
         if (!columns.length || !rows.every(row => row.cells.length === columns.length)) throw Error('The report columns are incomplete. Refresh the page and try again.');
         await document.fonts?.ready;
-        const width = 841.89, height = 595.28, scale = 3, margin = 36, tableWidth = width - margin * 2;
-        const numericStart = columns[0] === 'Code' ? 2 : 1;
-        const widths = columns[0] === 'Code' ? [0.1, 0.46, 0.14, 0.14, 0.16].map(value => value * tableWidth) : columns.map((_, index) => tableWidth * (index === 0 ? 0.52 : 0.48 / (columns.length - 1)));
+        const width = layout.portrait ? 595.28 : 841.89, height = layout.portrait ? 841.89 : 595.28, scale = 3, margin = 36, tableWidth = width - margin * 2;
+        const numericStart = layout.textOnly ? columns.length : columns[0] === 'Code' ? 2 : 1;
+        const widths = layout.widths ? layout.widths.map(value => value * tableWidth) : columns[0] === 'Code' ? [0.1, 0.46, 0.14, 0.14, 0.16].map(value => value * tableWidth) : columns.map((_, index) => tableWidth * (index === 0 ? 0.52 : 0.48 / (columns.length - 1)));
         const pages = []; let context, canvas, y, bodyTop;
         const font = (size = 8.5, bold = false) => {context.font = (bold ? 'bold ' : '') + size + 'px Arial, sans-serif';};
         const draw = (value, x, top, size = 8.5, bold = false, align = 'left') => {font(size, bold); context.textAlign = align; context.fillStyle = '#333'; context.fillText(String(value ?? ''), x, top);};

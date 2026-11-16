@@ -22,6 +22,17 @@ class FinancialReportsTest extends TestCase
         $this->get('/reports')->assertRedirect('/reports/trial-balance');
     }
 
+    public function test_notes_demo_uses_the_existing_company_scope_and_document_exports(): void
+    {
+        $this->get('/reports/notes-to-fs')->assertRedirect('/signin');
+        $this->withSession(['preview_access' => true, 'company_setup' => ['company_name' => 'Notes QA', 'full_name' => 'Preview']])
+            ->get('/reports/notes-to-fs')->assertOk()->assertViewIs('financial-reports')
+            ->assertSee('Demo draft')->assertSee('Settings stay in this page only.')
+            ->assertSee('notes-settings-form')->assertSee('notes-pdf')->assertSee('notes-word')
+            ->assertSeeInOrder(['financial-report-template.js', 'financial-notes-data.js', 'financial-notes.js'])
+            ->assertDontSee('js/financial-reports.js')->assertViewHas('report', 'notes-to-fs');
+    }
+
     public function test_transaction_report_requires_workspace_and_valid_report_selection(): void
     {
         $this->get('/reports/income-statement/transactions')->assertRedirect('/signin');
