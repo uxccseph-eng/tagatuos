@@ -14,10 +14,10 @@
     const money = cents => new Intl.NumberFormat('en-PH', {style: 'currency', currency: 'PHP'}).format(cents / 100);
     const invalidate = () => { prepared = null; confirm.hidden = true; previewBox.hidden = true; error.textContent = ''; };
     const updatePeriods = () => {
-        const monthly = form.elements.form.value === '0619-E';
+        const monthly = config.monthlyOnly || form.elements.form.value === '0619-E';
         const options = [];
         for (let i = 1; i <= (monthly ? 12 : 4); i++) {
-            if (monthly && i % 3 === 0) continue;
+            if (monthly && !config.monthlyOnly && i % 3 === 0) continue;
             options.push(new Option(monthly ? new Date(2026, i - 1, 1).toLocaleString('en', {month: 'long'}) : `Q${i}`, String(i)));
         }
         form.elements.period.replaceChildren(...options);

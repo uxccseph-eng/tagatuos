@@ -71,7 +71,7 @@ class EwtSummaryActions
             $lines[] = $this->line($bank, 0, $amount);
 
         } elseif (! empty($input['linked_source'])) {
-            foreach (['vat_summary_events', 'income_tax_summary_events'] as $table) {
+            foreach (['vat_summary_events', 'income_tax_summary_events', 'compensation_summary_events'] as $table) {
                 abort_if(DB::table($table)->where('company_id', $company->id)->get()->contains(fn (object $event): bool => (json_decode($event->data, true)['linked_source'] ?? null) === $input['linked_source']), 409, 'This journal is already linked to a tax action.');
             }
 

@@ -134,6 +134,8 @@ class VatSummaryActions
                 $lines[] = $this->line($bank, 0, $amount);
 
             } elseif (! empty($input['linked_source'])) {
+                abort_if(DB::table('compensation_summary_events')->where('company_id', $company->id)->get()->contains(fn (object $event): bool => (json_decode($event->data, true)['linked_source'] ?? null) === $input['linked_source']), 409, 'This journal is already linked to a compensation payment.');
+
                 abort_if(DB::table('ewt_summary_events')->where('company_id', $company->id)->get()->contains(fn (object $event): bool => (json_decode($event->data, true)['linked_source'] ?? null) === $input['linked_source']), 409, 'This journal is already linked to an EWT payment.');
 
                 abort_if(DB::table('vat_summary_events')->where('company_id', $company->id)->whereIn('action', ['payment', 'close'])->get()->contains(fn (object $event): bool => (json_decode($event->data, true)['linked_source'] ?? null) === $input['linked_source']), 409, 'This journal is already linked to a VAT action.');

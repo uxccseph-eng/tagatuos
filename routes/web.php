@@ -10,6 +10,7 @@ use App\Http\Controllers\CompanyBookController;
 use App\Http\Controllers\CompanyDraftController;
 use App\Http\Controllers\CompanyLedgerController;
 use App\Http\Controllers\CompanySetupController;
+use App\Http\Controllers\CompensationSummaryController;
 use App\Http\Controllers\CwtController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DeleteClientController;
@@ -233,6 +234,8 @@ Route::post('/tax-summary/preview', [TaxSummaryController::class, 'preview'])->m
 Route::post('/tax-summary/actions', [TaxSummaryController::class, 'store'])->middleware(['auth', 'throttle:60,1'])->name('tax-summary.store');
 Route::post('/tax-summary/income/preview', [IncomeTaxSummaryController::class, 'preview'])->middleware(['auth', 'throttle:60,1'])->name('tax-summary.income.preview');
 Route::post('/tax-summary/income/actions', [IncomeTaxSummaryController::class, 'store'])->middleware(['auth', 'throttle:60,1'])->name('tax-summary.income.store');
+Route::post('/tax-summary/compensation/preview', [CompensationSummaryController::class, 'preview'])->middleware(['auth', 'throttle:60,1'])->name('tax-summary.compensation.preview');
+Route::post('/tax-summary/compensation/actions', [CompensationSummaryController::class, 'store'])->middleware(['auth', 'throttle:60,1'])->name('tax-summary.compensation.store');
 Route::post('/tax-summary/ewt/preview', [EwtSummaryController::class, 'preview'])->middleware(['auth', 'throttle:60,1'])->name('tax-summary.ewt.preview');
 Route::post('/tax-summary/ewt/actions', [EwtSummaryController::class, 'store'])->middleware(['auth', 'throttle:60,1'])->name('tax-summary.ewt.store');
 Route::get('/tax-summary/income/sources', [IncomeTaxSummaryController::class, 'sources'])->middleware(['auth', 'throttle:60,1'])->name('tax-summary.income.sources');
