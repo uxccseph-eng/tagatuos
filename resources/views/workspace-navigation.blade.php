@@ -72,7 +72,7 @@
         <span class="material-symbols-outlined" aria-hidden="true">search</span><input type="search" name="q" aria-label="Search client books" placeholder="Search client books…" maxlength="100"><kbd aria-hidden="true">Ctrl K</kbd>
     </form>
     <div class="workspace-header-actions">
-        <a href="{{ $previewMode ? route('team.preview') : route('account.dashboard') }}" class="workspace-book-chooser"><span class="material-symbols-outlined" aria-hidden="true">business</span><span>Company books</span><span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></a>
+        <a href="{{ $previewMode ? route('team.preview') : route('account.dashboard') }}" class="workspace-book-chooser" aria-label="Company books" title="Company books"><span class="material-symbols-outlined" aria-hidden="true">business</span><span>Company books</span><span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></a>
         @include('theme-toggle')
         @include('components.account-profile', ['variant' => 'workspace', 'previewMode' => $previewMode])
     </div>

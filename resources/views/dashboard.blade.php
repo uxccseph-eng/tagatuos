@@ -73,7 +73,9 @@
 
     <!-- User Profile Avatar (JR) -->
     <button type="button" aria-label="{{ auth()->check() ? 'Profile for '.auth()->user()->name : 'Preview profile' }}" data-workspace-topic="Profile" class="profile-button flex items-center gap-2 cursor-pointer">
-      @auth<span class="hidden lg:block max-w-[140px] truncate text-xs font-semibold text-slate-800 dark:text-slate-200">{{ auth()->user()->name }}</span>@endauth
+      @auth
+      <span class="dashboard-profile-copy"><span class="dashboard-profile-name">{{ auth()->user()->name }}</span><span class="dashboard-profile-role">{{ match (request()->attributes->get('active_company')?->pivot?->role) { 'owner' => auth()->user()->type === 'firm' ? 'Firm owner' : 'Owner', 'manager' => 'Manager', 'accountant' => 'Accountant', 'staff' => 'Staff', default => 'Workspace member' } }}</span></span>
+      @endauth
       <span class="relative w-8 h-8 rounded-full bg-slate-200 dark:bg-[#242a36] border border-slate-300 dark:border-slate-600 flex items-center justify-center">
         <span class="font-mono text-[11px] text-slate-800 dark:text-white font-bold">{{ mb_strtoupper(mb_substr(auth()->user()?->name ?? $company['full_name'], 0, 1)) }}</span>
         <span class="absolute bottom-0 right-0 w-2 h-2 rounded-full bg-emerald-500 dark:bg-[#00f5a0] ring-2 ring-white dark:ring-[#161c28]"></span>
