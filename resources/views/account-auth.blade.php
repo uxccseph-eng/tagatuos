@@ -2,7 +2,7 @@
     <div class="auth-grid">
         <section class="auth-intro">
             <span class="eyebrow"><span class="status-dot"></span> YOUR ACCOUNTING WORKSPACE</span>
-            <h1>Your books.<br>Your team.<br><span class="accent">One place.</span></h1>
+            <h1>Your books. Your team. One place.</h1>
             <p>Keep your own company book or manage client books through a firm account.</p>
             <div class="intro-points">
                 <div><span>01</span><p><strong>Submit your registration</strong>Individual for your own book. Firm for multiple clients.</p></div>

@@ -86,17 +86,17 @@ document.querySelectorAll('[data-ledger-tab]').forEach((tab) => {
     tab.addEventListener('click', () => {
         activeLedger = tab.dataset.ledgerTab;
         document.querySelectorAll('[data-ledger-tab]').forEach((item) => item.setAttribute('aria-pressed', String(item === tab)));
-        document.querySelector('[data-ledger-path]').textContent = `mesh://ph-bir.node.kontadurya.io/v4/${activeLedger}-matrix`;
+        document.querySelector('[data-ledger-path]').textContent = `${activeLedger} sample ledger`;
         confirmButton.disabled = false;
-        confirmButton.textContent = 'Confirm Vector';
+        confirmButton.textContent = 'Check sample entry';
         if (activeLedger === 'sales') {
             ledgerRows.innerHTML = originalSalesRows;
             document.querySelector('[data-tax-heading]').textContent = 'Output VAT (12%)';
-            document.querySelector('[data-net-label]').textContent = 'Autonomously calculated net: ₱16,071.43';
+            document.querySelector('[data-net-label]').textContent = 'Sample net sales: ₱16,071.43';
             document.querySelector('[data-withholding-label]').textContent = 'EWT 2%: ₱321.43';
             if (salesConfirmed) {
                 markSalesConfirmed();
-                confirmButton.textContent = 'Vector Confirmed ✓';
+                confirmButton.textContent = 'Sample entry checked';
                 confirmButton.disabled = true;
             }
         } else {
@@ -125,7 +125,7 @@ confirmButton?.addEventListener('click', () => {
         salesConfirmed = true;
         markSalesConfirmed();
     }
-    confirmButton.textContent = 'Vector Confirmed ✓';
+    confirmButton.textContent = 'Sample entry checked';
     confirmButton.disabled = true;
     document.querySelector('[data-ledger-status]').textContent = 'Sample vector confirmed. This is a visual demonstration; no transaction was saved.';
 });

@@ -1,0 +1,169 @@
+/* Hallmark · v2.0.0 · theme: retained teal/navy/slate brand · scope: app · redesign: full
+ * Critique: forms and client work lead; quiet surfaces and readable rows replace oversized introductions and nested chrome. */
+:root {
+    --account-ui-font: "Segoe UI", Arial, sans-serif;
+    --account-ui-space-xs: 4px;
+    --account-ui-space-sm: 8px;
+    --account-ui-space-md: 16px;
+    --account-ui-space-lg: 24px;
+    --account-ui-space-xl: 40px;
+    --account-ui-radius: 8px;
+    --account-ui-control: 40px;
+    --account-ui-accent-wash: color-mix(in srgb, var(--theme-accent) 10%, var(--theme-panel));
+}
+@media screen {
+    body.account-layout .account-tabs { display: flex; align-items: center; gap: var(--account-ui-space-lg); overflow-x: auto; }
+    body.account-layout .account-tabs > :is(a, span) { display: inline-flex; align-items: center; min-height: var(--account-ui-control); flex-shrink: 0; }
+    html, body { overflow-x: clip; }
+    body.account-layout {
+        --bg: var(--theme-bg);
+        --panel: var(--theme-panel);
+        --border: var(--theme-line);
+        --text: var(--theme-text);
+        --muted: var(--theme-muted);
+        --accent: var(--theme-accent);
+        background: var(--theme-bg);
+        color: var(--theme-text);
+        font: 14px/1.55 var(--account-ui-font);
+    }
+    body.account-layout :is(h1, h2, h3) { min-width: 0; overflow-wrap: break-word; text-wrap: balance; }
+    body.account-layout .account-header {
+        min-height: 72px; padding: var(--account-ui-space-md) max(var(--account-ui-space-lg), calc((100% - 1240px) / 2));
+        background: var(--theme-panel); border-color: var(--theme-line); gap: var(--account-ui-space-lg);
+    }
+    body.account-layout .account-nav { flex-wrap: wrap; gap: var(--account-ui-space-md); }
+    body.account-layout .account-main { max-width: 1440px; padding: var(--account-ui-space-xl) var(--account-ui-space-lg); }
+    body.account-layout.workspace-shell .account-main { max-width: 1640px; padding-top: 88px; }
+    body.account-layout .account-footer { background: var(--theme-bg); color: var(--theme-muted); border-color: var(--theme-line); font-size: 12px; }
+    body.account-layout .eyebrow {
+        color: var(--theme-muted); font: 500 12px/20px var(--account-ui-font); letter-spacing: normal; text-transform: none;
+    }
+    body.account-layout .auth-grid .eyebrow, body.account-layout .status-dot { display: none; }
+    body.account-layout .account-card {
+        border-color: var(--theme-line); border-radius: var(--account-ui-radius);
+        background: var(--theme-panel); color: var(--theme-text); box-shadow: none;
+    }
+    body.account-layout .page-heading { align-items: flex-start; margin-bottom: var(--account-ui-space-lg); gap: var(--account-ui-space-lg); }
+    body.account-layout .page-heading h1 { font-size: 28px; line-height: 36px; margin-top: var(--account-ui-space-sm); }
+    body.account-layout .page-heading p { font-size: 13px; max-width: 72ch; }
+    body.account-layout .count-badge { min-width: 100px; padding: var(--account-ui-space-sm) var(--account-ui-space-md); background: none; border: 0; border-left: 1px solid var(--theme-line); border-radius: 0; }
+    body.account-layout .count-badge span { font-size: 12px; }
+    body.account-layout .auth-grid { grid-template-columns: minmax(0, 1fr) minmax(360px, 460px); gap: 64px; padding-block: var(--account-ui-space-lg); align-items: start; max-width: 1100px; margin-inline: auto; }
+    body.account-layout .auth-intro { padding-top: var(--account-ui-space-lg); }
+    body.account-layout .auth-intro h1 { max-width: 13ch; font-size: 48px; line-height: 1.15; letter-spacing: -.035em; margin: 0 0 var(--account-ui-space-lg); }
+    body.account-layout .auth-intro > p { max-width: 45ch; color: var(--theme-muted); font-size: 16px; line-height: 1.65; }
+    body.account-layout .intro-points { border-top: 1px solid var(--theme-line); padding-top: var(--account-ui-space-lg); margin-top: var(--account-ui-space-lg); }
+    body.account-layout .intro-points > div { gap: var(--account-ui-space-md); margin-bottom: var(--account-ui-space-lg); }
+    body.account-layout .intro-points > div > span { color: var(--theme-muted); background: none; padding: 0; min-width: 22px; font: 500 13px/20px var(--account-ui-font); }
+    body.account-layout .intro-points p { font-size: 13px; line-height: 1.6; }
+    body.account-layout .auth-card { padding: 32px; border-top: 3px solid var(--theme-accent); }
+    body.account-layout .auth-card h2 { font-size: 24px; margin-top: 0; }
+    body.account-layout .auth-card > .muted { font-size: 13px; }
+    body.account-layout .field-stack { gap: var(--account-ui-space-md); margin-top: var(--account-ui-space-lg); }
+    body.account-layout .field { min-width: 0; gap: var(--account-ui-space-sm); }
+    body.account-layout :is(.field, .field-stack, .team-filters, .document-fields, .follow-up-form, .closing-form) label { color: var(--theme-text); font-size: 13px; line-height: 20px; }
+    body.account-layout .account-main :is(input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]), select, textarea) {
+        min-width: 0; min-height: var(--account-ui-control); border-color: var(--theme-line); border-radius: var(--account-ui-radius);
+        background: var(--theme-field); color: var(--theme-text); font-family: var(--account-ui-font); font-size: 14px; line-height: 20px;
+    }
+    body.account-layout .account-main textarea { min-height: 96px; resize: vertical; padding: var(--account-ui-space-sm) var(--account-ui-space-md); }
+    body.account-layout :is(input, select, textarea)::placeholder { color: var(--theme-muted); opacity: 1; }
+    body.account-layout :is(.field small, .document-workspace small, .small-copy, .storage-note, .member-email) { font-size: 12px !important; line-height: 1.6; color: var(--theme-muted); }
+    body.account-layout .field small { min-height: 1lh; }
+    body.account-layout :is(.button, .dialog-actions button) { min-height: var(--account-ui-control); border-radius: var(--account-ui-radius); box-shadow: none; font: 600 13px/20px var(--account-ui-font); gap: var(--account-ui-space-sm); padding: var(--account-ui-space-sm) var(--account-ui-space-md); }
+    body.account-layout .button.primary { color: var(--theme-on-accent); background: var(--theme-accent); border-color: var(--theme-accent); }
+    body.account-layout .button.secondary { color: var(--theme-text); background: var(--theme-panel); border-color: var(--theme-line); }
+    body.account-layout .button:hover { filter: none; text-decoration: none; }
+    body.account-layout .button.secondary:hover { background: var(--theme-soft); }
+    body.account-layout .button.primary:hover { background: color-mix(in srgb, var(--theme-accent) 88%, var(--theme-text)); }
+    body.account-layout .button:active { transform: translateY(1px); }
+    body.account-layout :is(button, input, select, textarea):disabled { cursor: not-allowed; }
+    body.account-layout :is(button, a, input, select, textarea, summary):focus-visible { outline: 2px solid var(--theme-accent); outline-offset: 2px; transition: none; }
+    body.account-layout .books-grid { grid-template-columns: minmax(0, 1fr) minmax(290px, 340px); gap: var(--account-ui-space-lg); align-items: start; }
+    body.account-layout .books-grid > section { border-top: 1px solid var(--theme-line); }
+    body.account-layout .book-card {
+        border-inline: 0; border-top: 0; border-bottom: 1px solid var(--theme-line); border-radius: 0;
+        padding: var(--account-ui-space-lg) var(--account-ui-space-sm); margin-bottom: 0; gap: var(--account-ui-space-md); background: none;
+    }
+    body.account-layout .book-avatar { width: 36px; height: 36px; border: 0; background: var(--account-ui-accent-wash); border-radius: var(--account-ui-radius); font-size: 22px; }
+    body.account-layout .book-copy { flex-basis: 240px; }
+    body.account-layout .book-copy h2 { font-size: 17px; line-height: 24px; margin-bottom: var(--account-ui-space-sm); }
+    body.account-layout .book-copy p { font-size: 12px; }
+    body.account-layout :is(.role-badge, .status-badge, .permission-chips span, .work-pill) { border-radius: var(--account-ui-space-xs); font-size: 12px; letter-spacing: normal; text-transform: none; }
+    body.account-layout .books-grid > aside { display: grid; gap: var(--account-ui-space-md); }
+    body.account-layout .books-grid > aside .account-card { padding: var(--account-ui-space-lg); }
+    body.account-layout .books-grid > aside .account-card h2 { font-size: 19px; margin-top: var(--account-ui-space-sm); }
+    body.account-layout .books-grid > aside .button { white-space: normal; text-align: center; }
+    body.account-layout .storage-note { margin-top: 0; padding: 0; }
+    body.account-layout .client-progress-track { background: var(--theme-soft); }
+    body.account-layout .client-progress-track > span { background: var(--theme-accent); }
+    body.account-layout .password-card { width: min(100%, 560px); padding: 32px; border-top: 3px solid var(--theme-accent); }
+    body.account-layout :is(.team-toolbar, .work-section-heading, .document-toolbar) { gap: var(--account-ui-space-md); padding: var(--account-ui-space-md) var(--account-ui-space-lg); }
+    body.account-layout :is(.team-table, .document-table, .work-table) { font-size: 13px; }
+    body.account-layout :is(.team-table, .document-table, .work-table) :is(th, td) { padding: var(--account-ui-space-md); border-right: 0; }
+    body.account-layout :is(.team-table, .document-table, .work-table) th { background: var(--theme-soft); color: var(--theme-muted); font: 600 12px/20px var(--account-ui-font); letter-spacing: normal; text-transform: none; }
+    body.account-layout :is(.team-table, .document-table, .work-table) tbody tr:hover { background: var(--theme-soft); }
+    body.account-layout .team-table .row-actions { min-width: max-content; }
+    body.account-layout .team-table .row-actions .button { font-size: 12px; }
+    body.account-layout .permission-chips { gap: var(--account-ui-space-xs); }
+    body.account-layout .permission-chips span { background: var(--theme-soft); color: var(--theme-muted); }
+    body.account-layout .portal-strip { background: var(--theme-bg); border-color: var(--theme-line); }
+    body.account-layout .portal-strip #team-portal-address { color: var(--theme-text); font-family: var(--account-ui-font); }
+    body.account-layout .team-dialog { background: var(--theme-panel); color: var(--theme-text); border-color: var(--theme-line); border-radius: var(--account-ui-radius); box-shadow: none; padding: var(--account-ui-space-lg); }
+    body.account-layout .tab-options { gap: var(--account-ui-space-sm) var(--account-ui-space-md); border: 0; border-top: 1px solid var(--theme-line); border-radius: 0; padding: var(--account-ui-space-md) 0; }
+    body.account-layout .tab-options label { min-height: var(--account-ui-control); font-size: 13px; }
+    body.account-layout .tab-options legend { padding: 0; font-size: 13px; }
+    body.account-layout .document-workspace { gap: var(--account-ui-space-md); }
+    body.account-layout .document-workspace .account-card { padding: var(--account-ui-space-lg); }
+    body.account-layout .document-viewer { top: 80px; }
+    body.account-layout .document-table small { font-size: 12px; }
+    body.account-layout .document-summary .account-card { border-radius: 0; box-shadow: none; }
+    body.account-layout .follow-up-item { padding-block: var(--account-ui-space-lg); }
+    body.account-layout .follow-up-form details { border-inline: 0; border-bottom: 0; border-radius: 0; padding: var(--account-ui-space-md) 0; }
+    body.account-layout .work-dashboard .closing-board-summary { border-inline: 0; border-radius: 0; background: none; padding-inline: 0; }
+    body.account-layout :is(.work-table .muted, .closing-row-assignee, .closing-row-drafts, .closing-row-link, .work-closing-progress > div, .work-table-footer, .team-table-footer, .follow-up-history p) { font-size: 12px; }
+    body.account-layout .work-search { gap: var(--account-ui-space-sm); }
+    body.account-layout .work-table .button { font-size: 12px; }
+    body.account-layout .work-client strong { font-size: 13px; }
+    body.account-layout .work-aside .account-card { border-inline: 0; border-radius: 0; box-shadow: none; }
+    @media (max-width: 1050px) {
+        body.account-layout .auth-grid { gap: var(--account-ui-space-xl); grid-template-columns: minmax(0, 1fr) minmax(330px, 420px); }
+        body.account-layout .auth-intro h1 { font-size: 40px; }
+        body.account-layout .books-grid { grid-template-columns: minmax(0, 1fr) minmax(260px, 300px); }
+    }
+    @media (max-width: 800px) {
+        body.account-layout .auth-grid { display: flex; flex-direction: column; gap: var(--account-ui-space-lg); max-width: 540px; }
+        body.account-layout .auth-intro { padding-top: 0; }
+        body.account-layout .auth-intro h1 { max-width: none; font-size: 32px; margin-bottom: var(--account-ui-space-md); }
+        body.account-layout .auth-intro h1 br { display: none; }
+        body.account-layout .auth-intro > p { margin-bottom: 0; }
+        body.account-layout .intro-points { display: none; }
+        body.account-layout .auth-card { width: 100%; }
+        body.account-layout .books-grid { grid-template-columns: minmax(0, 1fr); }
+        body.account-layout .books-grid > aside { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        body.account-layout .books-grid > aside > .storage-note { grid-column: 1 / -1; }
+        body.account-layout .document-viewer { position: static; }
+    }
+    @media (max-width: 600px) {
+        body.account-layout .account-header { padding: var(--account-ui-space-md); gap: var(--account-ui-space-md); }
+        body.account-layout .account-nav { gap: var(--account-ui-space-sm); }
+        body.account-layout .account-main { padding: var(--account-ui-space-lg) var(--account-ui-space-md); }
+        body.account-layout.workspace-shell .account-main { padding-top: 88px; }
+        body.account-layout .auth-card, body.account-layout .password-card { padding: var(--account-ui-space-lg); }
+        body.account-layout .page-heading { flex-wrap: wrap; }
+        body.account-layout .page-heading h1 { font-size: 26px; line-height: 34px; }
+        body.account-layout .books-grid > aside { grid-template-columns: minmax(0, 1fr); }
+        body.account-layout .book-card { align-items: flex-start; }
+        body.account-layout .book-copy { flex-basis: calc(100% - 60px); }
+        body.account-layout .book-card form { width: auto; margin-left: 0; }
+        body.account-layout .book-card .button { min-width: 120px; }
+        body.account-layout .account-main :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea) { font-size: 16px; }
+        body.account-layout :is(.button, .dialog-actions button) { min-height: 44px; }
+        body.account-layout .tab-options { grid-template-columns: minmax(0, 1fr); }
+        body.account-layout :is(.team-table, .document-table, .work-table) :is(th, td):first-child { position: sticky; left: 0; z-index: 2; background: var(--theme-panel); }
+        body.account-layout .account-footer { flex-wrap: wrap; padding: var(--account-ui-space-md); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+        body.account-layout :is(.button, .client-progress-track > span) { transition: none; animation: none; }
+    }
+}

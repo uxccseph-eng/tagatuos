@@ -1,16 +1,18 @@
 <!DOCTYPE html><html class="scroll-smooth dark" lang="en"><head>
 <meta charset="utf-8">
 <meta content="width=device-width, initial-scale=1.0" name="viewport">
-<title>kontadurya.io — The Autonomous Ledger for Philippine Enterprise</title>
+<title>kontadurya.io — Bookkeeping for Philippine businesses</title>
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
 <link href="https://fonts.googleapis.com" rel="preconnect">
 <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect">
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&amp;family=JetBrains+Mono:wght@400;500;600;700&amp;family=Outfit:wght@400;500;600;700;800;900&amp;family=Newsreader:ital,opsz,wght@1,6..72,400;1,6..72,600&amp;display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
 <link rel="stylesheet" href="{{ asset('css/app.css') }}">
-<script src="{{ asset('js/app.js') }}" defer></script>
+<script src="{{ asset('js/app.js') }}?v={{ filemtime(public_path('js/app.js')) }}" defer></script>
 <meta name="description" content="A new way to manage Philippine business books. Explore the Kontadurya ledger, workflow, and free community tier.">
-<script src="{{ asset('js/draft-leave-guard.js') }}?v={{ filemtime(public_path('js/draft-leave-guard.js')) }}" defer></script>@include('workspace-theme-assets')</head>
+<script src="{{ asset('js/draft-leave-guard.js') }}?v={{ filemtime(public_path('js/draft-leave-guard.js')) }}" defer></script>@include('workspace-theme-assets')
+<link rel="stylesheet" href="{{ asset('css/public-redesign.css') }}?v={{ filemtime(public_path('css/public-redesign.css')) }}">
+</head>
 <body class="landing-page selection:bg-emerald-500/30 selection:text-emerald-300 relative bg-[#030712] text-slate-200">
 <!-- Ambient Bioluminescent Background Aura -->
 <div class="fixed inset-0 pointer-events-none cyber-grid z-0"></div>
@@ -36,19 +38,19 @@
 </a>
 <nav aria-label="Primary" class="hidden xl:flex items-center gap-5 text-[14px] font-medium text-slate-400">
 <a class="transition-colors hover:text-emerald-400 flex items-center gap-1" href="#features">Features</a>
-<a class="transition-colors hover:text-emerald-400" href="#how">Autonomous Flow</a>
-<a class="transition-colors hover:text-emerald-400" href="#pricing">Zero Tier</a>
-<a class="transition-colors hover:text-emerald-400" href="#showcase">Spatial Ledger</a>
-<a class="transition-colors hover:text-emerald-400" href="#faq">Protocol FAQ</a>
+<a class="transition-colors hover:text-emerald-400" href="#how">Workflow</a>
+<a class="transition-colors hover:text-emerald-400" href="#pricing">Free plan</a>
+<a class="transition-colors hover:text-emerald-400" href="#showcase">Ledger preview</a>
+<a class="transition-colors hover:text-emerald-400" href="#faq">FAQ</a>
 </nav>
 </div>
 <div class="flex shrink-0 items-center gap-3">
 @include('theme-toggle')
 <a class="hidden sm:inline-flex text-[14px] font-medium text-slate-300 hover:text-white transition-colors px-3 py-2" href="{{ route('login') }}">
-          Terminal Login
+          Sign in
         </a>
 <a class="relative inline-flex items-center justify-center gap-2 overflow-hidden rounded-xl bg-gradient-to-r from-emerald-500 via-teal-400 to-cyan-400 px-5 py-2.5 text-[14px] font-bold text-slate-950 shadow-[0_0_25px_rgba(16,185,129,0.4)] transition-all hover:shadow-[0_0_35px_rgba(16,185,129,0.7)] hover:brightness-110" href="{{ route('register') }}">
-<span class="launch-label"><span class="hidden sm:inline">Launch Free Node</span><span class="sm:hidden">Start Free</span></span>
+<span class="launch-label"><span class="hidden sm:inline">Create account</span><span class="sm:hidden">Start Free</span></span>
 <span class="font-mono-tech text-xs">→</span>
 </a>
 <button type="button" class="mobile-menu-toggle rounded-lg border border-white/15 p-2 text-emerald-300 xl:hidden" aria-label="Open navigation" aria-controls="mobile-menu" aria-expanded="false" data-menu-toggle>
@@ -60,10 +62,10 @@
 
     <div class="flex flex-col gap-4 text-sm text-slate-300">
         <a href="#features">Features</a>
-        <a href="#how">Autonomous Flow</a>
-        <a href="#pricing">Zero Tier</a>
-        <a href="#showcase">Spatial Ledger</a>
-        <a href="#faq">Protocol FAQ</a>
+        <a href="#how">Workflow</a>
+        <a href="#pricing">Free plan</a>
+        <a href="#showcase">Ledger preview</a>
+        <a href="#faq">FAQ</a>
         <a href="#signup" class="text-emerald-300">Try the starter demo →</a>
     </div>
 </nav>
@@ -73,38 +75,28 @@
 <section class="relative pt-20 pb-24 lg:pt-32 lg:pb-32 overflow-hidden" id="top">
 <div class="mx-auto w-full max-w-7xl px-6 sm:px-10 text-center relative z-20">
 <div class="mx-auto max-w-5xl">
-<!-- Bioluminescent Live Pill -->
-<div class="inline-flex items-center gap-3 rounded-full border border-emerald-500/30 bg-emerald-950/40 px-4 py-1.5 shadow-[0_0_15px_rgba(16,185,129,0.2)] backdrop-blur-xl">
-<span class="relative flex h-2 w-2">
-<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-<span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-400"></span>
-</span>
-<span class="font-mono-tech text-xs font-semibold uppercase tracking-[0.15em] text-emerald-300">
-              The Autonomous Ledger for Philippine Enterprise
-            </span>
-</div>
+<p class="public-hero-context">Bookkeeping for Philippine businesses</p>
 <!-- Hero Typography -->
-<h1 class="font-heading font-black text-white mt-8 text-balance text-[clamp(2.75rem,7vw,6.25rem)] leading-[0.94] tracking-[-0.04em]">Accounting is broken.<br>
-<span class="text-glow-gradient font-light italic font-editorial">We derived</span> the cure.</h1>
+<h1 class="font-heading font-black text-white mt-8 text-balance text-[clamp(2.75rem,7vw,6.25rem)] leading-[0.94] tracking-[-0.04em]">Philippine books.<br>One clear workspace.</h1>
 <p class="mx-auto mt-7 max-w-[660px] text-base leading-relaxed text-slate-400 sm:text-[20px]">
-            Frictionless double-entry accounting engineered for Filipino creators, freelancers, and growing firms. Instant BIR readiness with zero friction, 100% free.
+            Double-entry bookkeeping for Philippine businesses, freelancers, and accounting firms.
           </p>
 <!-- Action Pod -->
 <div class="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
 <a class="w-full sm:w-auto inline-flex items-center justify-center gap-3 rounded-xl bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400 px-8 py-4 text-[15px] font-bold text-slate-950 shadow-[0_0_35px_rgba(16,185,129,0.45)] transition-all hover:scale-105 hover:shadow-[0_0_50px_rgba(16,185,129,0.7)]" href="{{ route('register') }}">
 <span class="">Start Accounting for Free</span>
-<span class="font-mono-tech text-sm">⚡</span>
+<span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span>
 </a>
 <a class="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 rounded-xl border border-white/15 bg-white/[0.04] px-7 py-4 text-[15px] font-semibold text-slate-200 backdrop-blur-xl transition-all hover:bg-white/[0.1] hover:border-white/30" href="#how">
 <span class="material-symbols-outlined text-[18px] text-cyan-400">deployed_code</span>
-              Explore Neural Ledger
+              Explore the workflow
             </a>
 </div>
 <!-- Live Compliance Specs -->
 <div class="mt-10 flex flex-wrap items-center justify-center gap-x-8 gap-y-3 font-mono-tech text-xs text-slate-400">
 <span class="inline-flex items-center gap-2">
 <span class="h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_#10B981]"></span>
-              BIR eFPS &amp; eBIRForms XML Certified
+              eBIRForms XML export
             </span>
 <span class="inline-flex items-center gap-2">
 <span class="h-1.5 w-1.5 rounded-full bg-cyan-400 shadow-[0_0_8px_#06B6D4]"></span>
@@ -112,7 +104,7 @@
             </span>
 <span class="inline-flex items-center gap-2">
 <span class="h-1.5 w-1.5 rounded-full bg-violet-400 shadow-[0_0_8px_#8B5CF6]"></span>
-              SHA-256 Immutable Double Entry
+              Double-entry books and transaction history
             </span>
 </div>
 </div>
@@ -126,14 +118,14 @@
 <!-- Terminal Header -->
 <div class="flex flex-wrap items-center justify-between gap-4 border-b border-white/10 pb-4">
 <div class="flex items-center gap-3">
-<div class="flex gap-2">
+<div class="public-ledger-decoration flex gap-2">
 <span class="h-3 w-3 rounded-full bg-rose-500/70 border border-rose-400/50 shadow-[0_0_6px_rgba(244,63,94,0.5)]"></span>
 <span class="h-3 w-3 rounded-full bg-amber-500/70 border border-amber-400/50 shadow-[0_0_6px_rgba(245,158,11,0.5)]"></span>
 <span class="h-3 w-3 rounded-full bg-emerald-500/70 border border-emerald-400/50 shadow-[0_0_6px_rgba(16,185,129,0.5)]"></span>
 </div>
 <div class="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-slate-900/60 px-3 py-1 font-mono-tech text-[12px] text-emerald-300">
 <span class="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                  <span data-ledger-path>mesh://ph-bir.node.kontadurya.io/v4/sales-matrix</span>
+                  <span data-ledger-path>Sales sample ledger</span>
                 </div>
 </div>
 <div class="flex items-center gap-3 font-mono-tech text-xs">
@@ -141,7 +133,7 @@
                   Tax Cycle: <strong>Q4 2026</strong>
 </span>
 <span class="rounded-md bg-emerald-500/15 border border-emerald-500/30 px-3 py-1 text-emerald-400 font-semibold">
-                  Ties Out 100%
+                  Sample balanced entry
                 </span>
 </div>
 </div>
@@ -154,7 +146,7 @@
 <button type="button" class="ledger-tab border-b-2 border-emerald-400 bg-emerald-500/10 px-4 py-2 text-xs font-mono-tech font-bold text-emerald-300 rounded-t-lg" data-ledger-tab="sales" aria-pressed="true">Sales Grid (001)</button>
 <button type="button" class="ledger-tab border-b-2 border-transparent px-4 py-2 text-xs font-mono-tech font-medium text-slate-400 hover:text-slate-200" data-ledger-tab="disbursements" aria-pressed="false">Disbursements</button>
 <button type="button" class="ledger-tab border-b-2 border-transparent px-4 py-2 text-xs font-mono-tech font-medium text-slate-400 hover:text-slate-200" data-ledger-tab="payroll" aria-pressed="false">Payroll &amp; Withholding</button>
-<span class="ml-auto font-mono-tech text-[11px] text-slate-500 pr-2">Live Derivation Active</span>
+<span class="ml-auto font-mono-tech text-[11px] text-slate-500 pr-2">Illustrative calculation</span>
 </div>
 <!-- Table Content -->
 <div class="overflow-x-auto">
@@ -221,12 +213,12 @@
 <div class="flex flex-wrap items-center justify-between gap-3 border-t border-white/10 bg-slate-900/80 px-4 py-3 font-mono-tech text-xs text-slate-400">
 <div class="flex items-center gap-2">
 <span class="material-symbols-outlined text-[16px] text-emerald-400">auto_awesome</span>
-<span data-net-label>Autonomously calculated net: <strong class="text-white">₱16,071.43</strong></span>
+<span data-net-label>Sample net sales: <strong class="text-white">₱16,071.43</strong></span>
 </div>
 <div class="flex items-center gap-3">
 <span data-withholding-label class="text-violet-400 font-semibold">EWT 2%: ₱321.43</span>
 <button type="button" data-confirm-vector class="rounded-lg bg-emerald-500 px-3 py-1 font-bold text-slate-950 hover:bg-emerald-400 transition-colors">
-                      Confirm Vector
+                      Check sample entry
                     </button>
 </div>
 </div>
@@ -237,7 +229,7 @@
 <div class="flex items-center justify-between pb-3 border-b border-white/10">
 <span class="font-mono-tech text-xs uppercase tracking-wider text-emerald-300 font-bold flex items-center gap-2">
 <span class="h-2 w-2 rounded-full bg-emerald-400"></span>
-                      BIR Output Nodes
+                      Tax export preview
                     </span>
 <span class="font-mono-tech text-[10px] text-slate-400">XML Ready</span>
 </div>
@@ -263,10 +255,10 @@
 </div>
 <div>
 <div class="font-bold text-white">SLSP Validation</div>
-<div class="text-[10px] text-slate-400">Relief .DAT Matrices</div>
+<div class="text-[10px] text-slate-400">RELIEF .DAT schedules</div>
 </div>
 </div>
-<span class="rounded bg-cyan-500/10 px-2 py-0.5 text-[10px] font-bold text-cyan-300">VALIDATED</span>
+<span class="rounded bg-cyan-500/10 px-2 py-0.5 text-[10px] font-bold text-cyan-300">REVIEW</span>
 </div>
 <!-- Artifact 3 -->
 <div class="group flex items-center justify-between rounded-xl border border-white/5 bg-slate-950/40 p-3 hover:border-violet-500/30 transition-all">
@@ -279,13 +271,13 @@
 <div class="text-[10px] text-slate-400">Creditable Withholding</div>
 </div>
 </div>
-<span class="rounded bg-violet-500/10 px-2 py-0.5 text-[10px] font-bold text-violet-300">AUTO-POST</span>
+<span class="rounded bg-violet-500/10 px-2 py-0.5 text-[10px] font-bold text-violet-300">SAMPLE</span>
 </div>
 </div>
 <div class="mt-4 pt-3 border-t border-white/10 text-center">
 <span class="font-mono-tech text-[11px] text-emerald-300/80 flex items-center justify-center gap-1.5">
 <span class="material-symbols-outlined text-[14px]">lock</span>
-                      Zero Re-keying · Instant E-Filing Export
+                      Prepare tax exports for review
                     </span>
 </div>
 </div>
@@ -313,10 +305,10 @@
 <div class="mx-auto w-full max-w-7xl px-6 sm:px-10 mb-3 flex items-center gap-4">
 <span class="whitespace-nowrap font-mono-tech text-[11px] uppercase tracking-[0.2em] text-emerald-400 font-bold flex items-center gap-2">
 <span class="h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
-          Autonomous Functional Matrix
+          Bookkeeping tools
         </span>
 <span class="h-px flex-1 bg-gradient-to-r from-emerald-500/30 via-cyan-500/20 to-transparent"></span>
-<span class="whitespace-nowrap font-mono-tech text-[11px] text-slate-400">20 Financial Core Tasks · Zero Friction</span>
+<span class="whitespace-nowrap font-mono-tech text-[11px] text-slate-400">Bookkeeping and tax reports</span>
 </div>
 <div class="overflow-hidden py-1">
 <div class="animate-marquee flex items-center gap-4">
@@ -373,37 +365,36 @@
               Pure Transparent Architecture
             </div>
 <h2 class="font-heading text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight text-white mt-4">
-              Not a black box.<br>
-<span class="text-violet-gradient">Mathematical certainty.</span>
+              Follow each entry<br>through your books.
 </h2>
 </div>
 <p class="text-lg leading-relaxed text-slate-400">
-            Every peso traces straight to an immutable, balanced double-entry ledger. Your BIR filings reflect raw accounting truth without interpolated data or black-box math.
+            Follow posted transactions into the double-entry books, reports and tax schedules. Review the underlying records before preparing a return.
           </p>
 </div>
 <!-- 4 Holographic Quantum Pillars -->
 <div class="mt-16 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
 <div class="glass-canvas-card rounded-2xl p-7 relative overflow-hidden group hover:border-emerald-500/40 transition-all">
 <div class="absolute -top-10 -right-10 w-32 h-32 bg-emerald-500/10 rounded-full blur-2xl group-hover:bg-emerald-500/20 transition-all"></div>
-<div class="font-heading text-5xl font-black text-white group-hover:text-emerald-300 transition-colors">16+</div>
+<div class="font-heading text-5xl font-black text-white group-hover:text-emerald-300 transition-colors">XML</div>
 <h3 class="mt-3 font-semibold text-white text-base">BIR Forms Generated</h3>
 <p class="mt-2 text-xs leading-relaxed text-slate-400 font-mono-tech">
-              Valid eBIRForms XML ready for submission without re-encoding.
+              Prepare supported returns as XML for review in eBIRForms.
             </p>
 <div class="mt-6 flex items-center gap-1.5 text-[11px] font-mono-tech text-emerald-400">
-<span class="">0% Error Rate</span>
+<span class="">Review before filing</span>
 <span class="">→</span>
 </div>
 </div>
 <div class="glass-canvas-card rounded-2xl p-7 relative overflow-hidden group hover:border-cyan-500/40 transition-all">
 <div class="absolute -top-10 -right-10 w-32 h-32 bg-cyan-500/10 rounded-full blur-2xl group-hover:bg-cyan-500/20 transition-all"></div>
-<div class="font-heading text-5xl font-black text-white group-hover:text-cyan-300 transition-colors">7</div>
+<div class="font-heading text-5xl font-black text-white group-hover:text-cyan-300 transition-colors">Books</div>
 <h3 class="mt-3 font-semibold text-white text-base">Loose-Leaf Books</h3>
 <p class="mt-2 text-xs leading-relaxed text-slate-400 font-mono-tech">
-              General ledger, journals, cash receipts &amp; disbursements to statutory spec.
+              General ledger, journals, cash receipts and disbursement reports.
             </p>
 <div class="mt-6 flex items-center gap-1.5 text-[11px] font-mono-tech text-cyan-300">
-<span class="">Audit Certified</span>
+<span class="">Review and export</span>
 <span class="">→</span>
 </div>
 </div>
@@ -422,33 +413,33 @@
 <div class="glass-canvas-card rounded-2xl p-7 relative overflow-hidden group hover:border-emerald-500/40 transition-all">
 <div class="absolute -top-10 -right-10 w-32 h-32 bg-emerald-500/10 rounded-full blur-2xl group-hover:bg-emerald-500/20 transition-all"></div>
 <div class="font-heading text-4xl sm:text-5xl font-black text-white group-hover:text-emerald-300 transition-colors">Append</div>
-<h3 class="mt-3 font-semibold text-white text-base">Tamper-Proof Audit Trail</h3>
+<h3 class="mt-3 font-semibold text-white text-base">Transaction history</h3>
 <p class="mt-2 text-xs leading-relaxed text-slate-400 font-mono-tech">
-              Immutable journal entries. Never destructively overwritten, keeping you safe in any BIR audit.
+              Review posted entries, corrections and reversals alongside the books.
             </p>
 <div class="mt-6 flex items-center gap-1.5 text-[11px] font-mono-tech text-emerald-300">
-<span class="">Cryptographic Safety</span>
+<span class="">Trace posted entries</span>
 <span class="">→</span>
 </div>
 </div>
 </div>
 </div>
 </section>
-<!-- Autonomous Flow: 4 Neon Nodes Timeline -->
+<!-- Workflow: 4 Neon Nodes Timeline -->
 <section class="scroll-mt-24 py-24 sm:py-32 relative" id="how">
 <div class="mx-auto w-full max-w-7xl px-6 sm:px-10">
 <div class="grid items-end gap-8 pb-16 lg:grid-cols-2 lg:gap-14">
 <div>
 <div class="inline-flex items-center gap-2 font-mono-tech text-xs uppercase tracking-[0.2em] text-emerald-400 font-bold">
 <span class="material-symbols-outlined text-[15px]">timeline</span>
-              Protocol Sequence
+              Your bookkeeping workflow
             </div>
 <h2 class="font-heading font-black tracking-tight text-white text-4xl sm:text-5xl lg:text-6xl mt-4">
               From First Entry to Filed
             </h2>
 </div>
 <p class="text-lg leading-relaxed text-slate-400">
-            Four frictionless steps from a cold start to filing-ready tax packs. Zero offline spreadsheets. Zero manual calculator errors.
+            Set up the company, record transactions, review the books and prepare tax exports.
           </p>
 </div>
 <div class="space-y-12">
@@ -458,7 +449,7 @@
 <div class="lg:col-span-5">
 <span class="font-mono-tech text-5xl sm:text-6xl font-black text-emerald-400/30">01 // 04</span>
 <h3 class="font-heading text-2xl sm:text-3xl font-bold text-white mt-3">
-                  Autonomous Entity Configuration
+                  Set up your company
                 </h3>
 <p class="mt-4 text-slate-400 text-sm sm:text-base leading-relaxed">
                   Provide your business profile (Sole Proprietor, Professional, or Corporation) and registration type (VAT or Non-VAT). Kontadurya auto-synthesizes your Chart of Accounts, document prefixes, and BIR tax schedule presets instantly.
@@ -544,14 +535,14 @@
 <div class="lg:col-span-5">
 <span class="font-mono-tech text-5xl sm:text-6xl font-black text-violet-400/30">03 // 04</span>
 <h3 class="font-heading text-2xl sm:text-3xl font-bold text-white mt-3">
-                  Cryptographically Balanced Ledgers
+                  Review the double-entry books
                 </h3>
 <p class="mt-4 text-slate-400 text-sm sm:text-base leading-relaxed">
-                  Every confirmed transaction logs into an immutable append-only journal. Debits precisely equal credits on every node. Your trial balance never drifts out of balance, providing watertight auditability.
+                  Posted transactions feed the journals and ledgers. Review debits, credits and the trial balance before preparing reports.
                 </p>
 <div class="mt-6 flex items-center gap-2 font-mono-tech text-xs text-violet-400">
 <span class="material-symbols-outlined text-sm">lock</span>
-                  Append-only immutable record
+                  Posted transaction history
                 </div>
 </div>
 <div class="lg:col-span-7 bg-slate-950/80 rounded-2xl border border-white/10 p-5 font-mono-tech text-xs">
@@ -582,10 +573,10 @@
 <div class="lg:col-span-5 lg:order-2">
 <span class="font-mono-tech text-5xl sm:text-6xl font-black text-emerald-400/30">04 // 04</span>
 <h3 class="font-heading text-2xl sm:text-3xl font-bold text-white mt-3">
-                  One-Click BIR Compilation &amp; E-Filing
+                  Prepare tax return exports
                 </h3>
 <p class="mt-4 text-slate-400 text-sm sm:text-base leading-relaxed">
-                  Tax returns are continuously compiled as you work. Download ready-to-upload XML files for eBIRForms, pre-formatted Relief DAT schedules, or invite your CPA to review with zero spreadsheet preparation.
+                  Use posted books to prepare supported XML files and tax schedules. Review the exported files in the applicable BIR software before external filing.
                 </p>
 <div class="mt-6 flex items-center gap-2 font-mono-tech text-xs text-emerald-400">
 <span class="material-symbols-outlined text-sm">cloud_upload</span>
@@ -680,7 +671,7 @@
 </div>
 <div class="flex items-center gap-3">
 <span class="h-5 w-5 rounded-full bg-emerald-500/20 text-emerald-300 flex items-center justify-center font-bold text-xs">✓</span>
-<span class="">Cryptographically auditable append-only ledger</span>
+<span class="">Transaction history and posted journals</span>
 </div>
 <div class="flex items-center gap-3">
 <span class="h-5 w-5 rounded-full bg-emerald-500/20 text-emerald-300 flex items-center justify-center font-bold text-xs">✓</span>
@@ -696,7 +687,7 @@
               Zero trial period. Zero surprise paywalls.
             </span>
 <a class="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400 px-8 py-3.5 text-sm font-bold text-slate-950 shadow-[0_0_25px_rgba(16,185,129,0.4)] hover:brightness-110 transition-all" href="{{ route('register') }}">
-              Launch Free Node Now →
+              Create account Now →
             </a>
 </div>
 </div>
@@ -739,11 +730,11 @@
 </details>
 <details class="group glass-canvas-card rounded-2xl p-6 transition-all">
 <summary class="flex cursor-pointer items-center justify-between font-bold text-white text-base group-hover:text-emerald-300 list-none">
-<span class="">Are exports officially acceptable for BIR audit &amp; eFPS filing?</span>
+<span class="">How should I use the tax exports?</span>
 <span class="font-mono-tech text-emerald-400 transition-transform group-open:rotate-45 text-xl font-bold">+</span>
 </summary>
 <p class="mt-4 text-sm leading-relaxed text-slate-400 font-sans">
-                Yes. Tax returns generate as valid eBIRForms XML files, and validation schedules (SLSP, SAWT, QAP) export as verified .DAT files formatted for the official BIR Relief Validation tools.
+                Prepare supported eBIRForms XML and tax schedules from the books. Import and validate each file in the applicable BIR software before filing. Exporting a file does not submit a return or confirm BIR acceptance.
               </p>
 </details>
 <details class="group glass-canvas-card rounded-2xl p-6 transition-all">
@@ -775,7 +766,7 @@
 <div class="absolute -top-32 left-1/2 -translate-x-1/2 h-64 w-96 bg-emerald-500/20 blur-3xl pointer-events-none"></div>
 <div class="relative z-10 max-w-2xl mx-auto">
 <span class="inline-flex items-center gap-2 rounded-full border border-emerald-400/30 bg-emerald-500/10 px-3 py-1 font-mono-tech text-xs font-semibold uppercase tracking-[0.2em] text-emerald-300">
-              Autonomous Financial Readiness
+              Books and tax preparation
             </span>
 <h2 class="font-heading text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight text-white mt-6">
               Start your books today. File with confidence later.
@@ -785,7 +776,7 @@
             </p>
 <div class="mt-8 flex flex-col sm:flex-row justify-center gap-4">
 <a class="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-400 to-cyan-400 px-8 py-4 text-base font-bold text-slate-950 shadow-[0_0_30px_rgba(16,185,129,0.5)] hover:scale-105 transition-all" href="{{ route('register') }}">
-<span class="">Deploy Free Ledger</span>
+<span class="">Create your account</span>
 <span class="font-mono-tech text-sm">→</span>
 </a>
 <a class="inline-flex items-center justify-center gap-2 rounded-xl border border-white/20 bg-white/[0.05] px-7 py-4 text-base font-semibold text-white hover:bg-white/[0.1] transition-all" href="#signup" data-info="contact">
@@ -832,20 +823,20 @@
 </span>
 </a>
 <p class="mt-4 text-sm leading-relaxed text-slate-400">
-          The autonomous double-entry bookkeeping and BIR-ready compliance matrix for Philippine enterprises. Built to put business owners back in complete control.
+          Double-entry bookkeeping, company books and tax preparation for Philippine businesses and accounting teams.
         </p>
 <div class="mt-4 font-mono-tech text-xs text-emerald-400 flex items-center gap-2">
 <span class="h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></span>
-          All BIR Nodes Operational
+          No automatic BIR submission
         </div>
 </div>
 <div>
 <p class="font-mono-tech text-xs font-bold uppercase tracking-wider text-white">Product</p>
 <ul class="mt-4 space-y-2.5 text-sm">
 <li class=""><a class="hover:text-emerald-300 transition-colors" href="#features">Core Features</a></li>
-<li class=""><a class="hover:text-emerald-300 transition-colors" href="#how">Autonomous Flow</a></li>
-<li class=""><a class="hover:text-emerald-300 transition-colors" href="#pricing">Zero Tier Pricing</a></li>
-<li class=""><a class="hover:text-emerald-300 transition-colors" href="#faq">Protocol FAQ</a></li>
+<li class=""><a class="hover:text-emerald-300 transition-colors" href="#how">Workflow</a></li>
+<li class=""><a class="hover:text-emerald-300 transition-colors" href="#pricing">Free plan</a></li>
+<li class=""><a class="hover:text-emerald-300 transition-colors" href="#faq">FAQ</a></li>
 </ul>
 </div>
 <div>
@@ -853,7 +844,7 @@
 <ul class="mt-4 space-y-2.5 text-sm">
 <li class=""><a class="hover:text-emerald-300 transition-colors" href="#signup" data-info="guides">2550Q Guide 2026</a></li>
 <li class=""><a class="hover:text-emerald-300 transition-colors" href="#signup" data-info="guides">VAT vs Percentage</a></li>
-<li class=""><a class="hover:text-emerald-300 transition-colors" href="#signup" data-info="guides">Withholding Matrices</a></li>
+<li class=""><a class="hover:text-emerald-300 transition-colors" href="#signup" data-info="guides">Withholding tax schedules</a></li>
 <li class=""><a class="hover:text-emerald-300 transition-colors" href="#signup" data-info="guides">Relief .DAT Spec</a></li>
 </ul>
 </div>
@@ -868,8 +859,8 @@
 <div>
 <p class="font-mono-tech text-xs font-bold uppercase tracking-wider text-white">Governance</p>
 <ul class="mt-4 space-y-2.5 text-sm">
-<li class=""><a class="hover:text-emerald-300 transition-colors" href="#signup" data-info="terms">Terms of Protocol</a></li>
-<li class=""><a class="hover:text-emerald-300 transition-colors" href="#signup" data-info="privacy">Data Sovereignty</a></li>
+<li class=""><a class="hover:text-emerald-300 transition-colors" href="#signup" data-info="terms">Terms of service</a></li>
+<li class=""><a class="hover:text-emerald-300 transition-colors" href="#signup" data-info="privacy">Privacy</a></li>
 </ul>
 </div>
 </div>

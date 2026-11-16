@@ -194,7 +194,7 @@
 
           <p class="mt-1 text-xs sm:text-sm text-slate-400">
 
-            Enter a name for this demo. kontadurya.io is <strong class="text-slate-200">100% Free Forever Core</strong> — no mandatory card, no surprise paywalls, and your books always remain yours.
+            {{ auth()->check() ? 'Enter your name for this company book.' : 'Enter a name for this demo.' }} kontadurya.io is <strong class="text-slate-200">100% Free Forever Core</strong> — no mandatory card, no surprise paywalls, and your books always remain yours.
 
           </p>
 

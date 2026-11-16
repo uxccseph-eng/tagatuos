@@ -12,8 +12,10 @@
 <script src="{{ asset('js/auth-config.js') }}"></script>
 <link rel="stylesheet" href="{{ asset('css/auth.css') }}">
 <script src="{{ asset('js/auth.js') }}" defer></script>
-<script src="{{ asset('js/draft-leave-guard.js') }}?v={{ filemtime(public_path('js/draft-leave-guard.js')) }}" defer></script></head>
-<body class="min-h-full spatial-bg flex flex-col justify-between selection:bg-[#00F5A0]/30 selection:text-white text-slate-100 antialiased">
+<script src="{{ asset('js/draft-leave-guard.js') }}?v={{ filemtime(public_path('js/draft-leave-guard.js')) }}" defer></script>@include('workspace-theme-assets')
+<link rel="stylesheet" href="{{ asset('css/public-redesign.css') }}?v={{ filemtime(public_path('css/public-redesign.css')) }}">
+</head>
+<body class="auth-preview-page min-h-full spatial-bg flex flex-col justify-between selection:bg-[#00F5A0]/30 selection:text-white text-slate-100 antialiased">
 <!-- Top Minimal Focused Navigation Bar -->
 <header class="w-full border-b border-white/10 bg-[#030712]/90 backdrop-blur-xl sticky top-0 z-50">
 <div class="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
@@ -64,7 +66,7 @@
 </div>
 <div>
 <p class="font-bold text-[15px] text-[#FFFFFF] tracking-tight group-hover:text-[#00F5A0] transition-colors">BIR-Ready Tax Frameworks</p>
-<p class="text-[13px] text-[#CBD5E1] mt-1.5 leading-relaxed">Automate 2551Q, 1701Q, 2550Q, and VAT schedules with one-click export into compliant forms.</p>
+<p class="text-[13px] text-[#CBD5E1] mt-1.5 leading-relaxed">Prepare supported tax returns and VAT schedules, then review exports before filing.</p>
 </div>
 </div>
 <div class="flex items-start gap-4 p-[18px] rounded-2xl bg-[#090d1a]/85 border border-white/15 hover:border-cyan-400/50 transition-all duration-300 shadow-lg shadow-black/40 group backdrop-blur-xl">
@@ -72,8 +74,8 @@
 <span class="material-symbols-outlined text-[24px]">lock</span>
 </div>
 <div>
-<p class="font-bold text-[15px] text-[#FFFFFF] tracking-tight group-hover:text-cyan-300 transition-colors">Append-Only Audit Trail</p>
-<p class="text-[13px] text-[#CBD5E1] mt-1.5 leading-relaxed">Every journal entry and adjustment is timestamped and cryptographically immutable for zero-tamper integrity.</p>
+<p class="font-bold text-[15px] text-[#FFFFFF] tracking-tight group-hover:text-cyan-300 transition-colors">Transaction history</p>
+<p class="text-[13px] text-[#CBD5E1] mt-1.5 leading-relaxed">Review recorded transactions and corrections in the company books.</p>
 </div>
 </div>
 <div class="flex items-start gap-4 p-[18px] rounded-2xl bg-[#090d1a]/85 border border-white/15 hover:border-emerald-400/50 transition-all duration-300 shadow-lg shadow-black/40 group backdrop-blur-xl">

@@ -15,8 +15,9 @@
         <link rel="stylesheet" href="{{ asset('css/workspace-navigation.css') }}?v={{ filemtime(public_path('css/workspace-navigation.css')) }}">
         <script src="{{ asset('js/workspace-navigation.js') }}?v={{ filemtime(public_path('js/workspace-navigation.js')) }}" defer></script>
     @endif
+    <link rel="stylesheet" href="{{ asset('css/account-redesign.css') }}?v={{ filemtime(public_path('css/account-redesign.css')) }}">
 </head>
-<body @class(['workspace-shell' => $workspaceNavigation])>
+<body @class(['account-layout', 'workspace-shell' => $workspaceNavigation])>
     @if($workspaceNavigation)
         @include('workspace-navigation')
     @else

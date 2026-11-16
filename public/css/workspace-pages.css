@@ -1,0 +1,138 @@
+/* Hallmark · v2.0.0 · theme: retained brand · shape: app screen · scope: app · redesign: full
+ * Critique: one readable ledger system across reports, Masters, imports, setup and transaction drawers.
+ * Printed statutory forms keep their existing geometry. All calculations and actions remain in their owners. */
+:root {
+    --page-font: "Segoe UI", Arial, sans-serif;
+    --page-gap: 16px;
+    --page-pad: 24px;
+    --page-radius: 8px;
+    --page-control: 40px;
+    --page-soft: color-mix(in srgb, var(--theme-accent) 8%, var(--theme-panel));
+}
+@media screen {
+    body :is(.settings-page, .books-toolbar, .masters-toolbar, .tax-toolbar, .sheet-import-dialog, .workspace-preview-page) :focus-visible {
+        outline: 2px solid var(--theme-accent); outline-offset: 2px; transition: none;
+    }
+    body:has(#sales-sidebar) main { max-width: 1640px; margin-inline: auto; }
+    body :is(.books-heading, .financial-main, .tax-main, .masters-heading, .settings-page) {
+        font-family: var(--page-font); background-image: none !important;
+    }
+    body :is(.books-heading, .masters-heading) { padding-bottom: var(--page-gap); }
+    body :is(.books-breadcrumb, .masters-eyebrow, .settings-eyebrow, .alpha-schedule-label, .sheet-import-eyebrow) {
+        font: 500 12px/20px var(--page-font); letter-spacing: normal; text-transform: none; color: var(--theme-muted);
+    }
+    body :is(.books-title-row, .masters-title, .settings-heading) h1 { font: 650 28px/36px var(--page-font); text-wrap: balance; }
+    body :is(.books-context, .masters-context, .books-subtitle, .masters-note, .financial-caption, .tax-note, .settings-footnote) {
+        font: 400 12px/20px var(--page-font); letter-spacing: normal; color: var(--theme-muted);
+    }
+    body :is(.books-tabs-wrap, .masters-tabs, .tax-tabs, .financial-modes) {
+        background: none; border: 0; border-bottom: 1px solid var(--theme-line); border-radius: 0; padding-block: var(--desk-space-sm); box-shadow: none;
+    }
+    body :is(.books-tabs-wrap, .masters-tabs, .tax-tabs, .financial-modes) :is(a, button) {
+        font: 500 13px/20px var(--page-font); min-height: var(--page-control); border-radius: var(--page-radius); box-shadow: none;
+        letter-spacing: normal; text-transform: none;
+    }
+    body :is(.books-toolbar, .masters-toolbar, .tax-toolbar) {
+        display: flex; align-items: center; flex-wrap: wrap; gap: var(--desk-space-sm);
+        padding: var(--page-gap); background: var(--theme-panel); border: 1px solid var(--theme-line); border-radius: var(--page-radius); box-shadow: none;
+    }
+    body :is(.books-tools-left, .books-tools-right, .masters-toolbar-actions, .settings-actions) { align-items: center; flex-wrap: wrap; gap: var(--desk-space-sm); }
+    body :is(.books-toolbar, .masters-toolbar, .tax-toolbar) :is(button, select, input:not([type="checkbox"])) {
+        box-sizing: border-box; min-height: var(--page-control); font: 500 13px/20px var(--page-font);
+        background: var(--theme-field); color: var(--theme-text); border-color: var(--theme-line); border-radius: var(--page-radius); box-shadow: none;
+    }
+    body .masters-search { height: var(--page-control); background: var(--theme-field); border-color: var(--theme-line); }
+    body .masters-search input { border: 0; background: none; }
+    body :is(.books-register, .financial-register, .tax-register, .masters-grid, .journal-grid, .cwt-grid-wrap) {
+        border-radius: var(--page-radius); border-color: var(--theme-line); background: var(--theme-panel); box-shadow: none;
+        scrollbar-width: auto; scrollbar-color: var(--theme-muted) var(--theme-bg);
+    }
+    body :is(.books-register, .financial-register, .tax-register, .masters-grid, .journal-grid, .cwt-grid-wrap, .lapsing-grid, .payroll-grid) table {
+        font: 400 13px/20px var(--page-font); font-variant-numeric: tabular-nums; border-collapse: collapse;
+    }
+    body :is(.books-register, .financial-register, .tax-register, .masters-grid, .journal-grid, .cwt-grid-wrap, .lapsing-grid, .payroll-grid) th {
+        font: 600 12px/20px var(--page-font) !important; text-transform: none !important; letter-spacing: normal !important;
+        color: var(--theme-muted); background: var(--theme-soft); border-right: 0 !important; padding-block: var(--desk-space-sm);
+    }
+    body :is(.books-register, .financial-register, .tax-register, .masters-grid, .journal-grid, .cwt-grid-wrap) td {
+        border-right: 0 !important; padding-block: var(--page-gap); border-bottom-color: var(--theme-line);
+    }
+    body :is(.books-money, .financial-money, .tax-money, .ppe-money, .payroll-money, .masters-code, .journal-txn) {
+        font-family: var(--page-font) !important; font-size: 13px; font-variant-numeric: tabular-nums; letter-spacing: normal;
+    }
+    body :is(.books-empty, .tax-empty, .masters-empty, .journal-empty) { padding: var(--page-pad); font: 400 13px/22px var(--page-font); }
+    body :is(.books-footer, .masters-pagination, .cwt-footer, .journal-footnote) { font: 400 12px/20px var(--page-font); color: var(--theme-muted); }
+    body :is(.books-summary-cards, .tax-metrics, .alphalist-metrics, .cwt-metrics, .journal-metrics) {
+        gap: 0; border-block: 1px solid var(--theme-line); padding-block: var(--page-gap); background: none;
+    }
+    body :is(.books-summary-cards, .tax-metrics, .alphalist-metrics, .cwt-metrics, .journal-metrics) > div {
+        border: 0; border-right: 1px solid var(--theme-line); border-radius: 0; padding: var(--desk-space-sm) var(--page-pad); background: none; box-shadow: none;
+    }
+    body :is(.books-summary-cards, .tax-metrics, .alphalist-metrics, .cwt-metrics, .journal-metrics) > div:first-child { padding-left: 0; }
+    body :is(.books-summary-cards, .tax-metrics, .alphalist-metrics, .cwt-metrics, .journal-metrics) > div:last-child { border-right: 0; }
+    body :is(.tax-metrics, .alphalist-metrics, .cwt-metrics, .journal-metrics) :is(span, small) { font: 400 12px/20px var(--page-font); letter-spacing: normal; text-transform: none; }
+    body :is(.settings-page, .settings-card) {
+        --st-panel: var(--theme-panel); --st-bg: var(--theme-bg); --st-line: var(--theme-line);
+        --st-ink: var(--theme-text); --st-muted: var(--theme-muted); --st-green: var(--theme-accent); --st-field: var(--theme-field);
+    }
+    body .settings-layout { gap: var(--page-pad); grid-template-columns: 220px minmax(0, 1fr); }
+    body .settings-nav { background: none; border: 0; border-right: 1px solid var(--theme-line); border-radius: 0; padding-right: var(--page-gap); }
+    body .settings-nav :is(a, button, h2) { font-family: var(--page-font); letter-spacing: normal; text-transform: none; font-size: 13px; }
+    body .settings-card { border-radius: var(--page-radius); padding: var(--page-pad); box-shadow: none; }
+    body .settings-card-title h2 { font: 600 18px/26px var(--page-font); }
+    body :is(.settings-field small, .settings-toggle-row small, .settings-form-footer > span, .settings-payroll-column) { font: 400 12px/20px var(--page-font); }
+    body :is(.cwt-entry, .collection-entry-drawer, .journal-entry, .payroll-entry-dialog, .sheet-import-dialog, .masters-dialog, .tax-dat-dialog) {
+        background: var(--theme-panel); color: var(--theme-text); border-color: var(--theme-line); box-shadow: none; font-family: var(--page-font);
+    }
+    body :is(.cwt-entry-header, .collection-entry-header, .payroll-entry-header, .sheet-import-dialog > header) {
+        padding: var(--page-gap) var(--page-pad); border-bottom: 1px solid var(--theme-line); background: var(--theme-panel);
+    }
+    body :is(.cwt-entry-body, .collection-entry-body, .payroll-entry-body, .sheet-import-body) { padding: var(--page-pad); }
+    body :is(.cwt-entry-fields, .collection-entry-fields, .masters-fields, .tax-dat-grid, .payroll-import-fields, .guided-mapping) {
+        gap: var(--page-gap); align-items: start;
+    }
+    body :is(.cwt-entry-fields, .collection-entry-fields, .masters-fields, .tax-dat-grid, .payroll-import-fields, .guided-mapping) :is(label, small) {
+        font: 500 13px/20px var(--page-font); letter-spacing: normal; text-transform: none;
+    }
+    body :is(.cwt-entry-fields, .collection-entry-fields, .masters-fields, .tax-dat-grid, .payroll-import-fields, .guided-mapping) :is(input:not([type="checkbox"]), select, textarea) {
+        box-sizing: border-box; min-height: var(--page-control); border-radius: var(--page-radius);
+        background: var(--theme-field); color: var(--theme-text); border-color: var(--theme-line); font: 400 14px/20px var(--page-font);
+    }
+    body :is(.sheet-import-dialog, .payroll-import-dialog, .masters-dialog, .tax-dat-dialog) table { font: 400 13px/20px var(--page-font); font-variant-numeric: tabular-nums; }
+    body :is(.sheet-import-dialog, .payroll-import-dialog, .masters-dialog, .tax-dat-dialog) th { font-size: 12px; letter-spacing: normal; text-transform: none; }
+    body :is(.sheet-import-dialog, .payroll-import-dialog, .masters-dialog, .tax-dat-dialog) :is(button, summary) { min-height: var(--page-control); font-family: var(--page-font); }
+    body :is(.sheet-import-dialog, .payroll-import-dialog, .masters-dialog, .tax-dat-dialog) button:active { transform: translateY(1px); }
+    body .tax-preflight { background: var(--theme-panel); border-color: var(--theme-line); border-radius: var(--page-radius); }
+    body.company-setup-page { background: var(--theme-bg); color: var(--theme-text); font: 400 14px/22px var(--page-font); }
+    body.company-setup-page :is(.cosmic-mesh, .grid-lines) { background-image: none; }
+    body.company-setup-page .glass-card { background: var(--theme-panel); color: var(--theme-text); border-color: var(--theme-line); border-radius: var(--page-radius); box-shadow: none; backdrop-filter: none; }
+    body.company-setup-page :is(h1, h2, h3, label, input, button, select, .font-mono-code) { font-family: var(--page-font); letter-spacing: normal; text-transform: none; }
+    body.company-setup-page :is(.font-mono, .uppercase, .tracking-wider, .tracking-wide) { font-family: var(--page-font); letter-spacing: normal; text-transform: none; }
+    body.company-setup-page h1 { font-size: 32px; line-height: 40px; text-wrap: balance; }
+    body.company-setup-page :is(input:not([type="checkbox"]):not([type="radio"]), select) { min-height: var(--page-control); border-color: var(--theme-line); background: var(--theme-field); color: var(--theme-text); font-size: 14px; }
+    body.company-setup-page .radio-card-active { background: var(--page-soft) !important; border-color: var(--theme-accent) !important; box-shadow: none !important; }
+    body.workspace-preview-page { background: var(--theme-bg); color: var(--theme-text); margin: 0; padding: var(--page-pad); font: 400 16px/26px var(--page-font); }
+    body.workspace-preview-page main { max-width: 1000px; margin: auto; }
+    body.workspace-preview-page h1 { font: 650 36px/44px var(--page-font); text-wrap: balance; }
+    body.workspace-preview-page p { color: var(--theme-muted); max-width: 70ch; }
+    body.workspace-preview-page .preview-badge { font: 500 13px/20px var(--page-font); letter-spacing: normal; color: var(--theme-accent); }
+    body.workspace-preview-page main :is(button, a) { background: var(--theme-accent); color: var(--theme-on-accent); border-radius: var(--page-radius); }
+    body.workspace-preview-page pre { background: var(--theme-panel); color: var(--theme-text); }
+    @media (max-width: 900px) {
+        body :is(.books-summary-cards, .tax-metrics, .alphalist-metrics, .cwt-metrics, .journal-metrics) { gap: var(--page-gap); }
+        body :is(.books-summary-cards, .tax-metrics, .alphalist-metrics, .cwt-metrics, .journal-metrics) > div { border-right: 0; padding: var(--desk-space-sm); }
+        body .settings-layout { grid-template-columns: 180px minmax(0, 1fr); }
+    }
+    @media (max-width: 650px) {
+        body .settings-layout { display: block; }
+        body .settings-nav { border-right: 0; border-bottom: 1px solid var(--theme-line); }
+        body :is(.books-tools-left, .books-tools-right, .masters-toolbar-actions) { width: 100%; }
+        body :is(.cwt-entry-body, .collection-entry-body, .payroll-entry-body, .sheet-import-body) { padding: var(--page-gap); }
+        body :is(.masters-fields, .cwt-entry-fields, .collection-entry-fields, .tax-dat-grid) { grid-template-columns: minmax(0, 1fr); }
+        body :is(.cwt-entry-fields, .collection-entry-fields, .masters-fields, .tax-dat-grid, .payroll-import-fields) :is(input, select) { font-size: 16px; }
+        body.workspace-preview-page h1 { font-size: 28px; line-height: 36px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+        body :is(.settings-page, .company-setup-page, .sheet-import-dialog) * { animation: none !important; transition: none !important; }
+    }
+}
