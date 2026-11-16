@@ -18,9 +18,9 @@
         } else {
         const common={tax:'12% VAT',vatCwt:'None',classification:'Regular',status:'posted',notes:''};
         state = {sales:[
-            {...common,id:1,number:'SI-000001',date:`${config.period}-16`,customer:'VARIOUS CUSTOMERS',gross:50000,account:'4020 · Sales - Services',cwt:'WC160 · 2%',terms:'Cash',reference:'OR-99120',bank:'1010 · Cash on Hand',memo:'Walk-in retail diagnostic consultations'},
-            {...common,id:2,number:'SI-000002',date:`${config.period}-18`,customer:'Cruz Dental Clinic Corp.',gross:1000000,account:'4020 · Sales - Services',cwt:'WC160 · 2%',terms:'On Account',reference:'INV-2026-089',bank:'1030 · BDO Checking',memo:'Monthly Brand Advisory Retainer & SEO Management'},
-            {...common,id:3,number:'SI-000003',date:`${config.period}-21`,customer:'Santos Trading Enterprises',gross:2500000,account:'4000 · Merchandise Sales',cwt:'WC100 · 1%',terms:'Cash',reference:'OR-99121',bank:'1010 · Cash on Hand',memo:'Batch fulfillment of seasonal promotional collateral'}
+            {...common,id:1,number:'SI-000001',date:`${config.period}-16`,customer:'VARIOUS CUSTOMERS',gross:50000,account:'4020 · Sales - Services',cwt:'WC160 · 2%',terms:'Cash',reference:'OR-99120',bank:'1010 · Cash on Hand',memo:''},
+            {...common,id:2,number:'SI-000002',date:`${config.period}-18`,customer:'Cruz Dental Clinic Corp.',gross:1000000,account:'4020 · Sales - Services',cwt:'WC160 · 2%',terms:'On Account',reference:'INV-2026-089',bank:'1030 · BDO Checking',memo:''},
+            {...common,id:3,number:'SI-000003',date:`${config.period}-21`,customer:'Santos Trading Enterprises',gross:2500000,account:'4000 · Merchandise Sales',cwt:'WC100 · 1%',terms:'Cash',reference:'OR-99121',bank:'1010 · Cash on Hand',memo:''}
         ],collections:[],nextCollectionId:1};
         }
     }
@@ -133,8 +133,8 @@
     if(!Array.isArray(state.purchases)) {
         const common={tax:'VAT (12%)',terms:'Cash',bank:'1010 · Cash on Hand',wvat:0,tin:'',notes:'',status:'posted',attachments:[]};
         state.purchases=[
-            {...common,id:1,number:'BILL-000001',date:`${config.period}-16`,supplier:'VARIOUS SUPPLIERS',gross:10000,account:'6150 · Packaging Supplies',ewt:0,reference:'SI-98421',description:'Packaging materials and seal tapes'},
-            {...common,id:2,number:'BILL-000002',date:`${config.period}-16`,supplier:'VARIOUS SUPPLIERS',gross:20000,account:'7110 · Rent Expense',ewt:5,reference:'OR-10293',description:'Office monthly storage sub-rental'}
+            {...common,id:1,number:'BILL-000001',date:`${config.period}-16`,supplier:'VARIOUS SUPPLIERS',gross:10000,account:'6150 · Packaging Supplies',ewt:0,reference:'SI-98421',description:''},
+            {...common,id:2,number:'BILL-000002',date:`${config.period}-16`,supplier:'VARIOUS SUPPLIERS',gross:20000,account:'7110 · Rent Expense',ewt:5,reference:'OR-10293',description:''}
         ];
     }
     function purchaseAmounts(record) {

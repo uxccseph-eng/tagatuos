@@ -75,3 +75,30 @@ test('editing a posted imported sale retains its import identity and original tr
     assert.equal(saved.gross,20000);
     assert.equal(saved.history[0].label,'Imported');
 });
+
+
+test('posted sales clear template descriptions for null, missing and empty memos', () => {
+    const start = source.indexOf('function renderEntry(');
+    const render = source.slice(start, source.indexOf('\n[...tbody', start));
+    const node = () => ({textContent: '', dataset: {}, setAttribute() {}, cloneNode() { return node(); }});
+    for (const memo of [null, undefined, '', 'Accountant entered details']) {
+        const cells = Array.from({length: 16}, () => ({
+            textContent: 'Sample description that must not survive',
+            firstElementChild: node(),
+            replaceChildren(child) { this.firstElementChild = child; },
+            querySelector() { return node(); },
+        }));
+        const row = {cells, dataset: {}, classList: {toggle() {}}, querySelectorAll: () => []};
+        const context = vm.createContext({
+            window: {SheetMasters: {taxLabel: () => 'VAT'}},
+            document: {createElement: node}, rowTemplate: {cells},
+            entries: new Map(), amounts: () => ({net: 100, vat: 12}),
+            currency: value => String(value), addBreakdown() {},
+        });
+        vm.runInContext(render, context);
+        const entry = {id: 1, number: 'SI-000001', status: 'posted', gross: 112, memo};
+        context.renderEntry(entry, row);
+        assert.equal(cells[14].textContent, memo ?? '');
+        assert.equal(entry.memo, memo, 'displaying an entry must not rewrite its saved description');
+    }
+});

@@ -810,3 +810,14 @@ test('cash sale without income withholding and draft or on-account sales do not 
     ledger.saveSales([{...common,id:1,status:'posted',terms:'Cash',cwt:'None'},{...common,id:2,status:'draft',terms:'Cash',cwt:'WC160 · 2%'},{...common,id:3,status:'posted',terms:'On Account',cwt:'WC160 · 2%'}]);
     assert.equal(ledger.cwtCertificates().length,0);
 });
+
+
+test('new preview books start with blank optional line descriptions', () => {
+    const ledger = openLedger();
+    assert.ok(ledger.sales().every(record => record.memo === ''));
+    assert.ok(ledger.purchases().every(record => record.description === ''));
+    const sales = ledger.sales();
+    sales[0].memo = 'Accountant supplied service details';
+    ledger.saveSales(sales);
+    assert.equal(ledger.sales()[0].memo, 'Accountant supplied service details');
+});

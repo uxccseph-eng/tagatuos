@@ -144,7 +144,7 @@
                 1010 · Cash on Hand
               </td>
 <td class="px-4 py-2.5 font-body-sm text-body-sm text-slate-500 dark:text-on-surface-variant border-r border-slate-200 dark:border-surface-container-highest/40 truncate max-w-xs">
-                Walk-in retail diagnostic consultations
+
               </td>
 <!-- Sticky Row Actions -->
 <td class="sticky right-0 z-20 bg-white dark:bg-surface-container-low group-hover:bg-slate-50 dark:group-hover:bg-surface-container transition-colors px-3 py-2 text-center whitespace-nowrap shadow-[-4px_0_6px_rgba(0,0,0,0.03)] dark:shadow-[-8px_0_12px_rgba(0,0,0,0.2)]">
