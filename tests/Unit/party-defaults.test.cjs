@@ -140,7 +140,7 @@ test('Purchases row and popup suggestions synchronize the exact ATC option as we
 });
 
  test('a restored Sales draft with a null withholding selection still calculates its preview', () => {
-    const source = read('sales.js'), helper = source.slice(source.indexOf('function amounts(entry) {'), source.indexOf('const rowTemplate'));
+    const source = read('sales.js'), helper = source.slice(source.indexOf('function amounts(entry) {'), source.indexOf('function applySalesColumnSettings'));
     const context = {window: {KontaduryaLedger: {taxAmounts: gross => ({net: gross})}}}; vm.createContext(context); vm.runInContext(helper, context);
     assert.deepEqual(plain(context.amounts({gross: 10000, tax: null, cwt: null})), {net: 10000, vat: 0, cwt: 0});
 });

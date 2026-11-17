@@ -37,13 +37,20 @@ test('all Masters samples round-trip through mapping with optional blanks preser
     assert.equal(individual.first_name,'JUAN'); assert.equal(individual.last_name,'DELA CRUZ');
     assert.equal(pettyCash.tin,''); assert.equal(pettyCash.classification,'Supplier');
 });
-test('payroll example includes every required actual amount and maps without column errors', () => {
-    const matrix = sheets.parseCsv(payroll.template(true));
-    assert.deepEqual(matrix[0], payroll.headers);
-    const rows = payroll.rowsFromMatrix(matrix);
-    assert.equal(rows.length,1); assert.equal(rows[0].columnError,false);
-    for (const field of register.amountFields) assert.match(rows[0].values[field], /^\d+\.\d{2}$/);
-    assert.equal(rows[0].values.pay_type,'Taxable');
-    assert.equal(rows[0].values.review_basis,'regular');
-    assert.equal(sheets.parseCsv(payroll.template()).length,1);
+test('simple and detailed payroll examples map optional blank contributions without inventing actual tax', () => {
+    for (const detailed of [false, true]) {
+        const matrix = sheets.parseCsv(payroll.template(true, detailed));
+        assert.deepEqual(matrix[0], detailed ? payroll.headers : payroll.simpleHeaders);
+        const rows = payroll.rowsFromMatrix(matrix);
+        assert.equal(rows.length, 1); assert.equal(rows[0].columnError, false);
+        assert.match(rows[0].values.basic, /^\d+\.\d{2}$/);
+        assert.equal(rows[0].values.withholding, '0.00');
+        assert.equal(rows[0].values.sssEe, '');
+        assert.equal(rows[0].values.pay_type, 'Taxable');
+        const preview = payroll.preview(rows, {employees: [{id: 1, name: 'REPLACE WITH EMPLOYEE NAME', code: 'REPLACE WITH EMPLOYEE CODE'}], records: [], frequency: 'monthly', id: 'template-sample'});
+        assert.deepEqual(preview.errors, []);
+        assert.equal(preview.run.employees[0].withholding, '0.00');
+        assert.ok(Number(preview.run.employees[0].sssEe) > 0);
+        assert.equal(sheets.parseCsv(payroll.template(false, detailed)).length, 1);
+    }
 });
