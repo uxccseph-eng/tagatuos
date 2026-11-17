@@ -64,7 +64,7 @@ class ManagerRoleTest extends TestCase
         $this->withSession(['active_company_id' => $company->id])->postJson(route('company.store'), [])->assertUnprocessable()->assertJsonValidationErrors('company_name');
         $this->putJson(route('settings.update', ['section' => 'bir']), [])->assertUnprocessable()->assertJsonValidationErrors('accounting_period');
         $this->getJson(route('system.dashboard'))->assertForbidden();
-        $this->postJson(route('account.companies.store'), ['name' => 'Unauthorized Client'])->assertForbidden();
+        $this->postJson(route('account.companies.store'), ['name' => 'Manager-created client'])->assertCreated()->assertJsonPath('data.name', 'Manager-created client');
         $this->assertDatabaseHas('company_user', ['company_id' => $company->id, 'user_id' => $manager->id, 'role' => 'manager']);
     }
 

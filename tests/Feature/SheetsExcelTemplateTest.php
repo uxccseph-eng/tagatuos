@@ -21,7 +21,7 @@ class SheetsExcelTemplateTest extends TestCase
     {
         $this->member();
         $reader = app(SheetImportWorkbookReader::class);
-        foreach (['sales' => 13, 'purchases' => 13, 'collections' => 9, 'payments' => 11, 'cwt' => 5, 'wtp' => 10, 'journal' => 11, 'payroll' => 20] as $sheet => $columns) {
+        foreach (['sales' => 13, 'purchases' => 13, 'collections' => 9, 'payments' => 11, 'cwt' => 5, 'wtp' => 10, 'journal' => 11, 'payroll' => 45] as $sheet => $columns) {
             $response = $this->get('/sheets/import/template/'.$sheet)->assertOk()->assertDownload('sheets-'.$sheet.'-dropdown-template.xlsx');
             $path = $response->baseResponse->getFile()->getPathname();
             $matrix = $reader->read($path);
@@ -40,7 +40,7 @@ class SheetsExcelTemplateTest extends TestCase
 
     public function test_template_selectors_use_form_choices_for_all_500_entry_rows(): void
     {
-        foreach (['sales' => ['D2:D501' => ['VAT', 'NONVAT', 'EXEMPT', 'ZERO', 'NR'], 'H2:H501' => ['Cash', 'On Account'], 'J2:J501' => ['Regular', 'Top Withholding Agent', 'Government', 'ZeroRated', 'PEZA']], 'purchases' => ['D2:D501' => ['VAT', 'NONVAT', 'EXEMPT', 'ZERO', 'NR']], 'payments' => ['I2:I501' => ['AP Settlement', 'Direct Expense', 'Supplier Advance']], 'journal' => ['E2:E501' => ['General', 'Adjusting', 'Opening', 'Closing', 'Reclassification']], 'payroll' => ['F2:F501' => ['Taxable', 'Non-taxable', 'Minimum Wage Earner'], 'T2:T501' => ['regular', 'year_end', 'final_pay', 'other']]] as $sheet => $ranges) {
+        foreach (['sales' => ['D2:D501' => ['VAT', 'NONVAT', 'EXEMPT', 'ZERO', 'NR'], 'H2:H501' => ['Cash', 'On Account'], 'J2:J501' => ['Regular', 'Top Withholding Agent', 'Government', 'ZeroRated', 'PEZA']], 'purchases' => ['D2:D501' => ['VAT', 'NONVAT', 'EXEMPT', 'ZERO', 'NR']], 'payments' => ['I2:I501' => ['AP Settlement', 'Direct Expense', 'Supplier Advance']], 'journal' => ['E2:E501' => ['General', 'Adjusting', 'Opening', 'Closing', 'Reclassification']], 'payroll' => ['F2:F501' => ['Taxable', 'Non-taxable', 'Minimum Wage Earner'], 'AO2:AO501' => ['regular', 'year_end', 'final_pay', 'other']]] as $sheet => $ranges) {
             $path = resource_path('templates/sheets-'.$sheet.'-import.xlsx');
             $zip = new ZipArchive;
             $zip->open($path);
@@ -56,9 +56,16 @@ class SheetsExcelTemplateTest extends TestCase
                     $this->assertSame('list', $validation->getAttribute('type'));
                     $this->assertNotSame('1', $validation->getAttribute('showDropDown'));
                     $formula = $xpath->query('s:formula1', $validation)->item(0)->textContent;
-                    preg_match('/!\$([A-Z])\$2/', $formula, $match);
-                    $column = ord($match[1]) - 65;
-                    $this->assertSame($expected, array_map(fn (int $index): string => $choices[$index + 1][$column], array_keys($expected)));
+                    if (str_starts_with($formula, '"')) {
+                        $this->assertSame($expected, str_getcsv(trim($formula, '"'), escape: ''));
+                    } else {
+                        $this->assertSame(1, preg_match('/!\$([A-Z]+)\$2/', $formula, $match));
+                        $column = 0;
+                        foreach (str_split($match[1]) as $letter) {
+                            $column = $column * 26 + ord($letter) - 64;
+                        }
+                        $this->assertSame($expected, array_map(fn (int $index): string => $choices[$index + 1][$column - 1], array_keys($expected)));
+                    }
                 }
             } finally {
                 $zip->close();

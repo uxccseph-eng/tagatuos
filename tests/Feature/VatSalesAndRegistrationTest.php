@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\ChartAccount;
+use App\Tin;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -56,15 +57,16 @@ class VatSalesAndRegistrationTest extends TestCase
         $this->assertDatabaseHas('chart_accounts', ['workspace_key' => ChartAccount::workspaceKey($company), 'code' => '4020', 'relief_category' => 'vatable_sales']);
     }
 
-    public function test_party_addresses_and_full_tins_are_required_on_create_update_and_import(): void
+    public function test_party_addresses_are_required_and_tin_branches_normalize_on_create_update_and_import(): void
     {
         $this->withSession(['preview_access' => true, 'company_setup' => $this->company()]);
-        foreach (['Customer', 'Supplier', 'Both'] as $classification) {
+        foreach (['Customer', 'Supplier', 'Both'] as $index => $classification) {
+            $baseTin = '12345678'.($index + 1);
             $payload = ['name' => 'Test '.$classification, 'classification' => $classification];
             $this->postJson('/masters/parties', $payload)->assertUnprocessable()->assertJsonValidationErrors(['tin', 'address']);
-            $this->postJson('/masters/parties', [...$payload, 'tin' => '123456789', 'address' => 'Test Street'])->assertUnprocessable()->assertJsonValidationErrors('tin');
-            $created = $this->postJson('/masters/parties', [...$payload, 'tin' => '123456789001', 'address' => 'Test Street'])->assertCreated()->assertJsonPath('record.tin', '123-456-789-00001');
-            $this->putJson('/masters/parties/'.$created->json('record.id'), [...$payload, 'code' => $created->json('record.code'), 'tin' => '123-456-789-00001', 'address' => ' '])->assertUnprocessable()->assertJsonValidationErrors('address');
+            $this->postJson('/masters/parties', [...$payload, 'tin' => $baseTin, 'address' => 'Test Street'])->assertCreated()->assertJsonPath('record.tin', Tin::format($baseTin));
+            $created = $this->postJson('/masters/parties', [...$payload, 'tin' => $baseTin.'001', 'address' => 'Test Street'])->assertCreated()->assertJsonPath('record.tin', Tin::format($baseTin.'001'));
+            $this->putJson('/masters/parties/'.$created->json('record.id'), [...$payload, 'code' => $created->json('record.code'), 'tin' => Tin::format($baseTin.'001'), 'address' => ' '])->assertUnprocessable()->assertJsonValidationErrors('address');
         }
         $preview = $this->postJson('/masters/parties/import/preview', ['records' => [['name' => 'Incomplete import', 'classification' => 'Customer']]])->assertOk()->assertJsonPath('preview_token', null);
         $this->assertEqualsCanonicalizing(['tin', 'address'], array_column($preview->json('errors'), 'field'));
