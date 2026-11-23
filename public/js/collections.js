@@ -1,7 +1,7 @@
 (() => {
     const table = document.getElementById('collections-table');
     const tbody = document.getElementById('collection-rows');
-    const originalRows = [...tbody.rows];
+    const originalRows = [...document.getElementById('collection-row-templates').content.querySelectorAll('tr')];
     const postedTemplate = originalRows[0].cloneNode(true);
     const draftTemplate = originalRows[2].cloneNode(true);
     const addRow = originalRows[3];

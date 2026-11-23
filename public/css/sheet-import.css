@@ -86,3 +86,42 @@
 .masters-guided-import footer>div{display:flex;flex-wrap:wrap;gap:8px}
 .masters-paste{margin:14px 0;padding:12px;border:1px solid var(--import-line);border-radius:8px}
 @media(max-width:640px){.masters-guided-import footer{align-items:flex-start;flex-direction:column;gap:10px}.masters-mapping-grid{grid-template-columns:1fr}}
+
+/* Editable import columns retain readable widths instead of fitting every field. */
+.masters-guided-import table { width: max-content; min-width: 100%; table-layout: auto; }
+.masters-guided-import td[data-import-field] { min-width: 180px; }
+.masters-guided-import td[data-import-field] input[type=text] { width: 100%; min-width: 180px; max-width: none; min-height: 40px; }
+.masters-guided-import td:is([data-import-field="name"], [data-import-field="description"], [data-import-field="address"]) { min-width: 300px; }
+.masters-guided-import td[data-import-field="tin"] { min-width: 210px; }
+.masters-guided-import td:is([data-import-field="is_petty_cash"], [data-import-field="entity_type"]) { min-width: 140px; }
+.masters-guided-import td:is([data-import-field="is_petty_cash"], [data-import-field="entity_type"]) input[type=text] { min-width: 140px; }
+.masters-guided-import td:is([data-import-field="name"], [data-import-field="description"], [data-import-field="address"]) input[type=text] { min-width: 300px; }
+.masters-guided-import td[data-import-field="tin"] input[type=text] { min-width: 210px; }
+body dialog.masters-guided-import td[data-import-field] input[type=text] { min-width: 180px !important; width: 100% !important; }
+body dialog.masters-guided-import td:is([data-import-field="name"], [data-import-field="description"], [data-import-field="address"]) input[type=text] { min-width: 300px !important; }
+body dialog.masters-guided-import td[data-import-field="tin"] input[type=text] { min-width: 210px !important; }
+body dialog.masters-guided-import td:is([data-import-field="is_petty_cash"], [data-import-field="entity_type"]) input[type=text] { min-width: 140px !important; }
+.import-operation-progress { flex-shrink: 0; padding: 12px 24px; border-bottom: 1px solid var(--import-line); background: var(--import-soft); }
+.import-operation-progress[hidden] { display: none !important; }
+.import-operation-progress p { margin: 0 0 8px; font-size: 13px; font-weight: 500; line-height: 1.5; color: var(--import-text); }
+.import-progress-track { height: 8px; border-radius: 4px; background: var(--import-line); overflow: hidden; }
+.import-progress-track span { display: block; width: 35%; height: 100%; background: var(--import-accent); transform: translateX(-100%); }
+.import-operation-progress[data-state=working] .import-progress-track span { animation: import-progress-activity 1.3s ease-in-out infinite; }
+.import-operation-progress[data-state=complete] .import-progress-track span { width: 100%; transform: none; }
+.import-operation-progress[data-state=error] .import-progress-track span { width: 100%; transform: none; background: var(--import-muted); }
+@keyframes import-progress-activity { to { transform: translateX(390%); } }
+@media (prefers-reduced-motion: reduce) { .import-operation-progress[data-state=working] .import-progress-track span { animation: none; transform: none; } }
+
+.import-operation-progress[data-state=measured] .import-progress-track span { animation: none; transform: none; }
+
+.import-success-icon { display: none; }
+.import-operation-progress[data-state=success] .import-success-icon { display: block; float: left; width: 28px; height: 28px; margin-right: 10px; color: var(--import-accent); }
+.import-success-icon svg { display: block; width: 100%; height: 100%; }
+.import-operation-progress[data-state=success] .import-progress-track span { width: 100%; transform: none; }
+.import-operation-progress p { max-height: 4.5em; overflow: auto; }
+@media (prefers-reduced-motion: no-preference) {
+    .import-operation-progress[data-state=success] .import-success-icon { animation: import-success-arrive 240ms ease-out both; }
+    .import-operation-progress[data-state=success] .import-success-icon path { stroke-dasharray: 24; animation: import-success-check 320ms ease-out both; }
+}
+@keyframes import-success-arrive { from { opacity: 0; transform: scale(.85); } to { opacity: 1; transform: scale(1); } }
+@keyframes import-success-check { from { stroke-dashoffset: 24; } to { stroke-dashoffset: 0; } }

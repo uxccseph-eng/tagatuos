@@ -18,7 +18,7 @@ class PpeDepreciation
 
     public function accumulated(PpeAsset $asset, string $date): int
     {
-        if ($date < $asset->service_date) {
+        if ($asset->setup_pending || ! $asset->service_date || ! $asset->life_months || $date < $asset->service_date) {
             return 0;
         }
         $end = (new DateTimeImmutable($date))->modify('last day of this month')->format('Y-m-d');
@@ -58,6 +58,9 @@ class PpeDepreciation
             $opening = $this->accumulated($asset, $prior);
             $closing = $this->accumulated($asset, $end);
             $issues = [];
+            if ($asset->source_review_required) {
+                $issues[] = 'The source purchase changed or was voided. Reconcile the asset basis before depreciating it.';
+            }
             foreach (['asset_account_id' => ['Asset', 'Debit'], 'accumulated_account_id' => ['Asset', 'Credit'], 'expense_account_id' => ['Expense', 'Debit']] as $field => [$type, $side]) {
                 $account = $accounts->get($asset->{$field});
                 if (! $account || $account->archived || $account->type !== $type || $account->normal_balance !== $side) {

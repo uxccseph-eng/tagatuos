@@ -76,9 +76,11 @@
         return {id: root.crypto.randomUUID(), number: '', status: 'draft', draftTouched: false, date: dates.date, periodStart: dates.from, periodEnd: dates.to, name: '', employees: []};
     }
     function renumber(records, companyBook=false, previous=[]) {
-        const compact=records.some(record=>record.status==='archived');
+        const ordered=records.filter(record=>['posted','void'].includes(record.status)).sort((a,b)=>(Number(String(a.number).match(/^PYRJ-(\d+)$/)?.[1])||Number.MAX_SAFE_INTEGER)-(Number(String(b.number).match(/^PYRJ-(\d+)$/)?.[1])||Number.MAX_SAFE_INTEGER)||String(a.id).localeCompare(String(b.id)));
+        const automatic=ordered.filter(record=>!record.number||/^PYRJ-\d+$/.test(record.number));
+        const compact=records.some(record=>record.status==='archived')||automatic.some((record,index)=>index>0&&String(automatic[index-1].date||'')>String(record.date||''));
         if(compact){
-            const active=records.filter(record=>['posted','void'].includes(record.status)&&/^PYRJ-\d+$/.test(record.number)).sort((a,b)=>Number(String(a.number).split('-').at(-1))-Number(String(b.number).split('-').at(-1))||String(a.id).localeCompare(String(b.id)));
+            const active=automatic.sort((a,b)=>String(a.date||'').localeCompare(String(b.date||''))||(Number(String(a.number).match(/^PYRJ-(\d+)$/)?.[1])||Number.MAX_SAFE_INTEGER)-(Number(String(b.number).match(/^PYRJ-(\d+)$/)?.[1])||Number.MAX_SAFE_INTEGER)||String(a.id).localeCompare(String(b.id)));
             const numbers=new Map(active.map((record,index)=>[record.id,`PYRJ-${String(index+1).padStart(6,'0')}`]));
             records=records.map(record=>({...record,number:numbers.get(record.id)||record.number}));
         }

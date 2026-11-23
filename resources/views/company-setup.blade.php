@@ -37,11 +37,7 @@
 
       <a class="flex items-center gap-2.5 text-base font-bold tracking-tight text-white group" href="{{ route('home') }}">
 
-        <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-400 to-teal-500 text-slate-950 font-black shadow-lg shadow-emerald-500/20 group-hover:scale-105 transition-transform">
-
-          ₱
-
-        </span>
+        @include('components.project-logo')
 
         <span class="text-lg tracking-tight">kontadurya<span class="text-emerald-400">.io</span></span>
 

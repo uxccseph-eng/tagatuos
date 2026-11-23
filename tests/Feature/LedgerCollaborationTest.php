@@ -18,6 +18,24 @@ class LedgerCollaborationTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_two_accountants_can_post_different_years_from_the_same_snapshot(): void
+    {
+        [$company, $a, $b] = $this->book();
+        $this->member($a, $company);
+        $later = $this->send([$this->operation('later', $this->journal('later', 'posted'))])->assertOk()->json();
+        $headerId = DB::table('journal_entries')->where('source_key', 'journalEntries:later')->value('id');
+        $this->member($b, $company);
+        $earlier = [...$this->journal('earlier', 'posted'), 'date' => '2025-12-31'];
+        $requestId = (string) Str::uuid();
+        $result = $this->send([$this->operation('earlier', $earlier)], 0, $requestId)->assertOk();
+        $result->assertJsonPath('state.journalEntries.0.number', 'GJ-000002')
+            ->assertJsonPath('state.journalEntries.1.number', 'GJ-000001');
+        $this->assertSame(1, $later['record_versions']['journalEntries']['later']);
+        $this->assertDatabaseHas('journal_entries', ['id' => $headerId, 'source_key' => 'journalEntries:later', 'number' => 'GJ-000002']);
+        $this->send([$this->operation('earlier', $earlier)], 0, $requestId)->assertOk()->assertJsonPath('replayed', true);
+        $this->assertDatabaseCount('journal_entries', 2);
+    }
+
     public function test_two_accountants_add_from_the_same_revision_and_receive_unique_server_numbers(): void
     {
         [$company, $a, $b] = $this->book();

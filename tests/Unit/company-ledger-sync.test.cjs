@@ -256,6 +256,9 @@ test('a rejected posted edit shows Not saved even though the original entry was 
     const changed=p.api.state(); changed.sales[0].gross=0; p.api.saveState(changed);
     await assert.rejects(p.api.flush(),/Correction rejected/);
     assert.equal(p.api.postingLabel('sales',{id:1}),'Not saved');
+    const badge={dataset:{},textContent:'Posted',setAttribute(){}};
+    p.api.decorateBadge(badge,'sales',changed.sales[0]);
+    assert.equal(badge.title,'Correction rejected');
     assert.equal(p.database.state.sales[0].gross,10000);
     assert.equal(p.storage.has(recoveryKey),true);
 });

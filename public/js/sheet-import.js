@@ -150,3 +150,49 @@
     }
     const api={columns,methods,parseCsv,parseClipboard,sampleRows,template,fileText,amount,date,fingerprint,preview,guessMapping,mapRows,previewMapped};if(typeof module!=='undefined'&&module.exports)module.exports=api;if(root)root.SheetImport=api;
 })(typeof window==='undefined'?null:window);
+(function(root){
+    if(!root)return;
+    const panels=new WeakMap();
+    function panel(dialog){
+        if(panels.has(dialog))return panels.get(dialog);
+        const region=document.createElement('div');region.className='import-operation-progress';region.hidden=true;
+        const icon=document.createElement('span');icon.className='import-success-icon';icon.setAttribute('aria-hidden','true');icon.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m7 12 3 3 7-7"/></svg>';
+        const label=document.createElement('p');label.setAttribute('role','status');label.setAttribute('aria-live','polite');
+        const track=document.createElement('div');track.className='import-progress-track';track.setAttribute('role','progressbar');track.setAttribute('aria-label','Import operation progress');track.setAttribute('aria-valuemin','0');track.setAttribute('aria-valuemax','100');
+        const fill=document.createElement('span');track.append(fill);region.append(icon,label,track);dialog.querySelector('header').after(region);
+        const value={region,label,track,sequence:0};panels.set(dialog,value);return value;
+    }
+    async function run(dialog,label,work){
+        const view=panel(dialog),sequence=++view.sequence;view.region.hidden=false;view.region.dataset.state='working';view.label.textContent=label+' · 0%';view.track.removeAttribute('aria-valuenow');view.track.setAttribute('aria-valuetext',label);dialog.setAttribute('aria-busy','true');
+        try{
+            await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+            const result=await work();
+            if(sequence===view.sequence){view.region.dataset.state='complete';view.track.firstElementChild.style.removeProperty('width');view.label.textContent=label.replace(/…$/,'')+' — 100% complete';view.track.setAttribute('aria-valuenow','100');view.track.setAttribute('aria-valuetext','Complete');}
+            return result;
+        }catch(error){if(sequence===view.sequence){view.region.dataset.state='error';view.track.firstElementChild.style.removeProperty('width');view.label.textContent=error.message||'Import needs attention. Review the details below.';view.track.removeAttribute('aria-valuenow');view.track.setAttribute('aria-valuetext','Needs attention');}throw error;}
+        finally{if(sequence===view.sequence)dialog.setAttribute('aria-busy','false');}
+    }
+    function report(dialog,percent,label){
+        const view=panels.get(dialog);if(!view||view.region.dataset.state!=='working')return;
+        const value=Math.max(0,Math.min(100,Math.round(percent)));view.region.dataset.state='measured';view.label.textContent=`${label} · ${value}%`;view.track.setAttribute('aria-valuenow',String(value));view.track.setAttribute('aria-valuetext',`${value}%`);view.track.firstElementChild.style.width=value+'%';
+    }
+    function pending(dialog,label){const view=panels.get(dialog);if(!view)return;view.region.dataset.state='working';view.label.textContent=label;view.track.removeAttribute('aria-valuenow');view.track.firstElementChild.style.removeProperty('width');}
+    function upload(dialog,url,options){
+        return new Promise((resolve,reject)=>{
+            const target=new URL(url,location.href);if(target.origin!==location.origin){reject(Error('Import requests must stay within this application.'));return;}
+            const headers=new Headers(options.headers||{}),companyId=document.querySelector('meta[name="tenant-company"]')?.content;
+            if(companyId){if(!target.searchParams.has('company_id'))target.searchParams.set('company_id',companyId);if(!headers.has('X-Company-ID'))headers.set('X-Company-ID',companyId);}
+            const xhr=new XMLHttpRequest();xhr.open(options.method||'POST',target.href);xhr.withCredentials=true;xhr.timeout=120000;
+            headers.forEach((value,name)=>xhr.setRequestHeader(name,value));
+            xhr.upload.onprogress=event=>{if(event.lengthComputable){const view=panels.get(dialog);if(view)view.region.dataset.state='working';report(dialog,event.loaded/event.total*100,'Uploading import data');}};
+            xhr.upload.onload=()=>pending(dialog,'Upload 100% complete · Server is processing the import…');
+            xhr.onload=()=>resolve(new Response(xhr.responseText,{status:xhr.status,statusText:xhr.statusText,headers:{'Content-Type':xhr.getResponseHeader('Content-Type')||'application/json'}}));
+            xhr.onerror=()=>reject(Error('Connection failed. Your import has not been confirmed.'));
+            xhr.ontimeout=()=>reject(Error('The import response timed out. Check the save status before retrying.'));
+            xhr.send(options.body);
+        });
+    }
+    function readFile(dialog,file){return run(dialog,'Reading file…',()=>new Promise((resolve,reject)=>{const reader=new FileReader();reader.onprogress=event=>{if(event.lengthComputable){const view=panels.get(dialog);if(view)view.region.dataset.state='working';report(dialog,event.loaded/event.total*100,'Reading file');}};reader.onload=()=>resolve(reader.result);reader.onerror=()=>reject(Error('Could not read the selected file.'));reader.readAsText(file);}));}
+    function success(dialog,detail){const view=panel(dialog);view.region.hidden=false;view.region.dataset.state='success';view.label.textContent='Import successful — '+detail;view.track.firstElementChild.style.removeProperty('width');view.track.setAttribute('aria-valuenow','100');view.track.setAttribute('aria-valuetext','100% complete');dialog.setAttribute('aria-busy','false');}
+    root.ImportProgress={run,readFile,fetch:upload,success};
+})(typeof window==='undefined'?null:window);

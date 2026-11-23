@@ -39,7 +39,7 @@ class EwtSummaryService
                 $tax = null;
                 $issues[] = 'Initialize and review the company books before treating this as a nil EWT computation.';
             }
-            $payments = $events->filter(fn (object $event): bool => (int) $event->quarter === $quarter);
+            $payments = $events->where('action', 'payment')->filter(fn (object $event): bool => (int) $event->quarter === $quarter);
             $monthly = [0, 0];
             $quarterly = 0;
             $paidPenalty = 0;

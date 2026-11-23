@@ -11,7 +11,7 @@
         return records.filter(asset=>(el('ppe-archived').checked||!asset.archived)&&(!category||asset.category===category)&&[asset.code,asset.name,asset.category,asset.serial_number].join(' ').toLowerCase().includes(query)).map(asset=>({...asset,amounts:window.PpeSchedule.calculate(asset,range.from,range.to)}));
     }
     const cell=(row,text,className='')=>{const item=row.insertCell();item.textContent=text;item.className=className;return item;};
-    const status=asset=>asset.archived?'Archived':asset.disposal_date&&asset.disposal_date<=window.WorkingPeriod.current().to?'Disposed':(asset.posted_net_cents ?? asset.cost_cents)===asset.residual_cents?'Fully depreciated':'Active';
+    const status=asset=>asset.source_review_required?'Source purchase needs review':asset.setup_pending?'Draft · Complete depreciation setup':asset.archived?'Archived':asset.disposal_date&&asset.disposal_date<=window.WorkingPeriod.current().to?'Disposed':(asset.posted_net_cents ?? asset.cost_cents)===asset.residual_cents?'Fully depreciated':'Active';
     function render(){
         const category=el('ppe-category').value,categories=[...new Set(records.map(asset=>asset.category))].sort();
         el('ppe-category').replaceChildren(new Option('All categories',''),...categories.map(value=>new Option(value,value)));el('ppe-category').value=category;
@@ -21,7 +21,7 @@
             const row=document.createElement('tr');cell(row,asset.code,'registry-code');cell(row,asset.name,'ppe-name');cell(row,asset.category);
             for(const value of [asset.cost_cents,asset.residual_cents,asset.posted_net_cents ?? asset.cost_cents])cell(row,money(value),'ppe-money');
             cell(row,asset.service_date);cell(row,asset.life_months);
-            cell(row,asset.months_remaining ?? asset.life_months);cell(row,'Manual');cell(row,asset.capitalization_reference?'Capitalized · '+asset.capitalization_reference:'Needs capitalization');cell(row,status(asset));
+            cell(row,asset.months_remaining ?? asset.life_months);cell(row,asset.purchase_source_id?'Purchase linked':'Manual');cell(row,asset.capitalization_reference?'Capitalized · '+asset.capitalization_reference:'Needs capitalization');cell(row,status(asset));
             const actions=cell(row,'');actions.className='lapsing-actions';
             for(const [label,icon,callback] of [['Edit','edit',()=>open(asset)],[asset.archived?'Restore':'Archive',asset.archived?'restore':'inventory_2',()=>confirmArchive(asset)]]){
                 const button=document.createElement('button');button.type='button';button.className='masters-row-action';button.setAttribute('aria-label',label+' '+asset.code);button.title=label;const symbol=document.createElement('span');symbol.className='material-symbols-outlined';symbol.setAttribute('aria-hidden','true');symbol.textContent=icon;button.append(symbol);button.addEventListener('click',callback);actions.append(button);
@@ -50,16 +50,24 @@
     document.querySelectorAll('[data-ppe-close]').forEach(button=>button.addEventListener('click',()=>{if(busy)return;guard.confirm(()=>{dirty=false;editor.close();});}));
     editor.addEventListener('cancel',event=>{event.preventDefault();if(!busy)guard.confirm(()=>{dirty=false;editor.close();});});
     async function request(url,method,data){
-        const response=await fetch(url,{method,headers:{Accept:'application/json','Content-Type':'application/json','X-CSRF-TOKEN':document.querySelector('meta[name="csrf-token"]').content},body:data?JSON.stringify(data):undefined});
-        let payload;try{payload=await response.json();}catch{throw Error('Could not read the response. Refresh and try again.');}
-        if(!response.ok)throw Error(response.status===422?Object.values(payload.errors||{}).flat().join(' '):response.status===419?'Your session expired. Refresh before saving.':'Unable to save this asset. Please try again.');
+        let response;
+        try{response=await fetch(url,{method,headers:{Accept:'application/json','Content-Type':'application/json','X-CSRF-TOKEN':document.querySelector('meta[name="csrf-token"]').content},body:data?JSON.stringify(data):undefined});}
+        catch{throw Error('Could not connect to the server. Your entries remain in this form. Check your connection and try again.');}
+        if(response.status===401||response.status===419)throw Error('Your session expired. Sign in again in another tab, then retry here. Your entries remain in this form.');
+        let payload;try{payload=await response.json();}catch{throw Error('The server returned an unexpected response. Your entries remain in this form. Check the register before trying again.');}
+        if(!response.ok){
+            const validation=Object.values(payload.errors||{}).flat().filter(value=>typeof value==='string').join(' ');
+            const message=response.status===422?validation||payload.message||'Check the asset details and try again.':response.status===403?'You do not have permission to change this asset. Ask your firm owner or manager for access.':response.status===409?payload.message||'This asset changed while you were editing. Check its latest details before saving.':response.status===429?'Too many requests. Wait a moment, then try again.':'The asset could not be saved. Your entries remain in this form. Try again shortly.';
+            throw Error(message);
+        }
+        if(!payload.record||typeof payload.record!=='object'||!payload.record.id)throw Error('The server did not confirm the saved asset. Your entries remain in this form. Check the register before trying again.');
         return payload.record;
     }
     form.addEventListener('submit',async event=>{
-        event.preventDefault();if(busy||!form.reportValidity())return;busy=true;el('ppe-save').disabled=true;el('ppe-error').textContent='';
+        event.preventDefault();if(busy||!form.reportValidity())return;busy=true;el('ppe-save').disabled=true;form.setAttribute('aria-busy','true');el('ppe-save').textContent='Saving asset…';el('ppe-error').textContent='';
         const data=Object.fromEntries(new FormData(form));for(const key of Object.keys(data))data[key]=['cost','residual'].includes(key)?data[key].replace(/,/g,'').trim():data[key].trim();
         try{const asset=await request(main.dataset.storeUrl+(editing?'/'+editing.id:''),editing?'PUT':'POST',data);records=records.filter(item=>item.id!==asset.id);records.push(asset);dirty=false;editor.close();render();announce(asset.code+' saved. No journal entry was posted.');}
-        catch(error){el('ppe-error').textContent=error.message;}finally{busy=false;el('ppe-save').disabled=false;}
+        catch(error){el('ppe-error').textContent=error.message;}finally{busy=false;el('ppe-save').disabled=false;form.setAttribute('aria-busy','false');el('ppe-save').textContent='Save asset';}
     });
     function confirmArchive(asset){
         const dialog=document.createElement('dialog');dialog.className='masters-dialog masters-small';dialog.setAttribute('aria-label',(asset.archived?'Restore ':'Archive ')+asset.code);
@@ -72,7 +80,7 @@
     el('ppe-export').addEventListener('click',()=>{
         const headers=['code','name','category','cost','salvage','net_book_value','service_date','life_months','months_left','source','capitalization_reference','status','serial_number'];
         const quote=value=>'"'+String(value??'').replace(/^[=+@\-\t\r]/,"'$&").replace(/"/g,'""')+'"';
-        const rows=[headers,...selected().map(asset=>[asset.code,asset.name,asset.category,(asset.cost_cents/100).toFixed(2),(asset.residual_cents/100).toFixed(2),((asset.posted_net_cents??asset.cost_cents)/100).toFixed(2),asset.service_date,asset.life_months,asset.months_remaining??asset.life_months,'Manual',asset.capitalization_reference,status(asset),asset.serial_number])];
+        const rows=[headers,...selected().map(asset=>[asset.code,asset.name,asset.category,(asset.cost_cents/100).toFixed(2),(asset.residual_cents/100).toFixed(2),((asset.posted_net_cents??asset.cost_cents)/100).toFixed(2),asset.service_date,asset.life_months,asset.months_remaining??asset.life_months,asset.purchase_source_id?'Purchase linked':'Manual',asset.capitalization_reference,status(asset),asset.serial_number])];
         const url=URL.createObjectURL(new Blob(['\ufeff'+rows.map(row=>row.map(quote).join(',')).join('\r\n')],{type:'text/csv;charset=utf-8'})),link=document.createElement('a');link.href=url;link.download='ppe-items.csv';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
     });
     const toggle=el('sales-menu-toggle'),backdrop=el('sales-backdrop');toggle.addEventListener('click',()=>{const open=document.body.classList.toggle('sales-menu-open');toggle.setAttribute('aria-expanded',String(open));backdrop.hidden=!open;});backdrop.addEventListener('click',()=>{document.body.classList.remove('sales-menu-open');toggle.setAttribute('aria-expanded','false');backdrop.hidden=true;});

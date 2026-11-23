@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&amp;family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&amp;family=Space+Grotesk:wght@500;600;700&amp;display=swap" rel="stylesheet">
-  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+
   <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
   <script src="{{ asset('js/dashboard-config.js') }}"></script>
   <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}?v={{ filemtime(public_path('css/dashboard.css')) }}"><script src="{{ route('masters.accounts.catalog', ['_company_id' => $company['company_id'] ?? null]) }}"></script><script src="{{ asset('js/sheet-masters.js') }}?v={{ filemtime(public_path('js/sheet-masters.js')) }}" defer></script>
@@ -26,15 +26,7 @@
     <button id="sidebarToggle" aria-controls="sidebarNav" aria-expanded="true" aria-label="Toggle navigation" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-[#202838] transition-colors">
       <span class="material-symbols-outlined text-[20px]">menu</span>
     </button>
-    <a href="{{ route('dashboard') }}" class="flex items-center gap-2 group cursor-pointer">
-      <div class="w-7 h-7 rounded-lg bg-[#00f5a0] text-[#030712] flex items-center justify-center font-black shadow-[0_0_12px_rgba(0,245,160,0.35)]">
-        <span class="material-symbols-outlined text-[17px] font-bold">hub</span>
-      </div>
-      <div class="hidden sm:flex items-baseline">
-        <span class="font-headline font-bold text-base tracking-tight text-slate-900 dark:text-white">kontadurya</span>
-        <span class="font-mono text-xs font-bold text-emerald-500 dark:text-[#00f5a0]">.io</span>
-      </div>
-    </a>
+
     <button type="button" data-workspace-topic="Create" aria-label="Create" title="Create" class="flex h-8 shrink-0 cursor-pointer items-center gap-2 rounded-full border border-slate-200 dark:border-[#2b3548] bg-slate-100 dark:bg-[#1d2433] pl-1.5 pr-1.5 text-xs font-medium text-slate-800 dark:text-slate-200 transition-colors hover:bg-slate-200/70 dark:hover:bg-[#252f42] sm:pr-3.5">
       <span class="w-5 h-5 flex items-center justify-center rounded-full bg-emerald-500 text-[#002111] font-bold">
         <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg>
@@ -86,14 +78,15 @@
 
 <!-- FIXED PERSISTENT SIDEBAR -->
 <aside id="sidebarNav" class="fixed left-0 top-14 h-[calc(100vh-56px)] w-[240px] bg-white dark:bg-[#161c28] border-r border-slate-200 dark:border-[#262f40] z-40 flex flex-col py-3 overflow-y-auto transition-all duration-300 shadow-sm">
+  <div class="dashboard-sidebar-brand"><a class="panel-brand" href="{{ route('dashboard') }}" aria-label="Kontadurya dashboard">@include('components.project-logo')<span><strong>kontadurya<span>.io</span></strong><small>Ledger Core</small></span></a><button class="dashboard-nav-close" type="button" data-dashboard-close aria-label="Close navigation"><span class="material-symbols-outlined" aria-hidden="true">close</span></button></div>
   <!-- Main Ledger Section -->
   <div class="px-4 py-1.5 flex items-center justify-between">
     <span class="font-mono text-[10px] tracking-wider uppercase text-slate-400 font-bold">Main Ledger</span>
   </div>
   <nav class="px-2 space-y-1 mt-0.5">
-    <a href="{{ route('dashboard') }}" class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold text-slate-900 dark:text-white bg-slate-100 dark:bg-[#202838] border-l-2 border-emerald-500 dark:border-[#00f5a0] transition-colors">
+    <a href="{{ route('dashboard') }}" aria-current="page" class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold text-slate-900 dark:text-white bg-slate-100 dark:bg-[#202838] border-l-2 border-emerald-500 dark:border-[#00f5a0] transition-colors">
       <span class="w-5 h-5 flex items-center justify-center shrink-0">
-        <span class="material-symbols-outlined text-[18px] text-emerald-600 dark:text-[#00f5a0]">dashboard</span>
+        <span class="material-symbols-outlined text-[18px] text-emerald-600 dark:text-[#00f5a0]">home</span>
       </span>
       <span>Home</span>
     </a>
@@ -117,7 +110,7 @@
     </a>
     @if($company['sheet_settings']['ppe'] ?? true)<a href="{{ route('lapsing') }}" class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100/70 dark:hover:bg-[#1d2433] text-xs font-medium transition-colors">
       <span class="w-5 h-5 flex items-center justify-center shrink-0">
-        <span class="material-symbols-outlined text-[18px]">hourglass_empty</span>
+        <span class="material-symbols-outlined text-[18px]">domain</span>
       </span>
       <span>Lapsing (PPE)</span>
     </a>@endif

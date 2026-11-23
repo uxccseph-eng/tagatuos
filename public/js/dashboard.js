@@ -1,17 +1,36 @@
+document.body.classList.add('js');
 const dashboardRoutes=JSON.parse(document.getElementById('dashboard-routes').textContent);
 const sidebarToggle = document.getElementById('sidebarToggle');
 const sidebar = document.getElementById('sidebarNav');
 const backdrop = document.getElementById('sidebarBackdrop');
-const mobileViewport = window.matchMedia('(max-width: 767px)');
+const mobileViewport = window.matchMedia('(max-width: 1023px)');
 function updateSidebar() {
     const isOpen = mobileViewport.matches ? document.body.classList.contains('sidebar-open') : !document.body.classList.contains('sidebar-closed');
     sidebarToggle.setAttribute('aria-expanded', String(isOpen));
     sidebar.inert = !isOpen;
+    for (const element of document.querySelectorAll('#workspaceContent, body > header.fixed')) element.inert = mobileViewport.matches && isOpen;
     backdrop.hidden = !(mobileViewport.matches && isOpen);
 }
 sidebarToggle.addEventListener('click', () => {
     document.body.classList.toggle(mobileViewport.matches ? 'sidebar-open' : 'sidebar-closed');
     updateSidebar();
+    if (mobileViewport.matches && document.body.classList.contains('sidebar-open')) sidebar.querySelector('[data-dashboard-close]')?.focus();
+});
+function closeDashboardNavigation() {
+    document.body.classList.remove('sidebar-open');
+    updateSidebar();
+    sidebarToggle.focus();
+}
+sidebar.querySelector('[data-dashboard-close]')?.addEventListener('click', closeDashboardNavigation);
+document.addEventListener('keydown', event => {
+    if (!mobileViewport.matches || !document.body.classList.contains('sidebar-open')) return;
+    if (event.key === 'Escape') { event.preventDefault(); closeDashboardNavigation(); }
+    if (event.key === 'Tab') {
+        const controls = [...sidebar.querySelectorAll('a[href], button:not(:disabled)')].filter(control => control.getClientRects().length);
+        const first = controls[0], last = controls.at(-1);
+        if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+        else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+    }
 });
 backdrop.addEventListener('click', () => {
     document.body.classList.remove('sidebar-open');

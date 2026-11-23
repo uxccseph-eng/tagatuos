@@ -37,9 +37,10 @@
         }
         let matrix=[],headers=[],mapping={},rows=[],version=0,busy=false,locked=false,loadToken=0,page=0,sourceOffset=0;
         const message=(text,error=false)=>{q('[data-import-feedback]').textContent=text;q('[data-import-feedback]').dataset.state=error?'error':'';};
-        async function request(url,body,method='POST'){
+                function request(url,body,method='POST'){return root.ImportProgress.run(dialog,'Processing import data…',()=>performRequest(url,body,method));}
+async function performRequest(url,body,method='POST'){
             const multipart=body instanceof FormData;
-            const response=await fetch(url,{method,credentials:'same-origin',headers:{Accept:'application/json','X-CSRF-TOKEN':config.csrf||'','X-Company-ID':String(config.companyId||''),...(multipart?{}:{'Content-Type':'application/json'})},body:multipart?body:JSON.stringify(body)});
+            const response=await window.ImportProgress.fetch(dialog,url,{method,credentials:'same-origin',headers:{Accept:'application/json','X-CSRF-TOKEN':config.csrf||'','X-Company-ID':String(config.companyId||''),...(multipart?{}:{'Content-Type':'application/json'})},body:multipart?body:JSON.stringify(body)});
             const data=await response.json().catch(()=>({}));
             if(!response.ok)throw Error(Object.values(data.errors||{}).flat().join(' ')||data.message||'The request failed. Reload the company book and try again.');return data;
         }
@@ -113,7 +114,7 @@
             if(busy||locked)return;const file=q('[data-file]').files[0];if(!file)return;
             const token=++loadToken;rows=[];matrix=[];sourceOffset=0;q('[data-header]').disabled=false;q('[data-mapping]').hidden=true;q('[data-review-panel]').hidden=true;q('[data-import-post]').disabled=true;q('[data-map]').disabled=true;message('Reading file…');
             try{
-                if(/\.csv$/i.test(file.name)){if(file.size>5*1024*1024)throw Error('CSV limit is 5 MB.');const text=await file.text();if(token!==loadToken)return;matrix=engine.parseCsv(text,true);q('[data-workbook]').hidden=true;}
+                if(/\.csv$/i.test(file.name)){if(file.size>5*1024*1024)throw Error('CSV limit is 5 MB.');const text=await window.ImportProgress.readFile(dialog,file);if(token!==loadToken)return;matrix=engine.parseCsv(text,true);q('[data-workbook]').hidden=true;}
                 else if(/\.xlsx$/i.test(file.name)){
                     if(!config.companyId)throw Error('Open an assigned company book to import Excel files. CSV templates can be reviewed in this preview.');
                     if(file.size>2*1024*1024)throw Error('Excel limit is 2 MB.');const form=new FormData();form.append('file',file);form.append('worksheet',worksheet);
@@ -158,10 +159,10 @@
             const controls=[...dialog.querySelectorAll('input,select,textarea,button')],disabled=controls.map(c=>c.disabled);controls.forEach(c=>c.disabled=true);
             try{
                 if(!config.companyId)throw Error('Open an assigned company book to post entries.');
-                await confirmedLedger();const fresh=currentPreview();if(fresh.errors.length||unreviewed(fresh).length)throw Error('The sheet changed. Review the batch again before posting.');
+                await root.ImportProgress.run(dialog,'Checking company records…',()=>confirmedLedger());const fresh=currentPreview();if(fresh.errors.length||unreviewed(fresh).length)throw Error('The sheet changed. Review the batch again before posting.');
                 const bytes=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(canonicalBatch(sheet,fresh.records))),hash=Array.from(new Uint8Array(bytes),v=>v.toString(16).padStart(2,'0')).join('');
-                const posted=ledger.postImport(sheet,fresh.records,toolbar.dataset.sheetBulkUser||'Import',hash);committed=true;await confirmedLedger();
-                rows=[];matrix=[];q('[data-file]').value='';q('[data-paste-cells]').value='';q('[data-review-panel]').hidden=true;q('[data-mapping]').hidden=true;q('[data-count]').textContent=posted.count+' entries posted';message(posted.count+' entries posted and saved to this company book. Your existing draft was kept.');root.SheetBulk?.refresh();
+                const posted=ledger.postImport(sheet,fresh.records,toolbar.dataset.sheetBulkUser||'Import',hash);committed=true;await root.ImportProgress.run(dialog,'Saving entries to company database…',()=>confirmedLedger());
+                root.ImportProgress.success(dialog,`${posted.count} entries saved · 100% complete`);rows=[];matrix=[];q('[data-file]').value='';q('[data-paste-cells]').value='';q('[data-review-panel]').hidden=true;q('[data-mapping]').hidden=true;q('[data-count]').textContent=posted.count+' entries posted';message(posted.count+' entries posted and saved to this company book. Your existing draft was kept.');root.SheetBulk?.refresh();
             }catch(error){if(committed){locked=true;message('The batch is awaiting database confirmation. Use the ledger save/recovery notice before importing again. '+error.message,true);}else{message(error.message,true);}}
             finally{busy=false;controls.forEach((c,i)=>c.disabled=disabled[i]);q('[data-import-post]').disabled=true;if(locked){dialog.querySelectorAll('input,select,textarea,button:not([data-close])').forEach(c=>c.disabled=true);}}
         });

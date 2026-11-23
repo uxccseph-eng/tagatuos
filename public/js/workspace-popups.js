@@ -1,5 +1,21 @@
 (() => {
     'use strict';
+    const main = document.querySelector('main');
+    if (main && !document.querySelector('.skip-link, .workspace-skip-link')) {
+        if (!main.id) {
+            let suffix = 1;
+            do { main.id = 'workspace-main-' + suffix++; } while (document.getElementById(main.id) !== main);
+        }
+        const skip = document.createElement('a');
+        skip.className = 'workspace-skip-link';
+        skip.href = '#' + main.id;
+        skip.textContent = 'Skip to content';
+        skip.addEventListener('click', () => {
+            if (!main.hasAttribute('tabindex')) main.setAttribute('tabindex', '-1');
+            main.focus({preventScroll: true});
+        });
+        document.body.prepend(skip);
+    }
     const drawers = '.sales-entry-drawer, .cwt-entry, #payroll-entry, #journal-entry';
     const imports = '.sheet-import-dialog';
     const previews = '.sales-print-dialog, .form2307-dialog, .form2316-dialog, #return-print-dialog';

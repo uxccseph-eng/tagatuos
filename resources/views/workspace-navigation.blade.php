@@ -27,14 +27,14 @@
         ],
         'Accounting' => [
             ['Masters', 'account_tree', $bookUrl('masters.accounts'), false],
-            ['Financial Reports', 'bar_chart', $bookUrl('reports'), false],
+            ['Financial Reports', 'assessment', $bookUrl('reports'), false],
             ['Tax Reports', 'receipt_long', $bookUrl('tax-reports'), false],
-            ['Tax Returns', 'description', $bookUrl('tax-returns.index'), false],
-            ['Tax Summary', 'analytics', $bookUrl('tax-summary.index'), request()->routeIs('tax-summary.*')],
+            ['Tax Returns', 'assignment_turned_in', $bookUrl('tax-returns.index'), false],
+            ['Tax Summary', 'query_stats', $bookUrl('tax-summary.index'), request()->routeIs('tax-summary.*')],
         ],
         'Admin' => [
             ['Settings', 'settings', $bookUrl('settings'), false],
-            ['Clients', 'business_center', route('account.dashboard'), request()->routeIs('account.dashboard', 'closing.*')],
+            ['Clients', 'storefront', route('account.dashboard'), request()->routeIs('account.dashboard', 'closing.*')],
         ],
     ];
     if ($companyScope) {
@@ -45,8 +45,8 @@
 <aside class="workspace-app-sidebar" id="workspace-app-sidebar" aria-label="Workspace sidebar">
     <div class="workspace-sidebar-brand">
         <a href="{{ $previewMode ? route('home') : ($companyScope ? $bookUrl('dashboard') : route('my-work')) }}" class="workspace-brand">
-            <span class="workspace-brand-symbol material-symbols-outlined" aria-hidden="true">account_balance</span>
-            <span><strong>kontadurya<span>.io</span></strong><small>LEDGER CORE</small></span>
+            @include('components.project-logo')
+            <span><strong>kontadurya<span>.io</span></strong><small>Ledger Core</small></span>
         </a>
         <button type="button" class="workspace-icon-button workspace-nav-close" data-workspace-close aria-label="Close navigation"><span class="material-symbols-outlined" aria-hidden="true">close</span></button>
     </div>

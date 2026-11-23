@@ -29,3 +29,10 @@ test('rounding reconciles total depreciation and service date may follow acquisi
     const delayed={...asset,service_date:'2026-04-01'};assert.equal(ppe.accumulated(delayed,'2026-03-31'),0);
     assert.equal(ppe.accumulated({...asset,residual_cents:asset.cost_cents},'2027-01-31'),0);
 });
+
+test('purchase drafts have no depreciation before service date and useful life are confirmed',()=>{
+ const asset={setup_pending:true,acquired_date:'2026-06-24',service_date:null,life_months:null,cost_cents:12010268,residual_cents:0};
+ assert.equal(ppe.accumulated(asset,'2026-12-31'),0);
+ const result=ppe.calculate(asset,'2026-01-01','2026-12-31');
+ assert.equal(result.periodDep,0);assert.equal(result.net,12010268);assert.equal(result.additions,12010268);
+});

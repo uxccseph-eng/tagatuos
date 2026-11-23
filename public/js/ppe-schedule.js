@@ -3,7 +3,7 @@
     const index=date=>Number(date.slice(0,4))*12+Number(date.slice(5,7))-1;
     function before(date){const day=new Date(date+'T12:00:00Z');day.setUTCDate(day.getUTCDate()-1);return day.toISOString().slice(0,10);}
     function accumulated(asset,date){
-        if(date<asset.service_date)return 0;
+        if(asset.setup_pending||!asset.service_date||!asset.life_months||date<asset.service_date)return 0;
         const value=new Date(date+'T12:00:00Z'),end=new Date(Date.UTC(value.getUTCFullYear(),value.getUTCMonth()+1,0)).toISOString().slice(0,10);
         let last=index(date)-(date<end?1:0);
         if(asset.disposal_date)last=Math.min(last,index(asset.disposal_date)-1);

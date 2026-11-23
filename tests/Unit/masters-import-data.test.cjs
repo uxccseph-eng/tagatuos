@@ -51,3 +51,11 @@ test('duplicate TIN checks normalize branches, include archived records, and ign
     assert.equal(data.tinKey('bad123456789'), null);
     assert.equal(data.tinKey('000-000-000-00001'), null);
 });
+
+test('bulk exclusion unchecks all issue rows without changing valid rows or record values', () => {
+ const rows=[{sourceRow:2,included:true,record:{name:'Valid'}},{sourceRow:30,included:true,record:{name:'Invalid'}},{sourceRow:52,included:false,record:{name:'Skipped'}}];
+ assert.equal(data.excludeIssueRows(rows,[{row:30},{row:30},{row:52}]),1);
+ assert.deepEqual(rows.map(row=>row.included),[true,false,false]);
+ assert.equal(rows[1].record.name,'Invalid');
+ assert.equal(data.excludeIssueRows(rows,[{row:30}]),0);
+});

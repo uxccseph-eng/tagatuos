@@ -145,6 +145,9 @@
         const text = postingLabel(node.dataset.companyPostedSheet, {id: node.dataset.companyPostedId});
         node.textContent = (node.dataset.companyPostedLabel || 'Posted').replace(/^Posted/, text);
         node.classList?.toggle('company-posting-unconfirmed', text !== 'Posted');
+        const detail = text === 'Not saved' ? (failure?.message || 'Review the company save status for the recovery steps.') : text === 'Saving…' ? 'Waiting for confirmation from the company database.' : 'Confirmed saved in the company database.';
+        node.title = detail;
+        node.setAttribute('aria-label', `${text}. ${detail}`);
     }
     function clearRecovery() {
         // Clear only this company's recovery keys; never clear another book or login session.
@@ -211,6 +214,12 @@
         } else if (privateRecoveries.length) {
             label.textContent = 'Your private saved drafts are available. They have not been posted to the books.';
             banner.dataset.state = 'pending';
+            if(privateRecoveries.length>2)button('Discard older recovery drafts · '+(privateRecoveries.length-2),async()=>{
+                const older=privateRecoveries.slice().sort((a,b)=>String(b.updated_at).localeCompare(String(a.updated_at))).slice(2);
+                if(!window.confirm(`Discard ${older.length} older recovery drafts in this client book? The newest two will be kept. Unsaved work in the discarded drafts cannot be restored.`))return;
+                try{for(const item of older){await privateDrafts.discard(item);privateRecoveries=privateRecoveries.filter(row=>row.id!==item.id);}render();}
+                catch(error){label.textContent=error.message;}
+            });
             for (const item of privateRecoveries) {
                 const date = new Date(item.updated_at).toLocaleString();
                 button('Resume draft · '+date,()=>resumePrivateDraft(item));

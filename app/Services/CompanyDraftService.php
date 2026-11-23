@@ -56,7 +56,7 @@ class CompanyDraftService
                 return $this->metadata($current);
             }
             abort_unless((int) ($current->version ?? 0) === $version, 409, 'This private draft changed in another tab. Keep a separate copy.');
-            abort_if(! $current && $this->query($company, $user)->count() >= 25, 422, 'Resume or discard an older private draft before creating another.');
+            abort_if(! $current && $this->query($company, $user)->count() >= 2, 422, 'Only two private recovery drafts are allowed per accountant in this client book. Resume or discard one before creating another.');
             $commitRequest = isset($payload['request']) && $payload['changes'] === $payload['request']['operations'] ? $payload['request']['request_id'] : null;
             $values = ['version' => $version + 1, 'payload' => Crypt::encryptString($encoded), 'updated_at' => now(), 'commit_request_id' => $commitRequest];
             if ($current) {

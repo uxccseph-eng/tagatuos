@@ -14,6 +14,21 @@ class CompanyDraftTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_only_two_recovery_drafts_are_allowed_but_existing_drafts_can_still_be_updated(): void
+    {
+        [$company, $user, $other] = $this->book();
+        $this->member($company, $user);
+        $first = (string) Str::uuid();
+        foreach ([$first, (string) Str::uuid()] as $id) {
+            $this->putJson(route('sheets.drafts.store', $id), ['version' => 0, 'payload' => $this->payload($company)])->assertOk();
+        }
+        $this->putJson(route('sheets.drafts.store', (string) Str::uuid()), ['version' => 0, 'payload' => $this->payload($company)])->assertUnprocessable();
+        $this->putJson(route('sheets.drafts.store', $first), ['version' => 1, 'payload' => $this->payload($company)])->assertOk()->assertJsonPath('version', 2);
+        $this->assertDatabaseCount('company_ledger_drafts', 2);
+        $this->member($company, $other);
+        $this->putJson(route('sheets.drafts.store', (string) Str::uuid()), ['version' => 0, 'payload' => $this->payload($company)])->assertOk();
+    }
+
     public function test_incomplete_private_drafts_are_encrypted_and_do_not_create_transactions_or_numbers(): void
     {
         [$company, $user] = $this->book();

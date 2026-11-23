@@ -7,17 +7,17 @@
 body:has(.company-save-status){padding-bottom:0}
 body .company-database-status.company-save-status,
 body .company-database-status.company-save-status:is([data-state=saved],[data-state=error],[data-state=warning],[data-state=pending],[data-state=ready]) {
-    position:static; inset:auto; z-index:auto; display:grid; grid-template-columns:minmax(0,1fr) auto auto;
+    position:relative; inset:auto; z-index:auto; display:grid; grid-template-columns:minmax(0,1fr) auto auto;
     box-sizing:border-box; align-items:center; gap:8px 12px; width:100%; max-width:none; min-width:0; min-height:44px;
     margin:12px 0; padding:8px 12px; border:1px solid var(--theme-line); border-radius:6px;
     background:var(--theme-panel); color:var(--theme-text); box-shadow:none;
     font:400 13px/20px var(--save-status-font);
 }
 body .company-database-status.company-save-status[data-state=saved]{background:var(--save-status-saved-fill)}
-.company-save-status .company-save-message{min-width:0;overflow-wrap:anywhere}
-.company-save-status[data-state=saved] .company-save-message::before{content:'✓';margin-right:8px;color:var(--theme-accent);font-weight:700}
-.company-save-status[data-state=pending] .company-save-message::before{content:'↻';margin-right:8px;color:var(--theme-muted)}
-.company-save-status:is([data-state=warning],[data-state=error]) .company-save-message::before{content:'!';margin-right:8px;color:var(--theme-text);font-weight:700}
+.company-save-status .company-save-message{grid-area:1/1;min-width:0;overflow-wrap:anywhere;padding-left:24px}
+.company-save-status .company-save-indicator{grid-area:1/1;align-self:center;justify-self:start;display:inline-block;width:16px;line-height:20px;text-align:center;color:var(--theme-accent);font-weight:700;pointer-events:none}
+.company-save-status[data-state=ready] .company-save-message{padding-left:0}
+.company-save-status:is([data-state=warning],[data-state=error],[data-state=pending]) .company-save-indicator{color:var(--theme-text)}
 body .company-save-status .company-save-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap;flex-shrink:1}
 body .company-database-status.company-save-status button{display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;min-height:32px;padding:4px 12px;margin:0;border:1px solid var(--theme-line);border-radius:4px;background:var(--theme-soft);color:var(--theme-text);font:500 12px/20px var(--save-status-font);cursor:pointer;filter:none;white-space:nowrap}
 body .company-database-status.company-save-status button:hover{background:var(--theme-field);filter:none}
@@ -44,3 +44,29 @@ body .company-database-status.company-save-status button.company-save-details-to
 }
 
 @media print{body .company-database-status.company-save-status{display:none}}
+
+/* A brief acknowledgement after a confirmed save, never a loading indicator. */
+.company-save-status .company-save-confirmation {
+    position: absolute; inset-inline: 12px; bottom: 0;
+    height: 2px; border-radius: 1px; background: var(--theme-accent);
+    opacity: 0; transform-origin: left; pointer-events: none;
+    transition: opacity 150ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.company-save-status[data-state=saved][data-confirmed=true] .company-save-confirmation{opacity:1}
+
+/* The turn-arrow indicates an unconfirmed save, not percentage progress. */
+.company-save-status[data-state=pending][data-saving=true] .company-save-indicator {
+    display: inline-block; width: 16px; height: 16px; font-size: 0;
+    color: var(--theme-accent);
+    background: currentColor;
+    -webkit-mask: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%228%22%20fill%3D%22none%22%20stroke%3D%22white%22%20stroke-opacity%3D%22.2%22%20stroke-width%3D%222%22%2F%3E%3Cpath%20d%3D%22M20%2012a8%208%200%201%200-2.34%205.66%22%20fill%3D%22none%22%20stroke%3D%22white%22%20stroke-width%3D%222.4%22%20stroke-linecap%3D%22round%22%2F%3E%3Cpath%20d%3D%22M16.5%207.5h7L20%2013z%22%20fill%3D%22white%22%2F%3E%3C%2Fsvg%3E") center / contain no-repeat;
+    mask: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%228%22%20fill%3D%22none%22%20stroke%3D%22white%22%20stroke-opacity%3D%22.2%22%20stroke-width%3D%222%22%2F%3E%3Cpath%20d%3D%22M20%2012a8%208%200%201%200-2.34%205.66%22%20fill%3D%22none%22%20stroke%3D%22white%22%20stroke-width%3D%222.4%22%20stroke-linecap%3D%22round%22%2F%3E%3Cpath%20d%3D%22M16.5%207.5h7L20%2013z%22%20fill%3D%22white%22%2F%3E%3C%2Fsvg%3E") center / contain no-repeat;
+    animation: company-save-turn 900ms linear infinite;
+}
+@keyframes company-save-turn { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+    .company-save-status[data-state=pending][data-saving=true] .company-save-indicator {
+        animation: none; opacity: 0.8;
+    }
+}

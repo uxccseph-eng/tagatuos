@@ -189,19 +189,19 @@ class CompanyLedgerService
             $protectedVatSources = [...$protectedVatSources, ...DB::table('income_tax_summary_events')->where('company_id', $locked->id)->where('action', 'payment')->get()->map(fn (object $event): string => json_decode($event->data, true)['linked_source'] ?? '')->filter()->all()];
             $protectedVatSources = [...$protectedVatSources, ...DB::table('ewt_summary_events')->where('company_id', $locked->id)->where('action', 'payment')->get()->map(fn (object $event): string => json_decode($event->data, true)['linked_source'] ?? '')->filter()->all()];
             $protectedVatSources = [...$protectedVatSources, ...DB::table('compensation_summary_events')->where('company_id', $locked->id)->where('action', 'payment')->get()->map(fn (object $event): string => json_decode($event->data, true)['linked_source'] ?? '')->filter()->all()];
-            $newJournals = collect($incomingState['journalEntries'] ?? [])->keyBy(fn (array $row): string => (string) $row['id']);
-            foreach ($previousState['journalEntries'] as $journal) {
-                if (in_array('journalEntries:'.$journal['id'], $protectedVatSources, true)) {
-                    $replacement = $newJournals->get((string) $journal['id']);
-                    if (! $replacement || $replacement['status'] !== $journal['status'] || $this->postingContent($replacement) !== $this->postingContent($journal)) {
-                        $this->fail('This journal is linked to a recorded tax payment or VAT close. Preserve it and record a correcting entry separately.');
-                    }
-                }
-            }
             $state = $this->validateState($incomingState, $payroll, false);
             app(CashPurchaseWithholding::class)->synchronize($locked, $state, $previousState);
             app(CashSaleWithholding::class)->synchronize($locked, $state, $previousState);
             $baseline = app(TransactionNumbering::class)->normalize($state, $payroll, $previousState, $previousPayroll);
+            $newJournals = collect($state['journalEntries'] ?? [])->keyBy(fn (array $row): string => (string) $row['id']);
+            foreach ($baseline['state']['journalEntries'] as $journal) {
+                if (in_array('journalEntries:'.$journal['id'], $protectedVatSources, true)) {
+                    $replacement = $newJournals->get((string) $journal['id']);
+                    if (! $replacement || $replacement['status'] !== $journal['status'] || $this->protectedJournalContent($replacement) !== $this->protectedJournalContent($journal)) {
+                        $this->fail('This journal is linked to a recorded tax payment or VAT close. Use Revert payment or Reopen quarter in Tax Summary before changing its details. Automatic transaction numbering does not require reverting it.');
+                    }
+                }
+            }
             $state = $this->validateState($state, $payroll);
             $existing = DB::table('journal_entries')->where('company_id', $locked->id)->get()->keyBy('source_key')->all();
             $changes = [];
@@ -270,6 +270,7 @@ class CompanyLedgerService
                     DB::table('journal_entries')->where('company_id', $locked->id)->where('source_key', $sheet.':'.$record['id'])->update(['status' => $record['status'] === 'posted' ? 'posted' : ($record['status'] === 'archived' ? 'archived' : 'void'), 'number' => $record['number'], 'reserved_number' => $record['status'] === 'archived' ? null : $record['number'], 'reference' => mb_substr((string) ($record['reference'] ?? $record['certificate'] ?? ''), 0, 255), 'updated_at' => now()]);
                 }
             }
+            app(PurchasePpeDrafts::class)->synchronize($locked, $state);
             $revision = ($ledger?->revision ?? 0) + 1;
             CompanyLedger::query()->updateOrCreate(['company_id' => $locked->id], ['revision' => $revision, 'state' => $state, 'payroll' => $payroll]);
             $appliedVersions = app(LedgerRecordConcurrency::class)->record($locked->id, $actor->id, $changes);
@@ -379,6 +380,25 @@ class CompanyLedgerService
         }
 
         return json_encode($this->canonical(array_intersect_key($record, array_flip($fields))), JSON_THROW_ON_ERROR);
+    }
+
+    private function protectedJournalContent(array $record): string
+    {
+        $optional = ['reference', 'certificate', 'particulars', 'memo', 'description', 'notes', 'party', 'remarks'];
+        foreach ($optional as $field) {
+            if (($record[$field] ?? '') === '' || ($record[$field] ?? null) === null) {
+                unset($record[$field]);
+            }
+        }
+        foreach ($record['lines'] ?? [] as $index => $line) {
+            foreach (['party', 'remarks'] as $field) {
+                if (($line[$field] ?? '') === '' || ($line[$field] ?? null) === null) {
+                    unset($record['lines'][$index][$field]);
+                }
+            }
+        }
+
+        return $this->postingContent($record);
     }
 
     private function postingContent(array $record): string

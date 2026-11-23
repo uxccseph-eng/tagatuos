@@ -1,0 +1,30 @@
+@font-face {
+    font-family: "Workspace Symbols";
+    font-style: normal;
+    font-weight: 100 700;
+    font-display: block;
+    src: url("../fonts/material-symbols-outlined-v385.woff2") format("woff2");
+}
+
+/* Reserve the icon box while the local font loads; never expose ligature words. */
+.material-symbols-outlined {
+    font-family: "Workspace Symbols" !important;
+    font-style: normal;
+    font-weight: normal;
+    font-size: 24px;
+    line-height: 1;
+    letter-spacing: normal;
+    text-transform: none;
+    display: inline-block;
+    width: 1em;
+    min-width: 1em;
+    max-width: 1em;
+    height: 1em;
+    overflow: hidden;
+    white-space: nowrap;
+    word-wrap: normal;
+    direction: ltr;
+    flex-shrink: 0;
+    font-feature-settings: "liga";
+    -webkit-font-smoothing: antialiased;
+}

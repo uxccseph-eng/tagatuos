@@ -125,7 +125,7 @@ class IncomeTaxSummaryService
             $paidPenalty = $paidEvents->sum(fn (object $event): int => $event->data['penalty_cents'] ?? 0);
             $sourceHash = hash('sha256', json_encode([$rows, $election, $settings, $opening, $credits, $adjustment, $mcitAdjustment, $nolco], JSON_THROW_ON_ERROR));
             $filing = DB::table('tax_return_filing_records')->where('company_id', $company->id)->where('form', $form)->where('period_from', $period['from'])->where('period_to', $period['to'])->first();
-            $columns[$q] = ['form' => $form, 'period' => $period, 'record' => $record, 'filed' => $record?->status === 'filed' || (! ($record?->amended ?? false) && $filing?->filed_on !== null), 'saved_payable' => $saved['calculation']['payable'] ?? null, 'source_hash' => $sourceHash, 'reconciliation' => ! $record ? 'Not generated' : (($saved['income_summary_hash'] ?? null) === $sourceHash ? 'Book sources unchanged ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â· compare reviewed tax inputs' : 'Review book sources / tax inputs'), 'issues' => $issues,
+            $columns[$q] = ['form' => $form, 'period' => $period, 'record' => $record, 'filed' => $record?->status === 'filed' || (! ($record?->amended ?? false) && $filing?->filed_on !== null), 'saved_payable' => $saved['calculation']['payable'] ?? null, 'source_hash' => $sourceHash, 'reconciliation' => ! $record ? 'Not generated' : (($saved['income_summary_hash'] ?? null) === $sourceHash ? 'Book sources unchanged · compare reviewed tax inputs' : 'Review book sources / tax inputs'), 'issues' => $issues,
                 'amounts' => ['sales' => $sums['sales'] * 100, 'other' => $sums['other'] * 100, 'cost' => $sums['cost'] * 100, 'gross' => $gross * 100, 'deductions' => $deductions * 100, 'adjustment' => $adjustment * 100, 'mcit_adjustment' => $mcitAdjustment * 100, 'previous' => ($q === 4 ? 0 : $previous) * 100, 'nolco' => $nolco * 100, 'taxable' => $taxable * 100, 'rcit' => $rcit === null ? null : $rcit * 100, 'mcit' => $mcit === null ? null : $mcit * 100, 'tax' => $tax === null ? null : $tax * 100, 'credits' => $credits * 100, 'net' => $net, 'penalties' => $penalties, 'total' => $net === null ? null : $net + $penalties, 'paid' => $paidEvents->sum('amount'), 'open' => $net === null ? null : max(0, $net - $paidTax) + max(0, $penalties - $paidPenalty)],
                 'sources' => $rows, 'credit_breakdown' => ['opening' => (int) $opening, 'cwt' => $cwt, 'cwt_previous' => $cwtPrevious, 'payments' => (int) $priorPayments]];
             if ($q < 4) {
@@ -211,7 +211,7 @@ class IncomeTaxSummaryService
             $sheet = match ($row->sheet) {
                 'journalEntries' => 'journal', 'cwtCertificates' => 'cwt', 'wtpCertificates' => 'wtp', default => $row->sheet
             };
-            $result[] = ['source' => $row->source_key, 'number' => $row->number, 'date' => $row->transaction_date, 'bucket' => $bucket, 'account' => $row->code.' ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â· '.$row->name, 'amount' => $amount, 'url' => route('sheets.'.$sheet, ['company_id' => $company->id, 'from' => $row->transaction_date, 'to' => $row->transaction_date])];
+            $result[] = ['source' => $row->source_key, 'number' => $row->number, 'date' => $row->transaction_date, 'bucket' => $bucket, 'account' => $row->code.' · '.$row->name, 'amount' => $amount, 'url' => route('sheets.'.$sheet, ['company_id' => $company->id, 'from' => $row->transaction_date, 'to' => $row->transaction_date])];
         }
 
         return $result;

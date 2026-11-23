@@ -19,7 +19,49 @@
             toggle.setAttribute('aria-controls', 'company-save-details');
             const panel = document.createElement('div');
             panel.id = 'company-save-details'; panel.className = 'company-save-details'; panel.hidden = true;
+            const indicator = document.createElement('span');
+            indicator.className = 'company-save-indicator';
+            indicator.setAttribute('aria-hidden', 'true');
+            const confirmation = document.createElement('span');
+            confirmation.className = 'company-save-confirmation';
+            confirmation.setAttribute('aria-hidden', 'true');
+            let confirmationTimer = null;
             let current = null;
+            let saveStartedAtRevision = null;
+            let lastConfirmationAt = -Infinity;
+            let confirmationAnimations = [];
+            function stopConfirmation() {
+                clearTimeout(confirmationTimer);
+                confirmationTimer = null;
+                banner.dataset.confirmed = 'false';
+                for (const animation of confirmationAnimations) animation.cancel();
+                confirmationAnimations = [];
+            }
+            function confirmSave() {
+                const now = Date.now();
+                if (document.hidden || now - lastConfirmationAt < 1500) return;
+                stopConfirmation();
+                const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
+                const easing = 'cubic-bezier(0.23, 1, 0.32, 1)';
+                banner.dataset.confirmed = 'true';
+                lastConfirmationAt = now;
+                if (typeof indicator.animate === 'function') {
+                    try {
+                        confirmationAnimations.push(indicator.animate(reduced
+                            ? [{opacity: 0.4}, {opacity: 1}]
+                            : [{opacity: 0, transform: 'scale(0.95) rotate(-12deg)'}, {opacity: 1, transform: 'none'}],
+                        {duration: 200, easing}));
+                        confirmationAnimations.push(confirmation.animate(reduced
+                            ? [{opacity: 0}, {opacity: 1}]
+                            : [{opacity: 0, transform: 'scaleX(0.95)'}, {opacity: 1, transform: 'scaleX(1)'}],
+                        {duration: 250, easing}));
+                    } catch {
+                        for (const animation of confirmationAnimations) animation.cancel();
+                        confirmationAnimations = [];
+                    }
+                }
+                confirmationTimer = setTimeout(stopConfirmation, 1400);
+            }
             const list = document.createElement('dl');
             const row = (parent, title) => {
                 const term = document.createElement('dt'); term.textContent = title;
@@ -60,7 +102,7 @@
                 toggle.setAttribute('aria-expanded', String(!panel.hidden));
                 if (!panel.hidden) details();
             });
-            banner.append(label, actions, toggle, panel);
+            banner.append(label, actions, toggle, panel, indicator, confirmation);
             const main = document.querySelector('main');
             const toolbar = main?.querySelector('.sheet-toolbar');
             const context = toolbar || main?.querySelector('.books-toolbar, .masters-toolbar, .returns-period-bar, .tax-summary-controls, .settings-heading, .sheet-heading, .books-heading, .page-heading');
@@ -73,11 +115,21 @@
                     current = {...value};
                     if (value.state === 'saved' && !value.initialized) current.state = 'ready';
                     banner.dataset.state = current.state;
+                    indicator.textContent = current.state === 'saved' ? '✓' : ['error', 'warning'].includes(current.state) ? '!' : current.state === 'pending' ? '↻' : '';
+                    banner.dataset.saving = String(current.state === 'pending' && Boolean(value.saving) && !value.recoveryUnavailable);
                     if (current.state === 'saved') label.textContent = toolbar ? 'Saved to company database' : 'Sheet records saved to company database';
                     else if (current.state === 'ready') label.textContent = 'Ready to save. No sheet transactions saved yet.';
                     else if (value.saving && !value.recoveryUnavailable) label.textContent = 'Saving changes…';
                     else label.textContent = value.message;
                     actions.hidden = actions.children.length === 0;
+                    if (current.saving && saveStartedAtRevision === null) saveStartedAtRevision = current.revision;
+                    if (current.state === 'saved') {
+                        if (saveStartedAtRevision !== null && current.revision > saveStartedAtRevision) confirmSave();
+                        saveStartedAtRevision = null;
+                    } else {
+                        stopConfirmation();
+                        if (!current.saving) saveStartedAtRevision = null;
+                    }
                     if (!panel.hidden) details();
                 },
             };

@@ -40,7 +40,7 @@ if(salesDefaults.hideCwt||salesDefaults.hideVatCwt){
     grid.parentElement.before(button);
 }
 
-const rowTemplate = tbody.querySelector('tr').cloneNode(true);
+const rowTemplate = document.getElementById('sales-row-template').content.querySelector('tr').cloneNode(true);
 const editorFields = [...draft.querySelectorAll('input:not([type="checkbox"]), select')];
 const fieldNames = ['Date', 'Customer', 'Gross amount', 'Tax type', 'Revenue account', 'Income withholding', 'VAT withholding', 'Terms', 'Invoice reference', 'Classification', 'Deposit account', 'Description'];
 editorFields.forEach((field, index) => field.setAttribute('aria-label', `Draft ${fieldNames[index]}`));

@@ -1,6 +1,6 @@
 <label>Code (optional)<input name="code" maxlength="40" pattern="[A-Za-z0-9][A-Za-z0-9_-]*" placeholder="Auto-generated, e.g. E-0001"></label>
 <label>Employment class<select name="classification">@foreach(['Regular', 'Probationary', 'Contractual', 'Part-time', 'Project-based', 'Seasonal'] as $classification)<option>{{ $classification }}</option>@endforeach</select></label>
-<label class="masters-wide">Employee name <span class="masters-required">*</span><input name="name" required maxlength="150" autocomplete="name" placeholder="Full registered name"></label>
+<label class="masters-wide"><span>Employee name <span class="masters-required">*</span></span><input name="name" required maxlength="150" autocomplete="name" placeholder="Full registered name"></label>
 <label>TIN<input name="tin" maxlength="17" placeholder="000-000-000-00000"><small>Optional. Use the employee’s TIN with a five-digit branch code.</small></label>
 <label>Date of birth<input name="birth_date" type="text" placeholder="DD/MM/YYYY" pattern="[0-9]{2}/[0-9]{2}/[0-9]{4}" maxlength="10"></label>
 <label>Email<input name="email" type="email" maxlength="254" autocomplete="email"></label>

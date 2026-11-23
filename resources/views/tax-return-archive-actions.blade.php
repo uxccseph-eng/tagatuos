@@ -9,3 +9,7 @@
     @endif
     <button type="button" class="return-delete" data-delete-preparation="{{ route('tax-returns.destroy', ['id' => $entry->id, 'company_id' => $company['company_id']]) }}" data-delete-label="{{ $entry->form }} · {{ $entry->period_from }} to {{ $entry->period_to }} · #{{ $entry->id }}" data-revision="{{ $entry->revision }}">Delete</button>
 @endif
+
+@if($entry->is_filed)
+@include('tax-revert-action', ['revertLabel' => 'Revert to prepared', 'revertRevision' => $entry->revision, 'revertUrl' => route('tax-returns.revert-filed', ['id' => $entry->id, 'company_id' => $company['company_id']]), 'revertWarning' => 'Corrects the filing status inside this app only. It does not cancel a BIR submission or payment.'])
+@endif

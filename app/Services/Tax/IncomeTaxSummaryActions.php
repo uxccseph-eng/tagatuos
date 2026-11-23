@@ -37,13 +37,13 @@ class IncomeTaxSummaryActions
         if ($action === 'settings') {
             $member = $company->users()->where('users.id', $actor->id)->firstOrFail();
             abort_unless(in_array('settings', TeamPermissions::allowed($member->pivot->role, $member->pivot->allowed_tabs), true), 403, 'Tax rate settings require Settings access.');
-            abort_unless($summary['supported'], 422, 'This automatic calculation supports regular domestic corporations from 2024. Use Tax Returns for this taxpayerÃ¢â‚¬â„¢s reviewed computation.');
+            abort_unless($summary['supported'], 422, 'This automatic calculation supports regular domestic corporations from 2024. Use Tax Returns for this taxpayer’s reviewed computation.');
             abort_if($input['rate'] === '20' && ! ($input['small_eligible'] ?? false), 422, 'Confirm eligibility for the 20% corporate rate, including the asset and taxable-income limits.');
             $start = $summary['election']['settings']['mcit_start_year'] ?? null;
             abort_if($start !== null && ($input['mcit'] === 'applicable') !== ($year >= (int) $start), 422, 'MCIT applicability disagrees with the starting year saved in Tax Returns.');
             $data['small_eligible'] = (bool) ($input['small_eligible'] ?? false);
             $data['election_revision'] = $summary['election']['revision'];
-            $warnings[] = 'Records reviewed rate and MCIT choices. Deduction method remains the yearÃ¢â‚¬â„¢s election in Tax Returns. No journal or filing is created.';
+            $warnings[] = 'Records reviewed rate and MCIT choices. Deduction method remains the year’s election in Tax Returns. No journal or filing is created.';
         } elseif ($action === 'credit') {
             abort_if((int) $input['origin_year'] >= $year, 422, 'An opening credit must arise before this reporting year. Current-year 2307s are read from posted CWT certificates.');
             $slot = 'credit:'.hash('sha256', json_encode([$year, $input['credit_type'], (int) $input['origin_year'], $amount, trim($input['remarks'] ?? '')], JSON_THROW_ON_ERROR));
@@ -73,7 +73,7 @@ class IncomeTaxSummaryActions
             }
         } elseif ($action === 'adjustment') {
             abort_if($amount === 0 || mb_strlen(trim($input['remarks'] ?? '')) < 3, 422, 'Enter a nonzero adjustment and explain its tax basis.');
-            $warnings[] = 'Adds a tax-working-paper adjustment without changing the books. Q1Ã¢â‚¬â€œQ3 adjustments carry into later cumulative periods; Annual adds a full-year adjustment.';
+            $warnings[] = 'Adds a tax-working-paper adjustment without changing the books. Q1–Q3 adjustments carry into later cumulative periods; Annual adds a full-year adjustment.';
         } elseif ($action === 'payment') {
             abort_if($amount <= 0, 422, 'Enter a positive payment amount.');
             $penalty = IncomeTaxSummaryService::cents((string) ($input['penalty'] ?? '0'));
@@ -216,7 +216,7 @@ class IncomeTaxSummaryActions
 
         }
 
-        abort_unless($account && in_array($account->type, $types, true), 422, 'Select an active '.implode(' / ', $types).' account from this companyÃ¢â‚¬â„¢s Masters.');
+        abort_unless($account && in_array($account->type, $types, true), 422, 'Select an active '.implode(' / ', $types).' account from this company’s Masters.');
 
         return $account;
 

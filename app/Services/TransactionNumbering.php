@@ -19,13 +19,18 @@ class TransactionNumbering
             $compact = collect($sheets[$sheet])->contains(fn (array $record): bool => $record['status'] === 'archived');
             $active = array_values(array_filter($sheets[$sheet], fn (array $record): bool => in_array($record['status'], ['posted', 'void'], true)));
             $baseNumber = fn (array $record): string => ($old->get((string) $record['id'])['status'] ?? 'draft') !== 'draft' ? ($old->get((string) $record['id'])['number'] ?? '') : ($record['number'] ?? '');
+            $numbered = array_values(array_filter($active, fn (array $record): bool => $baseNumber($record) === '' || $this->suffix($baseNumber($record), $prefix) !== null));
+            $byNumber = fn (array $first, array $second): int => ($this->suffix($baseNumber($first), $prefix) ?? PHP_INT_MAX) <=> ($this->suffix($baseNumber($second), $prefix) ?? PHP_INT_MAX) ?: strcmp((string) $first['id'], (string) $second['id']);
+            usort($numbered, $byNumber);
+            foreach ($numbered as $index => $record) {
+                if ($index > 0 && strcmp($numbered[$index - 1]['date'], $record['date']) > 0) {
+                    $compact = true;
+                    break;
+                }
+            }
             $used = [];
             if ($compact) {
-                usort($active, function (array $first, array $second) use ($old, $prefix): int {
-                    $number = fn (array $record): int => $this->suffix($old->get((string) $record['id'])['number'] ?? $record['number'] ?? '', $prefix) ?? PHP_INT_MAX;
-
-                    return $number($first) <=> $number($second) ?: strcmp((string) $first['id'], (string) $second['id']);
-                });
+                usort($active, fn (array $first, array $second): int => strcmp($first['date'], $second['date']) ?: $byNumber($first, $second));
             }
             foreach ($active as $record) {
                 $number = $baseNumber($record);
@@ -48,7 +53,7 @@ class TransactionNumbering
                 $before = $old->get((string) $record['id']);
                 if ($before && $before['status'] !== 'draft' && ($before['number'] ?? '') !== ($record['number'] ?? '')
                     && ($targets[$sheet][(string) $record['id']] ?? $before['number'] ?? '') !== ($record['number'] ?? '')) {
-                    throw ValidationException::withMessages(['ledger' => 'Posted numbers can change only through automatic renumbering after deleting void entries.']);
+                    throw ValidationException::withMessages(['ledger' => 'Posted numbers can change only through automatic numbering by transaction date or after deleting void entries.']);
                 }
                 if ($record['status'] === 'archived') {
                     $targets[$sheet][(string) $record['id']] = $before['number'] ?? $record['number'] ?? '';

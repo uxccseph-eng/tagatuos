@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-#[Fillable(['workspace_key', 'code', 'name', 'category', 'serial_number', 'acquired_date', 'service_date', 'disposal_date', 'cost_cents', 'residual_cents', 'life_months', 'asset_account_id', 'accumulated_account_id', 'expense_account_id', 'notes', 'capitalization_reference', 'archived'])]
+#[Fillable(['workspace_key', 'code', 'name', 'category', 'serial_number', 'acquired_date', 'service_date', 'disposal_date', 'cost_cents', 'residual_cents', 'life_months', 'asset_account_id', 'accumulated_account_id', 'expense_account_id', 'notes', 'capitalization_reference', 'archived', 'setup_pending', 'source_review_required', 'purchase_source_id'])]
 #[Hidden(['workspace_key'])]
 class PpeAsset extends Model
 {
@@ -19,6 +19,6 @@ class PpeAsset extends Model
 
     protected function casts(): array
     {
-        return ['cost_cents' => 'integer', 'residual_cents' => 'integer', 'life_months' => 'integer', 'archived' => 'boolean'];
+        return ['cost_cents' => 'integer', 'residual_cents' => 'integer', 'life_months' => 'integer', 'archived' => 'boolean', 'setup_pending' => 'boolean', 'source_review_required' => 'boolean'];
     }
 }

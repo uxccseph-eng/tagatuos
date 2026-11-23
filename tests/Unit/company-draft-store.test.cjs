@@ -97,3 +97,10 @@ test('unavailable server and device storage are reported honestly without blocki
  const e=environment({offline:true,blocked:true}),a=e.make();a.stage(payload(1));await a.flush();
  assert.equal(a.status().deviceSaved,false);assert.equal(a.status().serverSaved,false);
 });
+
+test('offline recovery creates at most two device drafts and can still update an existing copy',async()=>{
+ const e=environment({offline:true});const first=e.make(),second=e.make(),third=e.make();
+ first.stage(payload(1));await first.flush();second.stage(payload(2));await second.flush();third.stage(payload(3));await third.flush();
+ assert.equal(e.rows.size,2);assert.equal(third.status().deviceSaved,false);
+ first.stage(payload(4));await first.flush();assert.equal(first.status().deviceSaved,true);assert.equal(e.rows.size,2);
+});

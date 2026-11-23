@@ -16,7 +16,7 @@ function inlineSales(overrides={}){
     const source=fs.readFileSync(path.join(__dirname,'../../public/js/sales.js'),'utf8');vm.runInContext(source.slice(source.indexOf('function postingCandidates()'),source.indexOf('function refreshPostCount()'))+source.slice(source.indexOf('function postSelection('),source.indexOf('function voidEntries(')),context);
     return {context,ledger,storage,messages,post:()=>vm.runInContext('postSelection()',context),refreshed:()=>refreshed};
 }
-test('Sales toolbar posts the active inline entry without any popup and creates its cash collection',()=>{const ui=inlineSales(),before=ui.ledger.collections().length;ui.post();assert.equal(ui.ledger.sales().at(-1).status,'posted');assert.equal(ui.ledger.sales().at(-1).number,'SI-000004');assert.equal(ui.ledger.collections().length,before+1);assert.equal(ui.context.autoSalesDraft,null);assert.equal(ui.context.draft.hidden,true);assert.equal(ui.refreshed(),1);});
+test('Sales toolbar posts the active inline entry without any popup and creates its cash collection',()=>{const ui=inlineSales(),before=ui.ledger.collections().length;ui.post();assert.equal(ui.ledger.sales().at(-1).status,'posted');assert.equal(ui.ledger.sales().at(-1).number,'SI-000003');assert.equal(ui.ledger.collections().length,before+1);assert.equal(ui.context.autoSalesDraft,null);assert.equal(ui.context.draft.hidden,true);assert.equal(ui.refreshed(),1);});
 test('direct Sales posting keeps on-account sales unpaid and blocks incomplete inline entries',()=>{const ui=inlineSales({terms:'On Account'}),before=ui.ledger.collections().length;ui.post();assert.equal(ui.ledger.collections().length,before);assert.equal(ui.ledger.invoices().at(-1).balance,sale.gross);const invalid=inlineSales({gross:0});invalid.post();assert.equal(invalid.ledger.sales().at(-1).status,'draft');assert.equal(invalid.context.draft.hidden,false);assert.match(invalid.messages.at(-1),/positive gross/);});
 test('failed inline posting preserves the draft and never reports success',()=>{const ui=inlineSales(),before=ui.ledger.collections().length;ui.storage.set=()=>{throw Error('Storage full');};ui.post();assert.equal(ui.ledger.sales().at(-1).status,'draft');assert.equal(ui.ledger.collections().length,before);assert.equal(ui.context.draft.hidden,false);assert.equal(ui.context.autoSalesDraft.id,4);assert.equal(ui.refreshed(),0);assert.match(ui.messages.at(-1),/storage is unavailable/);});
 
@@ -25,7 +25,7 @@ test('Sales row Post targets its own draft even when a different posted row is s
     ui.context.selectedEntries=()=>[{id:1,status:'posted'}];
     vm.runInContext('postSelection([autoSalesDraft])',ui.context);
     assert.equal(ui.ledger.sales().at(-1).status,'posted');
-    assert.equal(ui.ledger.sales().at(-1).number,'SI-000004');
+    assert.equal(ui.ledger.sales().at(-1).number,'SI-000003');
 });
 
 function directPost(sheet,{invalid=false,failSave=false,certificate='CERT-001'}={}) {

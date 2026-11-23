@@ -57,7 +57,7 @@ class CompensationSummaryService
                 $adjustment = IncomeTaxSummaryService::cents(str_replace(',', '', $snapshot['bir_xml']['fields']['frm1601c:txtTax26']));
             }
             $penalties = (int) ($calculation['surcharge'] ?? 0) + (int) ($calculation['interest'] ?? 0) + (int) ($calculation['compromise'] ?? 0);
-            $payments = $events->filter(fn (object $event): bool => (int) $event->month === $month);
+            $payments = $events->where('action', 'payment')->filter(fn (object $event): bool => (int) $event->month === $month);
             $paid = $payments->sum(fn (object $event): int => (int) $event->amount - (int) ($event->data['penalty_cents'] ?? 0));
             $paidPenalties = $payments->sum(fn (object $event): int => (int) ($event->data['penalty_cents'] ?? 0));
             $tax = $issues === [] ? ($values['tax_withheld'] ?? 0) : null;

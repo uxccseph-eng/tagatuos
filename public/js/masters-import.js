@@ -22,7 +22,7 @@
         <p data-feedback role="status" aria-live="polite">No source loaded. Nothing has been added.</p>
         <section data-mapping hidden><h3>1. Map source columns</h3><label>Header row (1–20)<input type="number" min="1" max="20" value="1" data-header></label><p>Check every suggested mapping. Unmapped fields stay blank or use their defaults. Applying a mapping replaces unsaved review edits.</p><div class="masters-mapping-grid" data-mapping-grid data-sheet-keyboard-row></div><button type="button" data-apply>Apply mapping and review</button></section>
         <section data-review hidden><h3>2. Review included rows</h3><button type="button" data-change-mapping>Review / change column mapping</button><div class="sheet-import-controls" data-sheet-keyboard-row><label>Fill blank fields<select data-bulk-field></select></label><label>Value<input type="text" maxlength="4000" data-bulk-value></label><button type="button" data-fill>Fill blanks in included rows</button></div>
-        <div class="sheet-import-controls"><label class="masters-inline"><input type="checkbox" data-errors-only>Show issue rows only</label><label>Search rows<input type="search" data-search></label><button type="button" data-report disabled>Download error report</button></div><ul data-issues hidden></ul>
+        <div class="sheet-import-controls"><label class="masters-inline"><input type="checkbox" data-errors-only>Show issue rows only</label><label>Search rows<input type="search" data-search></label><button type="button" data-report disabled>Download error report</button></div><button type="button" data-exclude-issues disabled>Exclude rows with issues</button><ul data-issues hidden></ul>
         <div class="sheet-import-table-wrap"><table><thead></thead><tbody></tbody></table></div><div class="sheet-import-controls"><button type="button" data-previous>Previous</button><span data-page></span><button type="button" data-next>Next</button></div></section></div>
         <footer><span data-count>Preview required before adding</span><div><button type="button" data-close>Close</button><button type="button" data-preview disabled>Validate preview</button><button type="button" data-add disabled>Add batch to Masters</button></div></footer>`;
     document.body.append(dialog);
@@ -55,11 +55,12 @@
         rows = []; source = null; issues = []; mappingDirty = true; invalidate();
         field('review').hidden = true; field('mapping').hidden = true; showIssues(); field('count').textContent = 'Preview required before adding';
     }
-    async function request(url, data) {
+        function request(url,data){ const label=url===config.storeUrl?'Saving entries to Masters…':url===config.previewUrl?'Validating included rows…':'Reading workbook…';return window.ImportProgress.run(dialog,label,()=>performRequest(url,data)); }
+async function performRequest(url, data) {
         const isFile = data instanceof FormData;
         const headers = {Accept:'application/json', 'X-CSRF-TOKEN':document.querySelector('meta[name="csrf-token"]').content};
         if (!isFile) headers['Content-Type'] = 'application/json';
-        const response = await fetch(url, {method:'POST', headers, body:isFile ? data : JSON.stringify(data)});
+        const response = await window.ImportProgress.fetch(dialog,url, {method:'POST', headers, body:isFile ? data : JSON.stringify(data)});
         let payload;
         try {payload = await response.json();} catch {throw Error(`Could not read the response (HTTP ${response.status}). Keep this window open and try validating again.`);}
         if (!response.ok) {
@@ -106,7 +107,7 @@
                 await loadWorkbook();
             } else {
                 if (!/\.csv$/i.test(currentFile.name) || currentFile.size > 5*1024*1024) throw Error('Choose CSV up to 5 MB or Excel .xlsx up to 2 MB.');
-                loadMatrix(window.SheetImport.parseCsv(await currentFile.text(), true));
+                loadMatrix(window.SheetImport.parseCsv(await window.ImportProgress.readFile(dialog,currentFile), true));
             }
         } catch (problem) {fail(problem);} finally {setBusy(false);}
     });
@@ -130,6 +131,7 @@
         return rows.filter(row => (!field('errors-only').checked || errorRows.has(row.sourceRow)) && (!search || Object.values(row.record).some(value => String(value).toLowerCase().includes(search))));
     }
     function renderReview() {
+        field('exclude-issues').disabled = busy || !rows.some(row => row.included && issues.some(issue => issue.row === row.sourceRow));
         const visible = visibleRows(), pages = Math.max(1, Math.ceil(visible.length/25)); page = Math.min(page, pages);
         const heading = document.createElement('tr'); heading.append(cell('th', 'Include / Source row'), cell('th', 'Check'), ...config.columns.map(column => cell('th', labelFor(column))));
         dialog.querySelector('thead').replaceChildren(heading);
@@ -143,6 +145,7 @@
             includeLabel.prepend(checkbox); includeCell.append(includeLabel); tr.append(includeCell, cell('td', !row.included ? 'Excluded' : rowIssues.length ? 'Needs correction' : previewToken ? 'Ready' : 'Needs preview'));
             config.columns.forEach(column => {
                 const td = document.createElement('td'), input = document.createElement('input'), errors = rowIssues.filter(issue => issue.field === column);
+                td.dataset.importField = column;
                 input.type = 'text'; input.maxLength = 4000; input.value = registry === 'employees' && ['birth_date','hire_date','end_date'].includes(column) ? tools.displayEmployeeDate(row.record[column]) : row.record[column]; input.disabled = busy || !row.included;
                 if (registry === 'employees' && ['birth_date','hire_date','end_date'].includes(column)) input.placeholder = 'DD/MM/YYYY';
                 input.setAttribute('aria-label', `Source row ${row.sourceRow}: ${labelFor(column)}`);
@@ -166,6 +169,13 @@
         if (!value) {message('Enter a value to fill blank fields.', true); return;}
         const count = tools.fillBlanks(rows, field('bulk-field').value, value); invalidate(); renderReview(); message(`${count} blank field(s) filled in included rows. Validate again.`);
     });
+    field('exclude-issues').addEventListener('click', () => {
+        if (busy) return;
+        const count = tools.excludeIssueRows(rows, issues);
+        if (!count) return;
+        invalidate(); renderReview();
+        message(`${count} row(s) with issues excluded across all pages. Valid rows remain included. Validate the preview again before adding.`);
+    });
     ['search', 'errors-only'].forEach(name => field(name).addEventListener(name === 'search' ? 'input' : 'change', () => {page = 1; renderReview();}));
     field('previous').addEventListener('click', () => {page--; renderReview();}); field('next').addEventListener('click', () => {page++; renderReview();});
     field('preview').addEventListener('click', async () => {
@@ -186,6 +196,7 @@
         try {
             const result = await request(config.storeUrl, {records:selected().map(row => row.record), preview_token:previewToken});
             resetSource(); matrix = []; field('file').value = ''; field('paste').value = ''; field('worksheet-label').hidden = true;
+            window.ImportProgress.success(dialog,`${result.count} records added · 100% complete`);
             message(`${result.count} records added successfully. Existing records were kept.`); field('count').textContent = result.count+' added records';
             window.MasterRegistryImport?.add(result.records);
         } catch (problem) {fail(problem);} finally {setBusy(false);}

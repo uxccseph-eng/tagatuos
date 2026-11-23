@@ -4,9 +4,13 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\SavePpeAssetRequest;
 use App\Models\ChartAccount;
+use App\Models\Company;
 use App\Models\DepreciationRun;
 use App\Models\PpeAsset;
 use App\PpeDepreciation;
+use App\Services\ClientDatabase;
+use App\Services\CompanyLedgerService;
+use App\Services\PurchasePpeDrafts;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -39,6 +43,21 @@ class LapsingController extends Controller
         });
 
         return view('ppe-items', ['company' => $company, 'assets' => $assets, 'accounts' => ChartAccount::query()->where('workspace_key', $workspace)->where('archived', false)->whereIn('type', ['Asset', 'Expense'])->orderBy('code')->get()]);
+    }
+
+    public function syncPurchases(Request $request): RedirectResponse
+    {
+        $company = $request->attributes->get('active_company');
+        abort_unless($company && $request->user(), 403);
+        app(ClientDatabase::class)->central()->transaction(function () use ($company): void {
+            Company::query()->whereKey($company->id)->lockForUpdate()->firstOrFail();
+            $company->run(function () use ($company): void {
+                $state = app(CompanyLedgerService::class)->read($company)['state'];
+                app(PurchasePpeDrafts::class)->synchronize($company, $state);
+            });
+        });
+
+        return back()->with('status', 'Posted PPE purchases checked. Complete depreciation setup for the draft assets.');
     }
 
     public function index(Request $request): View|RedirectResponse
@@ -132,6 +151,17 @@ class LapsingController extends Controller
     {
         $record = $this->record($request, $asset);
         $data = $request->validated();
+        if ($record->source_review_required) {
+            throw ValidationException::withMessages(['source' => 'Review and correct the linked purchase before completing this asset setup.']);
+        }
+        if ($record->purchase_source_id) {
+            foreach (['cost_cents', 'acquired_date', 'asset_account_id', 'capitalization_reference'] as $field) {
+                if ((string) ($data[$field] ?? '') !== (string) $record->{$field}) {
+                    throw ValidationException::withMessages([$field => 'This value comes from Purchases. Correct the source purchase to change it.']);
+                }
+            }
+            $data['setup_pending'] = false;
+        }
         $posted = DepreciationRun::query()->where('workspace_key', $record->workspace_key)->get()->filter(fn (DepreciationRun $run): bool => in_array($record->id, array_column($run->snapshot['rows'], 'id'), true));
         if ($posted->isNotEmpty()) {
             foreach (['acquired_date', 'service_date', 'cost_cents', 'residual_cents', 'life_months', 'asset_account_id', 'accumulated_account_id', 'expense_account_id'] as $field) {

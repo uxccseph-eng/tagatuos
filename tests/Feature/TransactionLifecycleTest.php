@@ -8,6 +8,7 @@ use App\Models\CompanySetting;
 use App\Models\Party;
 use App\Models\User;
 use App\Services\CompanyLedgerService;
+use App\Services\TransactionNumbering;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -16,6 +17,89 @@ use Tests\TestCase;
 class TransactionLifecycleTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_backdated_posting_moves_2025_before_2026_without_recreating_journals(): void
+    {
+        [$company, $owner] = $this->book();
+        $state = CompanyLedgerService::emptyState();
+        $state['journalEntries'] = [$this->journal(1)];
+        $saved = $this->save($company, $owner, $state);
+        $header = DB::table('journal_entries')->where('source_key', 'journalEntries:1')->sole();
+        $state = $saved['state'];
+        $state['journalEntries'][] = [...$this->journal(2, ''), 'date' => '2025-12-31'];
+        $saved = $this->save($company, $owner, $state, 1);
+        $this->assertSame(['GJ-000002', 'GJ-000001'], array_column($saved['state']['journalEntries'], 'number'));
+        $this->assertDatabaseHas('journal_entries', ['id' => $header->id, 'source_key' => 'journalEntries:1', 'number' => 'GJ-000002', 'reserved_number' => 'GJ-000002']);
+        $this->assertDatabaseCount('journal_entries', 2);
+        $this->assertDatabaseCount('journal_entry_lines', 4);
+        $changes = json_decode(DB::table('company_ledger_changes')->where('revision', 2)->value('changes'), true);
+        $change = collect($changes)->firstWhere('id', '1');
+        $this->assertSame('GJ-000001', $change['before']['number']);
+        $this->assertSame('GJ-000002', $change['after']['number']);
+        $again = $this->save($company, $owner, $saved['state'], 2);
+        $this->assertSame($saved['state'], $again['state']);
+    }
+
+    public function test_backdated_sales_preserve_receipt_and_certificate_links_to_the_2026_invoice(): void
+    {
+        [$company, $owner] = $this->book();
+        $state = CompanyLedgerService::emptyState();
+        $sale = ['id' => 1, 'number' => 'SI-000001', 'date' => '2026-10-01', 'status' => 'posted', 'customer' => 'Customer', 'gross' => 10000, 'tax' => 'Non-VAT', 'account' => '4020', 'terms' => 'On Account', 'cwt' => 'WC160 2%', 'vatCwt' => 'None'];
+        $state['sales'] = [$sale];
+        $state['collections'] = [['id' => 1, 'number' => 'CR-000001', 'date' => '2026-10-01', 'status' => 'posted', 'customer' => 'Customer', 'invoice' => 'SI-000001', 'amount' => 9800, 'bank' => '1010', 'type' => 'Settlement']];
+        $state['cwtCertificates'] = [['id' => 1, 'number' => '2307R-000001', 'date' => '2026-10-01', 'status' => 'posted', 'customer' => 'Customer', 'invoice' => 'SI-000001', 'taxBase' => 10000, 'atc' => 'WC160', 'amount' => 200, 'offset' => '1150']];
+        $saved = $this->save($company, $owner, $state);
+        $state = $saved['state'];
+        $state['sales'][] = [...$sale, 'id' => 2, 'number' => '', 'date' => '2025-12-31'];
+        $saved = $this->save($company, $owner, $state, 1);
+        $this->assertSame(['SI-000002', 'SI-000001'], array_column($saved['state']['sales'], 'number'));
+        foreach (['collections', 'cwtCertificates'] as $sheet) {
+            $this->assertSame(1, $saved['state'][$sheet][0]['saleId']);
+            $this->assertSame('SI-000002', $saved['state'][$sheet][0]['invoice']);
+        }
+        $this->assertCount(4, $saved['journals']);
+    }
+
+    public function test_automatic_renumbering_preserves_a_tax_payment_journal_and_its_link(): void
+    {
+        [$company, $owner] = $this->book();
+        $state = CompanyLedgerService::emptyState();
+        $state['journalEntries'] = [$this->journal(1)];
+        $saved = $this->save($company, $owner, $state);
+        $eventId = DB::table('vat_summary_events')->insertGetId(['company_id' => $company->id, 'request_id' => (string) Str::uuid(), 'payload_hash' => str_repeat('a', 64), 'action' => 'payment', 'year' => 2026, 'quarter' => 4, 'amount' => 1000, 'actor_id' => $owner->id, 'data' => json_encode(['linked_source' => 'journalEntries:1']), 'created_at' => now()]);
+        $state = $saved['state'];
+        $state['journalEntries'][0]['number'] = 'GJ-000002';
+        $state['journalEntries'][] = [...$this->journal(2), 'number' => 'GJ-000001', 'date' => '2025-12-31'];
+        $result = $this->save($company, $owner, $state, 1);
+        $this->assertSame('GJ-000002', $result['state']['journalEntries'][0]['number']);
+        $this->assertSame($saved['state']['journalEntries'][0]['lines'], $result['state']['journalEntries'][0]['lines']);
+        $this->assertSame('journalEntries:1', json_decode(DB::table('vat_summary_events')->where('id', $eventId)->value('data'), true)['linked_source']);
+    }
+
+    public function test_every_automatic_sequence_orders_dates_and_preserves_custom_and_archived_numbers(): void
+    {
+        $state = CompanyLedgerService::emptyState();
+        $payroll = [];
+        foreach (TransactionNumbering::PREFIXES as $sheet => $prefix) {
+            $rows = [
+                ['id' => 'later', 'date' => '2026-01-01', 'status' => 'posted', 'number' => $prefix.'-000001'],
+                ['id' => 'earlier', 'date' => '2025-12-31', 'status' => 'posted', 'number' => $prefix.'-000002'],
+                ['id' => 'custom', 'date' => '2025-01-01', 'status' => 'posted', 'number' => 'CUSTOM-'.$prefix],
+                ['id' => 'deleted', 'date' => '2024-01-01', 'status' => 'archived', 'number' => $prefix.'-000099'],
+                ['id' => 'draft', 'date' => '2024-01-01', 'status' => 'draft', 'number' => ''],
+            ];
+            if ($sheet === 'payroll') {
+                $payroll = $rows;
+            } else {
+                $state[$sheet] = $rows;
+            }
+        }
+        app(TransactionNumbering::class)->normalize($state, $payroll, $state, $payroll);
+        foreach (TransactionNumbering::PREFIXES as $sheet => $prefix) {
+            $rows = $sheet === 'payroll' ? $payroll : $state[$sheet];
+            $this->assertSame([$prefix.'-000002', $prefix.'-000001', 'CUSTOM-'.$prefix, $prefix.'-000099', ''], array_column($rows, 'number'));
+        }
+    }
 
     public function test_deleting_a_void_journal_compacts_numbers_without_destroying_history(): void
     {

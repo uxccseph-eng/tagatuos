@@ -28,6 +28,17 @@ function openLedger(storage=new Map(),key='company-a',catalog=null,masters=null,
     return context.window.KontaduryaLedger;
 }
 
+test('late-entered 2025 journals precede 2026 and retain stable record IDs on repeated saves',()=>{
+ const ledger=openLedger(new Map(),'company-'+'a'.repeat(64));
+ const later=journalVoucher(ledger,{id:1,number:'',status:'posted',date:'2026-01-02'});
+ ledger.saveJournalEntries([later]);
+ const earlier=journalVoucher(ledger,{id:2,number:'',status:'posted',date:'2025-12-31'});
+ ledger.saveJournalEntries([...ledger.journalEntries(),earlier]);
+ assert.deepEqual(Array.from(ledger.journalEntries(),row=>[row.id,row.number]),[[1,'GJ-000002'],[2,'GJ-000001']]);
+ ledger.saveJournalEntries(ledger.journalEntries());
+ assert.equal(ledger.journalEntries()[0].number,'GJ-000002');
+});
+
 test('authenticated company books start empty without creating demo transactions',()=>{
     const ledger=openLedger(new Map(),'company-'+'a'.repeat(64));
     for(const method of ['sales','collections','purchases','payments','cwtCertificates','wtpCertificates','journalEntries']){
@@ -257,7 +268,7 @@ test('automatic cash collections use the number released by a discarded draft',(
     ledger.saveCollections(ledger.collections().filter(record=>record.id!==draft.id));
     const sales=ledger.sales();sales[1].terms='Cash';ledger.saveSales(sales);
     const automatic=ledger.collections().find(record=>record.saleId===2);
-    assert.equal(automatic.number,'CR-000003');assert.ok(automatic.id>draft.id);
+    assert.equal(automatic.number,'CR-000002');assert.ok(automatic.id>draft.id);
     assert.equal(ledger.newCollection().number,'');
 });
 
@@ -305,7 +316,7 @@ for(const [read,save,prefix,create] of [
     assert.equal(record.number,'');
     const before=JSON.stringify(ledger[read]()),next=ledger[read]();
     const highest=Math.max(0,...next.filter(row=>row.status!=='draft').map(row=>Number(String(row.number).split('-').at(-1))||0));
-    const candidate=next.find(row=>row.id===record.id);candidate.status='posted';
+    const candidate=next.find(row=>row.id===record.id);candidate.status='posted';candidate.date='2026-10-31';
     const set=storage.set.bind(storage);storage.set=()=>{throw Error('Storage full');};
     assert.throws(()=>ledger[save](next),/storage/i);
     assert.equal(candidate.number,'');assert.equal(JSON.stringify(ledger[read]()),before);
@@ -528,14 +539,14 @@ test('subsidiary balances match detailed closing balances and expose unassigned 
 test('subsidiary sales uses one invoice row and reconciles VAT classifications, expected withholding, and customer filters',()=>{
     const ledger=openLedger(),sales=ledger.sales();sales[1].gross=10000;sales[1].tax='Zero-Rated (0%)';sales[1].classification='Top Withholding Agent';sales[2].gross=1000;sales[2].tax='VAT Exempt';sales[2].cwt='None (0%)';sales.push({...sales[0],id:4,number:'SI-000004',gross:500,tax:'Non-VAT',cwt:'None (0%)',customer:'Non VAT Customer',customerTin:'123-456-789',customerAddress:'Actual customer address'});ledger.saveSales(sales);
     const build=bookReport().build,report=build(ledger,'subsidiary-sales','2026-10');assert.equal(report.rows.length,4);assert.equal(report.salesTotals.gross,61500);assert.equal(report.salesTotals.vatable,44643);assert.equal(report.salesTotals.vat,5357);assert.equal(report.salesTotals.zero,10000);assert.equal(report.salesTotals.exempt,1000);assert.equal(report.salesTotals.nonVat,500);assert.equal(report.salesTotals.ewt,1093);assert.equal(report.salesTotals.net,60407);
-    assert.equal(report.rows[0].tin,'');assert.equal(report.rows[0].address,'');assert.equal(report.rows.find(row=>row.number==='SI-000004').tin,'123-456-789');assert.equal(build(ledger,'subsidiary-sales','2026-10',{customerType:'Top Withholding Agent'}).rows.length,1);
+    assert.equal(report.rows[0].tin,'');assert.equal(report.rows[0].address,'');assert.equal(report.rows.find(row=>row.number===ledger.sales().find(sale=>sale.id===4).number).tin,'123-456-789');assert.equal(build(ledger,'subsidiary-sales','2026-10',{customerType:'Top Withholding Agent'}).rows.length,1);
     const remaining=ledger.sales();remaining[0].status='void';remaining[3].status='draft';ledger.saveSales(remaining);assert.equal(build(ledger,'subsidiary-sales','2026-10').rows.length,2);
 });
 
 test('master party and tax snapshots flow into source invoices, cash settlements and books',()=>{
  const masters={parties:[{id:55,name:'Master Customer',classification:'Customer',tin:'123-456-789-000',address:'Sample address'}],taxCodes:[],banks:[],atcCodes:[]};const ledger=openLedger(new Map(),'masters-test',null,masters);
  const sales=ledger.sales();sales.push({...sales[0],id:9,number:'SI-000009',customer:'Master Customer',gross:10750,tax:'TAX|CUSTOM|VAT|7.5',cwt:'WC160 · 2%',status:'posted'});ledger.saveSales(sales);
- const source=ledger.cwtSource(9);assert.equal(source.taxBase,10000);assert.equal(source.withheld,200);assert.equal(source.tin,'123-456-789-000');assert.equal(source.customerAddress,'Sample address');const voucher=ledger.bookEntries().find(entry=>entry.number==='SI-000009');assert.equal(voucher.lines.find(line=>line.account.startsWith('2210')).credit,750);assert.equal(voucher.lines.reduce((sum,line)=>sum+line.debit-line.credit,0),0);
+ const source=ledger.cwtSource(9);assert.equal(source.taxBase,10000);assert.equal(source.withheld,200);assert.equal(source.tin,'123-456-789-000');assert.equal(source.customerAddress,'Sample address');const voucher=ledger.bookEntries().find(entry=>entry.number===ledger.sales().find(sale=>sale.id===9).number&&entry.sheet==='sales');assert.equal(voucher.lines.find(line=>line.account.startsWith('2210')).credit,750);assert.equal(voucher.lines.reduce((sum,line)=>sum+line.debit-line.credit,0),0);
  const amounts=ledger.purchaseAmounts({gross:10750,tax:'TAX|CUSTOM|VAT|7.5',ewt:0.5,wvat:0});assert.equal(amounts.net,10000);assert.equal(amounts.ewt,50);
 });
 
@@ -739,7 +750,8 @@ test('deleting a void sale compacts transaction numbers and updates stable recei
  assert.equal(sales.find(record=>record.id===before[0].id).status,'archived');
  const draft={...before[1],id:99,number:'',status:'draft'};ledger.saveSales([...ledger.sales(),draft]);
  const records=ledger.sales();records.find(record=>record.id===99).status='posted';ledger.saveSales(records);
- assert.equal(records.find(record=>record.id===99).number,'SI-000003');
+ assert.equal(records.find(record=>record.id===99).number,'SI-000002');
+ assert.equal(records.find(record=>record.id===kept.id).number,'SI-000003');
 });
 
 for(const [sheet,prefix,method] of [['sales','SI','sales'],['purchases','BILL','purchases'],['collections','CR','collections'],['payments','PV','payments'],['cwt','2307R','cwtCertificates'],['wtp','2307I','wtpCertificates'],['journal','GJ','journalEntries']]){

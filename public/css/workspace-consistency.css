@@ -1,0 +1,324 @@
+/* Hallmark v2.0.0 | theme: retained teal/navy | scope: app | redesign: polish | component: shared workspace UI */
+/* Critique: a single rail, brand treatment and control scale remove visual jumps between the three existing shells. */
+/* Hallmark · answered F7 · repeated control boxes are the same navigation and theme control role across three shells, intentionally matching dimensions. */
+/* finish-review: subagent | ship | 0 open findings; authenticated Playwright captures replace the unavailable Puppeteer renderer. */
+:root {
+    --app-font: var(--desk-font, "Segoe UI", Arial, sans-serif);
+    --app-rail: 248px;
+    --app-rail-compact: 72px;
+    --app-header: 64px;
+    --app-control: 40px;
+    --app-radius: 6px;
+    --app-content: 1640px;
+    --app-icon-font: "Workspace Symbols";
+    --app-logo-paper: transparent;
+    --app-overlay: rgb(2 6 23 / .65);
+    --app-active: color-mix(in srgb, var(--theme-accent) 12%, var(--theme-panel));
+}
+.project-logo { display: inline-grid; place-items: center; flex: 0 0 44px; width: 44px; height: 44px; border-radius: var(--app-radius); background: var(--app-logo-paper); overflow: clip; box-shadow: none; }
+.project-logo img { display: block; width: 44px; height: 44px; max-width: none; object-fit: contain; }
+@media screen {
+    html, body { overflow-x: clip; }
+    body:is(.workspace-shell, :has(#sales-sidebar), :has(#sidebarNav)) {
+        --workspace-sidebar-width: var(--app-rail);
+        --ui-control-height: var(--app-control);
+        --page-control: var(--app-control);
+        --bar-control: var(--app-control);
+        --account-ui-control: var(--app-control);
+        --ui-control-radius: var(--app-radius);
+        --account-ui-radius: var(--app-radius);
+        --bar-radius: var(--app-radius);
+        font-family: var(--app-font);
+        background: var(--theme-bg);
+        color: var(--theme-text);
+    }
+    body :is(#sales-sidebar, #sidebarNav, .workspace-app-sidebar) {
+        width: var(--app-rail) !important; box-sizing: border-box; background: var(--theme-panel) !important;
+        color: var(--theme-text); border-right: 1px solid var(--theme-line) !important;
+        box-shadow: none !important; backdrop-filter: none !important;
+    }
+    body #sidebarNav { top: 0 !important; height: 100dvh !important; padding-top: 0; padding-bottom: 0; }
+    body :is(.workspace-sidebar-brand, .dashboard-sidebar-brand), body #sales-sidebar > div:first-child > div:first-child {
+        display: flex; align-items: center; flex: 0 0 var(--app-header); min-height: var(--app-header); height: var(--app-header);
+        box-sizing: border-box; padding: 8px 20px !important; border-bottom: 1px solid var(--theme-line) !important;
+    }
+    body :is(.workspace-brand, .panel-brand), body #sales-sidebar > div:first-child > div:first-child > div {
+        display: flex; align-items: center; gap: 12px !important; min-width: 0; text-decoration: none; color: var(--theme-text);
+    }
+    body :is(.workspace-brand, .panel-brand) strong, body #sales-sidebar > div:first-child > div:first-child .font-headline-sm {
+        display: block; font: 600 17px/22px var(--app-font) !important; letter-spacing: normal !important; white-space: nowrap;
+    }
+    body :is(.workspace-brand, .panel-brand) strong > span { color: var(--theme-accent); }
+    body :is(.workspace-brand, .panel-brand) small, body #sales-sidebar > div:first-child > div:first-child .font-label-sm {
+        display: block; font: 400 12px/18px var(--app-font) !important; letter-spacing: normal !important;
+        text-transform: none !important; color: var(--theme-muted); margin-top: 0 !important;
+    }
+    body :is(#sales-sidebar nav, .workspace-app-navigation) { padding: 20px 16px !important; }
+    body #sidebarNav > nav { padding: 0 16px !important; margin: 0; }
+    body #sidebarNav > div:nth-child(2) { padding: 20px 28px 8px; }
+    body :is(#sales-sidebar, #sidebarNav, .workspace-app-sidebar) nav a {
+        display: flex; align-items: center; gap: 12px !important; min-height: 40px !important; padding: 8px 12px !important;
+        margin: 0 0 4px; border: 0 !important; border-radius: var(--app-radius) !important;
+        font: 500 13px/20px var(--app-font) !important; color: var(--theme-muted) !important;
+        background: none; box-shadow: none !important; text-decoration: none;
+    }
+    body :is(#sales-sidebar, #sidebarNav, .workspace-app-sidebar) nav a > span:not(.material-symbols-outlined) {
+        font: 500 13px/20px var(--app-font) !important; letter-spacing: normal !important;
+    }
+    body :is(#sales-sidebar, #sidebarNav, .workspace-app-sidebar) nav a .material-symbols-outlined {
+        width: 20px; height: 20px; line-height: 20px; font-size: 20px !important; flex: 0 0 20px; text-align: center;
+    }
+    body :is(#sales-sidebar, #sidebarNav, .workspace-app-sidebar) nav a[aria-current="page"],
+    body #sidebarNav nav a[aria-current="page"]:hover {
+        background: var(--app-active) !important; color: var(--theme-accent) !important;
+    }
+    body :is(#sales-sidebar, #sidebarNav, .workspace-app-sidebar) nav a:hover:not([aria-current="page"]) {
+        background: var(--theme-soft) !important; color: var(--theme-text) !important;
+    }
+    body :is(#sales-sidebar, #sidebarNav, .workspace-app-sidebar) nav a[aria-current="page"] * { color: inherit !important; }
+    body #sales-sidebar nav > div:first-child { padding: 0 12px 8px !important; }
+    body #sales-sidebar nav details { padding-top: 16px !important; }
+    body #sales-sidebar nav details > div { padding: 0 !important; }
+    body #sales-sidebar nav details > summary { min-height: 36px; padding: 4px 12px !important; margin-bottom: 4px; }
+    body #sales-sidebar nav details > summary > div { gap: 0 !important; }
+    body #sales-sidebar nav details > summary > div > .material-symbols-outlined { display: none; }
+    body #sales-sidebar nav details > summary > div,
+    body #sales-sidebar nav > div:first-child,
+    body #sidebarNav > div:nth-child(2) > span,
+    body #sidebarNav > [data-section-toggle] > span:first-child,
+    body .workspace-nav-group h2 {
+        font: 600 12px/20px var(--app-font) !important; color: var(--theme-muted) !important;
+        letter-spacing: normal !important; text-transform: none !important;
+    }
+    body #sidebarNav > [data-section-toggle] { padding: 4px 28px !important; min-height: 36px; margin: 16px 0 4px; }
+    body .workspace-nav-group h2 { margin: 0 12px 8px; }
+    body .workspace-nav-group + .workspace-nav-group { margin-top: 16px; }
+    body :is(#sales-sidebar, #sidebarNav, .workspace-app-sidebar) :is(a, summary, button):focus-visible {
+        outline: 2px solid var(--theme-accent) !important; outline-offset: 2px; transition: none !important;
+    }
+    body :is(#sales-sidebar, #sidebarNav, .workspace-app-sidebar) nav a:active { background: var(--theme-soft) !important; }
+    body .workspace-sidebar-foot { padding: 16px 20px; gap: 0; }
+    body .workspace-sidebar-foot .workspace-status-dot { display: none; }
+    body :is(#sales-header, #workspace-app-header), body:has(#sidebarNav) > header.fixed {
+        height: var(--app-header) !important; min-height: var(--app-header) !important; box-sizing: border-box;
+        padding-block: 0 !important; background: var(--theme-panel) !important; border-color: var(--theme-line) !important;
+        box-shadow: none !important; backdrop-filter: none !important;
+    }
+    body:has(#sidebarNav) > header.fixed > div:first-child { gap: 12px; }
+    body:has(#sidebarNav) > header.fixed [data-workspace-topic="Create"] {
+        min-height: var(--app-control); padding: 8px 16px; border-radius: var(--app-radius); border: 0;
+        background: var(--theme-accent); color: var(--theme-on-accent); box-shadow: none;
+        font: 600 13px/20px var(--app-font);
+    }
+    body:has(#sidebarNav) > header.fixed [data-workspace-topic="Create"] > span:first-child { background: none; color: inherit; }
+    body :is(.dash-title-line, .page-heading, .books-title-row, .sheet-heading-title, .masters-title) h1 {
+        font-family: var(--app-font) !important; font-size: 28px !important; line-height: 36px !important;
+        min-width: 0; overflow-wrap: break-word; text-wrap: balance;
+    }
+    body .dashboard-overview { max-width: var(--app-content); }
+    body :is(.masters-toolbar, .books-toolbar, .sheet-utility-actions, .returns-toolbar, .tax-toolbar) {
+        align-items: center; gap: 8px;
+    }
+    body :is(.masters-toolbar, .books-toolbar, .sheet-utility-actions, .returns-toolbar, .tax-toolbar) :is(button, input:not([type="checkbox"]), select) {
+        box-sizing: border-box; min-height: var(--app-control); border-radius: var(--app-radius);
+        font-family: var(--app-font); font-size: 13px; line-height: 20px;
+    }
+    body :is(.masters-register, .books-register, .team-table, .financial-register) th {
+        font: 500 12px/20px var(--app-font); text-transform: none; letter-spacing: normal;
+    }
+    @media(min-width:1024px) {
+        body:has(#sidebarNav) > header.fixed { left: var(--app-rail) !important; }
+        body #workspaceContent { padding-left: var(--app-rail) !important; }
+        body.sidebar-closed > header.fixed { left: 0 !important; }
+        body.sidebar-closed #workspaceContent { padding-left: 0 !important; }
+        body #sales-shell { padding-left: var(--app-rail) !important; }
+        body #sales-header { left: var(--app-rail) !important; }
+    }
+    @media(max-width:1023px) {
+        body:has(#sidebarNav) > header.fixed { left: 0 !important; z-index: 50; }
+        body #workspaceContent { padding-left: 0 !important; }
+        body #sidebarNav { top: var(--app-header) !important; height: calc(100dvh - var(--app-header)) !important; z-index: 60; }
+        body.js:not(.sidebar-open) #sidebarNav { transform: translateX(-100%); visibility: hidden; }
+        body.sidebar-open #sidebarNav { transform: translateX(0); visibility: visible; }
+        body #sidebarBackdrop { top: var(--app-header); z-index: 55; }
+        body:has(#sidebarNav) #workspaceMain { padding: 88px 16px 32px; }
+    }
+    @media(max-width:600px) {
+        body :is(.dash-title-line, .page-heading, .books-title-row, .sheet-heading-title, .masters-title) h1 { font-size: 24px !important; line-height: 32px !important; }
+    }
+    @media(prefers-reduced-motion:reduce) {
+        body :is(#sales-sidebar, #sidebarNav, .workspace-app-sidebar) { animation: none !important; transition: none !important; }
+    }
+}
+
+/* Identical theme affordance across public, book and firm shells. */
+.shared-theme-symbol { flex: 0 0 20px; }
+html.dark .theme-symbol-dark, html:not(.dark) .theme-symbol-light { display: none; }
+body :is(#theme-toggle-btn, #themeToggleBtn, [data-theme-toggle]) { display: inline-flex; align-items: center; justify-content: center; width: var(--app-control); height: var(--app-control); min-height: var(--app-control); padding: 0 !important; border: 1px solid var(--theme-line); border-radius: var(--app-radius); background: var(--theme-soft); color: var(--theme-muted) !important; }
+[data-theme-toggle] [data-theme-label] { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: clip; clip-path: inset(50%); white-space: nowrap; }
+body.account-layout :is(h1,h2,h3,label,button,input,select,textarea) { font-family: var(--app-font) !important; }
+body :is(.workspace-app-header, #sales-header) :is(button,a,input) { font-family: var(--app-font) !important; }
+
+@media screen {
+    body.account-layout .workspace-header-search input { background: none !important; border: 0 !important; min-height: 0; }
+    body #sales-sidebar nav details[open] > summary > .material-symbols-outlined { transform: none !important; }
+    body #sales-sidebar nav details:not([open]) > summary > .material-symbols-outlined { transform: rotate(-90deg) !important; }
+    .dashboard-sidebar-brand { justify-content: space-between; }
+    .dashboard-nav-close { display: none; width: 44px; height: 44px; flex: 0 0 44px; align-items: center; justify-content: center; padding: 0; border: 0; border-radius: var(--app-radius); background: none; color: var(--theme-text); }
+    .dashboard-nav-close:hover { background: var(--theme-soft); }
+    @media(max-width:1023px) {
+        body #sidebarNav { top: 0 !important; height: 100dvh !important; }
+        body #sidebarBackdrop { top: 0; }
+        body.sidebar-open { overflow-y: hidden; }
+        .dashboard-nav-close { display: inline-flex; }
+        body #sales-header { padding-left: 64px !important; }
+        body #sales-menu-toggle { top: 12px; left: 12px; width: 40px; height: 40px; }
+    }
+    @media(max-width:600px) {
+        body #sales-header > div:first-child > button:first-child { width: 40px; min-width: 40px; min-height: 40px; padding: 8px; justify-content: center; }
+        body #sales-header > div:first-child > button:first-child > span:not(.material-symbols-outlined) { display: none; }
+    }
+}
+
+/* Measured desktop and phone control dimensions. */
+@media screen {
+    body #sales-header > div:first-child > button:first-child,
+    body:has(#sidebarNav) > header.fixed [data-workspace-topic="Create"] {
+        display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-width: 100px;
+        min-height: var(--app-control); height: var(--app-control); padding: 8px 16px;
+        font: 600 13px/20px var(--app-font); border-radius: var(--app-radius);
+    }
+    body #sales-header > div:first-child > button:first-child > span,
+    body:has(#sidebarNav) > header.fixed [data-workspace-topic="Create"] > span { font-family: var(--app-font); font-size: 13px; }
+    body #sales-header > div:first-child > button:first-child > .material-symbols-outlined { font-family: var(--app-icon-font); font-size: 20px; }
+    body #sidebarToggle { width: 40px; height: 40px; }
+    @media(max-width:600px) {
+        :root { --app-control: 44px; }
+        body :is(#sales-menu-toggle, #sidebarToggle, #workspace-nav-toggle) { width: 44px; height: 44px; min-width: 44px; min-height: 44px; }
+        body #sales-menu-toggle { top: 10px; left: 10px; }
+        body #sales-header { gap: 8px !important; padding-right: 12px !important; }
+        body #sales-header > div:first-child { flex: 0 0 44px; }
+        body #sales-header > div:last-child { flex: 1 1 auto; min-width: 0; justify-content: flex-end; gap: 8px !important; }
+        body #sales-header > div:first-child > button:first-child,
+        body:has(#sidebarNav) > header.fixed [data-workspace-topic="Create"] { width: 44px; min-width: 44px; height: 44px; padding: 8px; }
+        body :is(#sales-header, #workspace-app-header) .company-switcher > summary { max-width: 140px; padding-inline: 8px; }
+        body :is(#sales-header, #workspace-app-header) .company-switcher-name { max-width: 88px !important; }
+        body:has(#sidebarNav) > header.fixed .company-switcher-name { max-width: 88px !important; }
+        body :is(#sales-sidebar, #sidebarNav, .workspace-app-sidebar) nav a { min-height: 44px !important; }
+        body :is(.field, .settings-field, .masters-fields, .account-form, .cwt-entry-fields, .collection-entry-fields) :is(input:not([type="checkbox"]),select,textarea) { font-size: 16px !important; }
+    }
+}
+
+@media screen and (max-width:600px) {
+    body :is(.workspace-sidebar-brand, .dashboard-sidebar-brand), body #sales-sidebar > div:first-child > div:first-child { padding-inline: 16px !important; }
+    body :is(.workspace-brand, .panel-brand), body #sales-sidebar > div:first-child > div:first-child > div { gap: 8px !important; }
+    body :is(.workspace-brand, .panel-brand) strong, body #sales-sidebar > div:first-child > div:first-child .font-headline-sm { font-size: 16px !important; }
+}
+
+@media screen and (max-width:600px) {
+    body:has(#sidebarNav) > header.fixed { gap: 8px !important; }
+    body:has(#sidebarNav) > header.fixed > div:first-child { gap: 8px !important; }
+    body:has(#sidebarNav) > header.fixed > div:last-child { gap: 8px !important; }
+    body:has(#sidebarNav) > header.fixed [data-workspace-topic="Profile"] { width: 44px; min-width: 44px; }
+}
+@media screen and (max-width:360px) {
+    body :is(#sales-header, #workspace-app-header) .company-switcher > summary,
+    body:has(#sidebarNav) > header.fixed .company-switcher > summary { max-width: 88px; padding-inline: 8px; }
+    body :is(#sales-header, #workspace-app-header) .company-switcher-name,
+    body:has(#sidebarNav) > header.fixed .company-switcher-name { max-width: 32px !important; }
+}
+@media screen and (pointer:coarse) {
+    :root { --app-control: 44px; }
+    body :is(#sales-menu-toggle, #sidebarToggle, #workspace-nav-toggle) { min-width: 44px; min-height: 44px; }
+}
+
+/* User-selected compact navigation spacing; touch controls retain their larger targets. */
+@media screen and (min-width:601px) and (pointer:fine) {
+    body :is(#sales-sidebar nav, .workspace-app-navigation) { padding: 12px !important; }
+    body #sidebarNav > nav { padding: 0 12px !important; }
+    body #sidebarNav > div:nth-child(2) { padding: 12px 24px 4px; }
+    body :is(#sales-sidebar, #sidebarNav, .workspace-app-sidebar) nav a { min-height: 36px !important; padding: 6px 12px !important; gap: 8px !important; margin-bottom: 4px; }
+    body :is(#sales-sidebar, #sidebarNav, .workspace-app-sidebar) nav a .material-symbols-outlined { width: 18px; height: 18px; line-height: 18px; font-size: 18px !important; flex-basis: 18px; }
+    body #sales-sidebar nav details { padding-top: 8px !important; }
+    body #sales-sidebar nav details > summary { min-height: 32px; margin-bottom: 4px; }
+    body #sales-sidebar nav details > div { padding-left: 20px !important; }
+    body #sidebarNav > [data-section-toggle] { min-height: 32px; margin-top: 8px; padding-inline: 24px !important; }
+    body #sidebarNav > nav:nth-of-type(n+2) { padding-left: 32px !important; }
+    body .workspace-nav-group + .workspace-nav-group { margin-top: 8px; }
+    body .workspace-nav-group:not(:first-child) > a { margin-left: 20px; }
+}
+
+/* A collapsed rail releases its space in both the header and the content. */
+@media screen and (min-width:1024px) {
+    body.sidebar-closed:has(#sidebarNav) > header.fixed { left: 0 !important; }
+    body.sidebar-closed:has(#sidebarNav) #workspaceContent { padding-left: 0 !important; }
+}
+
+/* The same desktop collapse control serves book, firm and dashboard navigation. */
+@media screen and (min-width:1024px) {
+    body :is(#sales-menu-toggle, #workspace-nav-toggle, #settings-menu) {
+        display: inline-flex !important; position: fixed; left: calc(var(--app-rail) + 24px); top: 12px;
+        z-index: 60; width: 40px; height: 40px; align-items: center; justify-content: center;
+        padding: 0; border: 1px solid var(--theme-line); border-radius: var(--app-radius);
+        background: var(--theme-soft); color: var(--theme-text);
+    }
+    body :is(#sales-header, #workspace-app-header) { padding-left: 76px !important; }
+    body.workspace-rail-collapsed #sales-shell { padding-left: var(--app-rail-compact) !important; }
+    body.workspace-rail-collapsed :is(#sales-header, #workspace-app-header) { left: var(--app-rail-compact) !important; }
+    body.workspace-rail-collapsed.workspace-shell { padding-left: var(--app-rail-compact) !important; --workspace-sidebar-width: var(--app-rail-compact); }
+    body.workspace-rail-collapsed :is(#sales-menu-toggle, #workspace-nav-toggle, #settings-menu) { left: calc(var(--app-rail-compact) + 24px); }
+}
+@media screen {
+    body .dashboard-overview .dash-metric:hover { border-color: var(--theme-line); }
+    body .dashboard-overview .dash-metric:hover h2 { text-decoration: underline; text-underline-offset: .2em; }
+    .workspace-rail-toggle:focus-visible { outline: 2px solid var(--theme-accent); outline-offset: 2px; }
+}
+
+/* The requested compact state retains every destination as an icon. */
+@media screen and (min-width:1024px) {
+    body.workspace-rail-collapsed :is(#sales-sidebar, #sidebarNav, #workspace-app-sidebar) { width: var(--app-rail-compact) !important; transform: none; visibility: visible; overflow-x: clip; scrollbar-width: none; }
+    body.workspace-rail-collapsed :is(#sales-sidebar, #sidebarNav, #workspace-app-sidebar)::-webkit-scrollbar { display: none; }
+    body.workspace-rail-collapsed:has(#sidebarNav) > header.fixed { left: var(--app-rail-compact) !important; }
+    body.workspace-rail-collapsed #workspaceContent { padding-left: var(--app-rail-compact) !important; }
+    body.workspace-rail-collapsed :is(.workspace-sidebar-brand, .dashboard-sidebar-brand), body.workspace-rail-collapsed #sales-sidebar > div:first-child > div:first-child { padding: 8px 14px !important; }
+    body.workspace-rail-collapsed :is(.workspace-brand, .panel-brand) > span:not(.project-logo), body.workspace-rail-collapsed #sales-sidebar .project-logo + div { display: none; }
+    body.workspace-rail-collapsed :is(#sales-sidebar, #sidebarNav, #workspace-app-sidebar) nav a { width: 44px; min-width: 44px; min-height: 40px !important; margin: 0 0 4px !important; padding: 8px 12px !important; gap: 0 !important; justify-content: center; }
+    body.workspace-rail-collapsed :is(#sales-sidebar, #sidebarNav, #workspace-app-sidebar) nav a > span:last-child:not(.material-symbols-outlined) { display: none; }
+    body.workspace-rail-collapsed :is(#sales-sidebar nav, .workspace-app-navigation) { padding: 16px 14px !important; }
+    body.workspace-rail-collapsed #sidebarNav > nav { padding: 0 14px !important; }
+    body.workspace-rail-collapsed #sidebarNav > nav + button + nav { margin-top: 12px; border-top: 1px solid var(--theme-line); padding-top: 12px !important; }
+    body.workspace-rail-collapsed #sales-sidebar nav details { border-top: 1px solid var(--theme-line); margin-top: 8px; padding-top: 12px !important; }
+    body.workspace-rail-collapsed #sales-sidebar nav details > div { padding: 0 !important; }
+    body.workspace-rail-collapsed .workspace-nav-group + .workspace-nav-group { border-top: 1px solid var(--theme-line); padding-top: 12px; margin-top: 12px; }
+    body.workspace-rail-collapsed :is(.workspace-nav-group h2, #sales-sidebar nav > div:first-child, #sales-sidebar nav details > summary, #sidebarNav > [data-section-toggle], #sidebarNav > div:nth-child(2), .workspace-sidebar-foot) { display: none; }
+    body.workspace-rail-collapsed #sales-sidebar > div:last-child:not(:first-child), body.workspace-rail-collapsed #sidebarNav > div:last-child { display: none; }
+    body.workspace-rail-collapsed #sidebarNav > nav:first-of-type { margin-top: 16px; }
+}
+@media screen and (max-width:1023px) {
+    body #settings-menu { position: fixed; left: 12px; top: 10px; z-index: 60; width: var(--app-control); height: var(--app-control); padding: 0; align-items: center; justify-content: center; border: 1px solid var(--theme-line); border-radius: var(--app-radius); background: var(--theme-soft); color: var(--theme-text); }
+}
+
+@media screen and (min-width:1024px) {
+    body :is(#sales-sidebar, #sidebarNav, #workspace-app-sidebar) { transition: none !important; }
+}
+
+/* Desktop panel control belongs to the panel; mobile retains the top-bar menu. */
+@media screen and (min-width:1024px) {
+    body .workspace-rail-brand { display: grid !important; grid-template-columns: minmax(0,1fr) 40px; align-items: center; gap: 8px !important; padding: 8px 12px !important; }
+    body #sales-sidebar .workspace-rail-brand { padding: 8px 12px !important; }
+    body .workspace-rail-brand :is(.workspace-brand,.panel-brand), body #sales-sidebar .workspace-rail-brand > div { gap: 8px !important; }
+    body .workspace-rail-brand :is(strong,.font-headline-sm) { font-size: 16px !important; }
+    body :is(#sales-menu-toggle,#sidebarToggle,#workspace-nav-toggle,#settings-menu).workspace-rail-control { display: inline-flex !important; position: static !important; inset: auto !important; align-items: center; justify-content: center; width: 40px; min-width: 40px; height: 40px; min-height: 40px; padding: 0; border: 0; border-radius: var(--app-radius); background: none; color: var(--theme-muted); }
+    body .workspace-rail-control:hover { background: var(--theme-soft) !important; color: var(--theme-text); }
+    body .workspace-rail-control:focus-visible { outline: 2px solid var(--theme-accent); outline-offset: 2px; }
+    body :is(#sales-header,#workspace-app-header) { padding-left: 24px !important; }
+    body.workspace-rail-collapsed .workspace-rail-brand { grid-template-columns: minmax(0,1fr); grid-template-rows: 44px 40px; justify-items: center; align-content: center; min-height: 112px !important; height: 112px !important; flex-basis: 112px !important; }
+    body.workspace-rail-collapsed #sales-sidebar .workspace-rail-brand { padding: 8px 14px !important; }
+    body.workspace-rail-collapsed .workspace-rail-brand :is(.workspace-brand,.panel-brand) { justify-content: center; }
+}
+/* Navigation feedback changes color only; hit areas and layout remain fixed. */
+@media screen and (prefers-reduced-motion: no-preference) {
+    body :is(#sales-sidebar, #sidebarNav, #workspace-app-sidebar) :is(nav a, nav summary, [data-section-toggle], .workspace-rail-control):not(:focus-visible):not(:disabled):not([aria-disabled="true"]) {
+        transition: background-color 150ms ease-out, color 150ms ease-out !important;
+    }
+}

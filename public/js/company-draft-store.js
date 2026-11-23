@@ -60,12 +60,15 @@
             const row = {key:keyFor(draftId),scope,id:draftId,version:draftVersion,updated_at:new Date().toISOString(),payload:work.payload,dirty:true};
             running = (async () => {
                 let onDevice = false, onServer = false;
-                try { await storage.put(row); onDevice = true; } catch {}
+                try {
+                    const existing = (await storage.list(scope)).filter(item => !item.resolved);
+                    if (existing.some(item => item.id === draftId) || existing.length < 2) { await storage.put(row); onDevice = true; }
+                } catch {}
                 try {
                     const saved = await request('/'+draftId, 'PUT', {version:draftVersion,payload:work.payload});
                     if (saved.id !== draftId || !Number.isSafeInteger(saved.version) || saved.version <= draftVersion) throw Error('Private draft was not confirmed');
                     version = saved.version; onServer = true;
-                    try { await storage.put({...row,version,dirty:false,updated_at:saved.updated_at}); onDevice = true; } catch {}
+                    try { if(onDevice)await storage.put({...row,version,dirty:false,updated_at:saved.updated_at}); } catch {}
                 } catch (error) {
                     if (error.status === 409) { id = crypto.randomUUID(); version = 0; }
                 }

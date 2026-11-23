@@ -43,7 +43,7 @@
     function synchronizeNumbers(key,input){for(const record of input){const saved=state[key].find(item=>item.id===record.id);if(saved){record.number=saved.number;if(['cwtCertificates','wtpCertificates'].includes(key))record.certificate=saved.certificate;}}}
     function persist() {
         for(const key of ['sales','purchases','collections','payments','cwtCertificates','wtpCertificates','journalEntries']){
-            if(state[key].some(record=>record.status==='archived'))compactTransactions(key);
+            compactTransactions(key);
         }
         for(const key of ['sales','purchases','collections','payments','cwtCertificates','wtpCertificates','journalEntries'])for(const record of state[key])if(record.status==='draft')record.number='';
         state.nextCollectionNumber=nextCollectionNumber();
@@ -248,6 +248,9 @@
         const prefix={sales:'SI',purchases:'BILL',collections:'CR',payments:'PV',cwtCertificates:'2307R',wtpCertificates:'2307I',journalEntries:'GJ'}[key];
         const oldSales=new Map(state.sales.filter(record=>record.status!=='archived'&&record.number).map(record=>[record.number,record.id]));
         const active=state[key].filter(record=>['posted','void'].includes(record.status)&&new RegExp('^'+prefix+'-\\d+$').test(record.number)).sort((a,b)=>Number(a.number.split('-').at(-1))-Number(b.number.split('-').at(-1))||String(a.id).localeCompare(String(b.id)));
+        const dated=active.every(record=>/^\d{4}-\d{2}-\d{2}$/.test(record.date||''));
+        if(!state[key].some(record=>record.status==='archived')&&!(dated&&active.some((record,index)=>index>0&&String(active[index-1].date||'')>String(record.date||''))))return;
+        active.sort((a,b)=>(dated?String(a.date).localeCompare(String(b.date)):0)||Number(a.number.split('-').at(-1))-Number(b.number.split('-').at(-1))||String(a.id).localeCompare(String(b.id)));
         active.forEach((record,index)=>{
             const previous=record.number;record.number=prefix+'-'+String(index+1).padStart(6,'0');
             if(['cwtCertificates','wtpCertificates'].includes(key)&&record.certificate===previous)record.certificate=record.number;

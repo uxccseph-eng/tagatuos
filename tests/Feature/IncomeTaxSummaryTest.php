@@ -87,6 +87,25 @@ class IncomeTaxSummaryTest extends TestCase
         $this->getJson(route('tax-summary.income.sources', ['company_id' => $this->book->id, 'year' => 2026, 'quarter' => 1, 'key' => 'sales']))->assertOk()->assertJsonPath('total', 1000000)->assertJsonCount(1, 'rows');
     }
 
+    public function test_source_account_labels_and_preview_warnings_preserve_clean_unicode_text(): void
+    {
+        $this->books();
+        ChartAccount::query()->where('company_id', $this->book->id)->where('code', '5000')
+            ->update(['name' => 'Cost of Sales – Peña & Co.']);
+
+        $this->getJson(route('tax-summary.income.sources', [
+            'company_id' => $this->book->id, 'year' => 2026, 'quarter' => 1, 'key' => 'cost',
+        ]))->assertOk()->assertJsonCount(1, 'rows')
+            ->assertJsonPath('rows.0.account', '5000 · Cost of Sales – Peña & Co.')
+            ->assertJsonPath('rows.0.party', '5000 · Cost of Sales – Peña & Co.')
+            ->assertJsonPath('total', 300000);
+
+        $settings = $this->preview($this->input('settings', ['rate' => '25', 'mcit' => 'not_applicable']));
+        $this->assertContains('Records reviewed rate and MCIT choices. Deduction method remains the year’s election in Tax Returns. No journal or filing is created.', $settings['warnings']);
+        $adjustment = $this->preview($this->input('adjustment', ['quarter' => 1, 'amount' => '1', 'adjustment_target' => 'taxable', 'remarks' => 'Reviewed tax adjustment']));
+        $this->assertContains('Adds a tax-working-paper adjustment without changing the books. Q1–Q3 adjustments carry into later cumulative periods; Annual adds a full-year adjustment.', $adjustment['warnings']);
+    }
+
     public function test_cumulative_corporate_computation_and_prior_tax_payments_exclude_penalties(): void
     {
         $this->books();

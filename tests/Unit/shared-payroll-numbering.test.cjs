@@ -1,6 +1,14 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const payroll = require('../../public/js/payroll-register.js');
+test('backdated payroll is numbered before later pay dates without changing run identities',()=>{
+ const rows=[{id:'later',date:'2026-01-31',number:'PYRJ-000001',status:'posted'},{id:'earlier',date:'2025-12-31',number:'',status:'posted'},{id:'draft',date:'2024-01-01',number:'',status:'draft'}];
+ const result=payroll.renumber(rows,true,rows);
+ assert.deepEqual(result.map(row=>row.number),['PYRJ-000002','PYRJ-000001','']);
+ assert.deepEqual(result.map(row=>row.id),rows.map(row=>row.id));
+ assert.deepEqual(payroll.renumber(result,true,result),result);
+ assert.equal(rows[0].number,'PYRJ-000001');
+});
 test('database payroll keeps posted and void numbers while drafts remain unnumbered', () => {
     const records = [{id: 'one', number: 'PYRJ-000001', status: 'posted'}, {id: 'three', number: 'PYRJ-000003', status: 'void'}, {id: 'new', number: '', status: 'draft'}];
     const result = payroll.renumber(records, true);

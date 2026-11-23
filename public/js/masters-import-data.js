@@ -86,7 +86,15 @@
         }
         return new Set([...groups.values()].filter(ids => ids.length > 1).flat());
     }
-    const api={tinKey,duplicateTinIds,displayEmployeeDate,guessMapping,source,mapRows,included,fillBlanks,csv,sampleRows,template};
+    function excludeIssueRows(rows, issues) {
+        const affected = new Set(issues.map(issue => issue.row));
+        let count = 0;
+        for (const row of rows) {
+            if (row.included && affected.has(row.sourceRow)) { row.included = false; count++; }
+        }
+        return count;
+    }
+    const api={excludeIssueRows,tinKey,duplicateTinIds,displayEmployeeDate,guessMapping,source,mapRows,included,fillBlanks,csv,sampleRows,template};
     if(typeof module!=='undefined'&&module.exports)module.exports=api;
     if(root)root.MasterImportData=api;
 })(typeof window!=='undefined'?window:null);

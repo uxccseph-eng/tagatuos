@@ -99,8 +99,6 @@ html:not(.dark) .company-setup-page .grid-lines { background-image: none; }
 html:not(.dark) .company-setup-page .setup-sec .settings-field > span { color: var(--theme-text); }
 html:not(.dark) .company-setup-page .setup-sec .settings-field small { color: var(--theme-muted); }
 html:not(.dark) .company-setup-page .choice-card .radio-indicator { background: var(--theme-panel); border-color: #7b899a; }
-html:not(.dark) .landing-page .text-glow-gradient { background: linear-gradient(135deg, #0f172a, #047857); background-clip: text; }
-html:not(.dark) .landing-page .text-violet-gradient { background: linear-gradient(135deg, #6d28d9, #0369a1); background-clip: text; }
 html:not(.dark) :is(.text-emerald-300, .text-emerald-400, .text-green-400) { color: #047857; }
 html:not(.dark) :is(.text-cyan-300, .text-cyan-400) { color: #0369a1; }
 html:not(.dark) :is(.text-violet-300, .text-violet-400) { color: #6d28d9; }
@@ -122,3 +120,25 @@ html:not(.dark) :is(.landing-page, .company-setup-page) :is([class~="bg-emerald-
 html:not(.dark) .company-setup-page .text-cyan-100 { color: #075985; }
 html:not(.dark) .company-setup-page .text-emerald-200 { color: #065f46; }
 html:not(.dark) .company-setup-page .text-rose-200 { color: #9f1239; }
+
+/* Shared keyboard affordances retain the existing control dimensions. */
+@media screen {
+    body :is(a, button, summary, input, select, textarea, [tabindex]):focus-visible {
+        outline: 2px solid var(--theme-accent);
+        outline-offset: 2px;
+    }
+    body :is(input, textarea) { caret-color: var(--theme-accent); }
+    .workspace-skip-link {
+        position: fixed; inset-block-start: 10px; inset-inline-start: 16px;
+        z-index: 100; padding: 10px 16px; border: 2px solid var(--theme-accent);
+        border-radius: 6px; background: var(--theme-panel); color: var(--theme-text);
+        transform: translateY(calc(-100% - 20px));
+    }
+    .workspace-skip-link:focus { top: 10px; transform: none; }
+    main { scroll-margin-block-start: calc(var(--app-header, 64px) + 16px); }
+}
+@media print { .workspace-skip-link { display: none; } }
+
+.landing-page :is(.text-glow-gradient, .text-violet-gradient) {
+    background: none; color: var(--theme-accent); -webkit-text-fill-color: currentColor;
+}

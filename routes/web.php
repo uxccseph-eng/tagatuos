@@ -45,8 +45,10 @@ use App\Http\Controllers\TaxPreflightController;
 use App\Http\Controllers\TaxReportsController;
 use App\Http\Controllers\TaxReturnController;
 use App\Http\Controllers\TaxReturnWorkspaceController;
+use App\Http\Controllers\TaxReversionController;
 use App\Http\Controllers\TaxSummaryController;
 use App\Http\Controllers\TeamController;
+use App\Http\Controllers\WorkspacePresenceController;
 use App\Http\Controllers\WorkspacePreviewController;
 use App\Http\Controllers\WtpController;
 use App\Http\Middleware\EnsureSystemOwner;
@@ -66,6 +68,8 @@ Route::get('/preview/team', [TeamController::class, 'preview'])->name('team.prev
 Route::get('/preview/workspace/{page}', [WorkspacePreviewController::class, 'show'])->where('page', 'my-work|documents|document-review|closing|lark-backup|manual-purge|guided-import|payroll-import|follow-ups|tax-preflight')->name('workspace.preview');
 Route::get('/preview/sample-document', [WorkspacePreviewController::class, 'sampleDocument'])->name('workspace.preview-document');
 Route::post('/logout', [AccountAuthController::class, 'logout'])->middleware('auth')->name('logout');
+Route::get('/account/presence', [WorkspacePresenceController::class, 'index'])->middleware(['auth', 'throttle:120,1'])->name('workspace.presence.index');
+Route::post('/account/presence', [WorkspacePresenceController::class, 'heartbeat'])->middleware(['auth', 'throttle:120,1'])->name('workspace.presence.heartbeat');
 Route::middleware('auth')->group(function (): void {
     Route::get('/documents', [DocumentInboxController::class, 'entry'])->name('documents.entry');
     Route::get('/follow-ups', [ClientFollowUpController::class, 'entry'])->name('follow-ups.entry');
@@ -166,6 +170,7 @@ Route::get('/lapsing/data', [LapsingController::class, 'preview'])->name('lapsin
 Route::post('/lapsing/runs', [LapsingController::class, 'postRun'])->name('lapsing.post');
 Route::redirect('/sheets/lapsing', '/lapsing')->name('sheets.lapsing');
 Route::get('/masters/ppe-items', [LapsingController::class, 'masters'])->name('masters.ppe');
+Route::post('/masters/ppe-items/sync-purchases', [LapsingController::class, 'syncPurchases'])->middleware(['auth', 'throttle:20,1'])->name('masters.ppe.sync-purchases');
 Route::post('/masters/ppe-items', [LapsingController::class, 'store'])->name('masters.ppe.store');
 Route::put('/masters/ppe-items/{asset}', [LapsingController::class, 'update'])->whereNumber('asset')->name('masters.ppe.update');
 Route::post('/masters/ppe-items/{asset}/archive', [LapsingController::class, 'archive'])->whereNumber('asset')->name('masters.ppe.archive');
@@ -254,5 +259,8 @@ Route::middleware(['auth', 'throttle:60,1'])->prefix('tax-returns')->name('tax-r
     Route::post('/{id}/delete', [TaxReturnController::class, 'destroy'])->whereNumber('id')->name('destroy');
     Route::post('/{id}/filed', [TaxReturnController::class, 'filed'])->whereNumber('id')->name('filed');
 });
+
+Route::post('/tax-returns/{id}/revert-filed', [TaxReversionController::class, 'filing'])->whereNumber('id')->middleware(['auth', 'throttle:20,1'])->name('tax-returns.revert-filed');
+Route::post('/tax-summary/{tax}/events/{id}/revert', [TaxReversionController::class, 'summary'])->where('tax', 'vat|income|ewt|compensation')->whereNumber('id')->middleware(['auth', 'throttle:20,1'])->name('tax-summary.revert');
 
 Route::get('/{firmSlug}', [PortalController::class, 'show'])->where('firmSlug', '[a-z0-9]+(?:-[a-z0-9]+)*')->name('portal.show');

@@ -1,0 +1,34 @@
+:root { --presence-away: #946200; }
+html.dark { --presence-away: #f4c566; }
+body .working-now-slot { display: block; padding: 12px 16px; flex-shrink: 0; margin-top: auto; }
+.working-now-panel { background: var(--theme-field); color: var(--theme-text); border: 1px solid var(--theme-line); border-radius: 8px; padding: 12px; min-width: 0; font: 400 12px/18px var(--app-font, system-ui); }
+.working-now-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
+.working-now-panel .working-now-title { font: 600 12px/18px var(--app-font, system-ui); color: var(--theme-text); }
+.working-now-count { font-size: 11px; color: var(--theme-muted); white-space: nowrap; }
+.working-now-list { list-style: none; margin: 0; padding: 0; }
+.working-now-person { display: flex; align-items: flex-start; gap: 8px; min-width: 0; margin: 0; padding: 9px 0; }
+.working-now-person + .working-now-person { border-top: 1px solid var(--theme-line); }
+.working-now-avatar { position: relative; display: grid; place-items: center; flex: 0 0 26px; width: 26px; height: 26px; border: 1px solid var(--theme-line); border-radius: 50%; background: var(--theme-soft); font-size: 11px; color: var(--theme-text); }
+.working-now-avatar::after { content: ''; position: absolute; width: 6px; height: 6px; bottom: -1px; right: -1px; border: 2px solid var(--theme-field); border-radius: 50%; box-sizing: content-box; background: var(--theme-accent); }
+.working-now-avatar[data-status=away]::after { background: var(--presence-away); }
+.working-now-person-detail { flex: 1; min-width: 0; }
+.working-now-person-heading { display: flex; justify-content: space-between; align-items: baseline; gap: 6px; min-width: 0; }
+.working-now-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; color: var(--theme-text); }
+.working-now-person-status { flex-shrink: 0; font-size: 11px; color: var(--theme-muted); }
+.working-now-book { display: block; font-size: 11px; line-height: 16px; color: var(--theme-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 3px; }
+.working-now-message { margin: 0 0 10px; color: var(--theme-muted); font-size: 11px; line-height: 18px; }
+body .working-now-panel .working-now-expand { display: block; width: 100%; text-align: left; color: var(--theme-accent); background: transparent; padding: 8px 0 0; margin-top: 6px; border: 0; border-top: 1px solid var(--theme-line); font: 500 11px/18px var(--app-font, system-ui); min-height: 30px; cursor: pointer; }
+body .working-now-panel .working-now-expand:disabled { color: var(--theme-muted); cursor: default; }
+body .working-now-panel .working-now-expand:hover:not(:disabled) { text-decoration: underline; text-underline-offset: 3px; }
+body .working-now-panel .working-now-expand:focus-visible { outline: 2px solid var(--theme-accent); outline-offset: 2px; }
+body.workspace-rail-collapsed .working-now-slot { display: none !important; }
+body dialog#working-now-dialog { width: min(520px, calc(100vw - 32px)); max-height: calc(100dvh - 48px); overflow: auto; padding: 20px; border: 1px solid var(--theme-line); border-radius: 8px; background: var(--theme-panel); color: var(--theme-text); }
+body dialog#working-now-dialog > header { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 0 0 12px; border: 0; position: static; }
+body dialog#working-now-dialog h2 { font: 600 20px/28px var(--app-font, system-ui); margin: 0; }
+body dialog#working-now-dialog .working-now-help { color: var(--theme-muted); font-size: 13px; line-height: 20px; margin: 0 0 16px; }
+body dialog#working-now-dialog .working-now-close { border: 1px solid var(--theme-line); background: var(--theme-soft); color: var(--theme-text); border-radius: 6px; padding: 6px 12px; font-size: 12px; cursor: pointer; }
+.working-now-full-list .working-now-person { padding: 14px 0; gap: 12px; }
+.working-now-full-list .working-now-avatar { width: 34px; height: 34px; flex-basis: 34px; font-size: 12px; }
+.working-now-full-list .working-now-name { font-size: 14px; }
+.working-now-full-list .working-now-book { font-size: 12px; line-height: 20px; white-space: normal; overflow-wrap: anywhere; }
+@media print { .working-now-slot, #working-now-dialog { display: none !important; } }

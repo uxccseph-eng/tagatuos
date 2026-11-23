@@ -5,7 +5,7 @@ const vm = require('node:vm');
 
 function boot(existing = []) {
     let observer;
-    const document = {body: {}, querySelectorAll: () => existing};
+    const document = {body: {}, querySelector: () => null, querySelectorAll: () => existing};
     vm.runInNewContext(fs.readFileSync('public/js/workspace-popups.js', 'utf8'), {
         document,
         MutationObserver: class {

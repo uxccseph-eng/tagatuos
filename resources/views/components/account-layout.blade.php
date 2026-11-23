@@ -11,7 +11,7 @@
     <link rel="stylesheet" href="{{ asset('css/account.css') }}?v={{ filemtime(public_path('css/account.css')) }}">
     <link rel="stylesheet" href="{{ asset('css/workspace-typography.css') }}?v={{ filemtime(public_path('css/workspace-typography.css')) }}">
     @if($workspaceNavigation)
-        <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+
         <link rel="stylesheet" href="{{ asset('css/workspace-navigation.css') }}?v={{ filemtime(public_path('css/workspace-navigation.css')) }}">
         <script src="{{ asset('js/workspace-navigation.js') }}?v={{ filemtime(public_path('js/workspace-navigation.js')) }}" defer></script>
     @endif
@@ -22,7 +22,7 @@
         @include('workspace-navigation')
     @else
     <header class="account-header">
-        <a class="account-brand" href="{{ route('home') }}" aria-label="Kontadurya home"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 6v12m-3-2.818.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" stroke-linecap="round" stroke-linejoin="round"/></svg></span>kontadurya<span class="accent">.io</span></a>
+        <a class="account-brand" href="{{ route('home') }}" aria-label="Kontadurya home">@include('components.project-logo')kontadurya<span class="accent">.io</span></a>
         <nav class="account-nav" aria-label="Account navigation">
             @include('theme-toggle')
             @if($previewMode)

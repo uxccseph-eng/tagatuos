@@ -6,7 +6,7 @@
 <link href="https://fonts.googleapis.com" rel="preconnect">
 <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect">
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&amp;family=JetBrains+Mono:wght@400;500;600;700&amp;family=Outfit:wght@400;500;600;700;800;900&amp;family=Newsreader:ital,opsz,wght@1,6..72,400;1,6..72,600&amp;display=swap" rel="stylesheet">
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+
 <link rel="stylesheet" href="{{ asset('css/app.css') }}">
 <script src="{{ asset('js/app.js') }}?v={{ filemtime(public_path('js/app.js')) }}" defer></script>
 <meta name="description" content="A new way to manage Philippine business books. Explore the Kontadurya ledger, workflow, and free community tier.">
@@ -25,12 +25,7 @@
 <div class="mx-auto flex w-full max-w-7xl items-center justify-between px-6 py-4 sm:px-10">
 <div class="flex min-w-0 items-center gap-8">
 <a class="group flex items-center gap-3 active" href="#top">
-<!-- Holographic Node Symbol -->
-<div class="relative flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-tr from-emerald-500 via-teal-400 to-cyan-400 p-[1px] shadow-[0_0_20px_rgba(16,185,129,0.5)]">
-<div class="flex h-full w-full items-center justify-center rounded-[11px] bg-[#030712]">
-<span class="font-mono-tech font-extrabold text-sm text-emerald-400 group-hover:scale-110 transition-transform">k/</span>
-</div>
-</div>
+@include('components.project-logo')
 <span class="font-heading text-[21px] font-bold tracking-tight text-white">
             kontadurya<span class="text-emerald-400">.io</span>
 </span>

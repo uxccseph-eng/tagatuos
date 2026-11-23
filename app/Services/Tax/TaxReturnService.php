@@ -264,6 +264,11 @@ class TaxReturnService
                     ];
 
                     if ($original) {
+                        $priorSnapshot = json_decode($original->snapshot, true, 512, JSON_THROW_ON_ERROR);
+                        if (isset($priorSnapshot['filing_reversions'])) {
+                            $snapshot['filing_reversions'] = $priorSnapshot['filing_reversions'];
+                            $values['snapshot'] = json_encode($snapshot, JSON_THROW_ON_ERROR);
+                        }
                         $id = $original->id;
                         DB::table('tax_return_preparations')->where('company_id', $company->id)->where('id', $id)->update($values);
                     } else {
